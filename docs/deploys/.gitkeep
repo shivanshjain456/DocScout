@@ -1,0 +1,2 @@
+# Keeps this directory in git (K-14: git does not track empty directories).
+# SECURITY.md S-14 requires each deploy to record its image digest and IaC hash here.

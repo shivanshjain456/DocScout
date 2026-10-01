@@ -1,0 +1,2 @@
+# Keeps this directory in git (K-14: git does not track empty directories).
+# `make eval` runs `uv run pytest tests/eval -q`; the eval suite lands at MILESTONES M4.
