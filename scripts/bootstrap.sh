@@ -205,6 +205,25 @@ ensure_hooks() {
 
 # -------------------------------------------------------------------------------- full tier ----
 
+# CLI tools that V1 of the verification matrix requires and that Debian packages at the exact
+# versions Phase 0 recorded: jq, psql (postgresql-client 17 -> SETUP_REPORT K-13, client 17 vs
+# server 18), and gh 2.46.0. Installed in one apt transaction.
+ensure_apt_clis() {
+  local want=() names=()
+  have jq   || { want+=(jq);                 names+=(jq); }
+  have psql || { want+=(postgresql-client);  names+=(psql); }
+  have gh   || { want+=(gh);                 names+=(gh); }
+  if [[ ${#want[@]} -eq 0 ]]; then
+    record "jq/psql/gh" "OK" "$(jq --version), $(psql --version | awk '{print $3}'), gh $(gh --version | head -1 | awk '{print $3}')"
+    return
+  fi
+  if [[ "${CHECK_ONLY}" == "1" ]]; then record "jq/psql/gh" "MISSING" "need: ${names[*]}"; return; fi
+  step "installing ${names[*]} (apt)"
+  sudo apt-get update -qq
+  sudo apt-get install -y -qq "${want[@]}"
+  record "jq/psql/gh" "INSTALLED" "$(jq --version 2>/dev/null), psql $(psql --version 2>/dev/null | awk '{print $3}'), gh $(gh --version 2>/dev/null | head -1 | awk '{print $3}')"
+}
+
 ensure_docker() {
   if have docker; then record "docker" "OK" "$(docker --version | awk '{print $3}' | tr -d ,)"; return; fi
   if [[ "${CHECK_ONLY}" == "1" ]]; then record "docker" "MISSING" "needed for make verify-setup V2/V3"; return; fi
@@ -320,6 +339,7 @@ main() {
   ensure_venv
   ensure_hooks
   if [[ "${TIER}" == "full" ]]; then
+    ensure_apt_clis
     ensure_docker
     ensure_compose
     ensure_node

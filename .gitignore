@@ -17,7 +17,13 @@
 /corpus/raw/*
 !/corpus/raw/manifest.json
 evals/reports/
-loadtests/reports/
+# Ad-hoc `make load` runs are ignored, EXCEPT the pinned verification run: V15 of
+# scripts/verify_setup.sh asserts that report exists, so leaving it untracked made the matrix
+# depend on an artifact git would not keep — the same defect class as the corpus manifest above.
+# Note the `/*` form: git will not descend into an excluded DIRECTORY, so `loadtests/reports/`
+# followed by a negation silently does nothing. Verified with `git check-ignore -v`.
+loadtests/reports/*
+!loadtests/reports/verify/
 loadtests/dummy_server.py
 
 # --- python ---
