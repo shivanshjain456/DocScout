@@ -2,7 +2,8 @@
 SHELL := /bin/bash
 TS := $(shell date -u +%Y%m%dT%H%M%SZ)
 
-.PHONY: help setup dev test lint typecheck secret-scan eval load deploy destroy verify-setup down
+.PHONY: help setup dev test lint typecheck secret-scan eval load deploy destroy verify-setup down \
+        migrate migrate-status migrate-down
 
 help:  ## show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-14s\033[0m %s\n",$$1,$$2}'
@@ -15,6 +16,16 @@ dev:  ## start local services + the API with reload
 
 down:  ## stop local services
 	docker compose down
+
+migrate:  ## apply pending SQL migrations (uses MIGRATION_DATABASE_URL = owner role)
+	uv run python scripts/migrate.py up
+
+migrate-status:  ## show applied / pending / drifted migrations; changes nothing
+	uv run python scripts/migrate.py status
+
+migrate-down:  ## revert migrations above TO= (e.g. make migrate-down TO=0)
+	@test -n "$(TO)" || { echo "refusing: set TO=<version>, e.g. make migrate-down TO=0"; exit 2; }
+	uv run python scripts/migrate.py down --to $(TO)
 
 test:  ## run the test suite
 	uv run pytest -q
