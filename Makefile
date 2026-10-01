@@ -3,6 +3,7 @@ SHELL := /bin/bash
 TS := $(shell date -u +%Y%m%dT%H%M%SZ)
 
 .PHONY: help setup dev test lint typecheck secret-scan eval load deploy destroy verify-setup down \
+	gold-lint gold-pin gold-review gold-stats \
         migrate migrate-status migrate-down ingest ingest-dry ingest-status ingest-verify
 
 help:  ## show this help
@@ -35,6 +36,18 @@ ingest-dry:  ## extract, chunk and embed the corpus but write nothing
 
 ingest-status:  ## row counts for documents, versions and chunks
 	uv run python -m app.ingest status
+
+gold-lint:  ## validate the gold set against EVAL_PROTOCOL.md (no database required)
+	uv run python -m app.evals.goldset lint
+
+gold-pin:  ## re-resolve every gold item's citation IDs from its evidence quotes (E-7)
+	uv run python -m app.evals.goldset pin
+
+gold-review:  ## E-6 pass 2: check each item's key points are grounded in its own quotes
+	uv run python -m app.evals.goldset review
+
+gold-stats:  ## gold set composition, without touching the corpus or the model
+	uv run python -m app.evals.goldset stats --no-resolve
 
 ingest-verify:  ## re-check every stored chunk's offsets against its source document (FR-7)
 	uv run python -m app.ingest verify

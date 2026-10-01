@@ -1,0 +1,61 @@
+{
+  "goldset_version": "1.0.0",
+  "created": "2026-10-01",
+  "item_count": 153,
+  "sha256_of_gold_jsonl": "172b8fec0bfe2e1208471495f45d4f7a238ec86c3e9a84067545be44adf9da70",
+  "corpus_manifest_digest": "962cfdb2aa66858217a6c89e0b91855e7cf8658bfafcb517761cf50bd3d37bb3",
+  "corpus_document_count": 21,
+  "chunker": {
+    "chunk_size": 1000,
+    "overlap": 150,
+    "max_tokens": 512,
+    "adr": "ADR-0003"
+  },
+  "citation_scheme": {
+    "adr": "ADR-0005",
+    "derivation": "uuid5(CHUNK_ID_NAMESPACE, '<version sha256>:<char_start>:<char_end>')"
+  },
+  "composition": {
+    "by_answer_type": {
+      "extractive": 87,
+      "multi-hop": 4,
+      "numeric": 40,
+      "unanswerable": 22
+    },
+    "by_difficulty": {
+      "easy": 13,
+      "hard": 69,
+      "medium": 71
+    },
+    "unanswerable_share": 0.1438,
+    "canaries": 3,
+    "stable": 130,
+    "total_required_citations": 150,
+    "documents_covered": 21
+  },
+  "labelling": {
+    "protocol": "EVAL_PROTOCOL.md E-6",
+    "authored_by": "DocScout agent (single author)",
+    "pass_1": "authored item, quote and key points directly from the source document text",
+    "pass_2": "mechanical grounding check: every salient token of every key point must occur in the item's own evidence quotes",
+    "items_changed_by_pass_2": 23,
+    "first_pass_disagreement_rate": 0.1756,
+    "residual_flagged_after_correction": 1,
+    "residual_detail": "g-009: the source PDF renders 'beneficiaries' as 'benefi ciaries', so the key point cannot be token-matched against its own quote. Disclosed rather than reworded to force a pass.",
+    "disclosure": "Author and reviewer are the same agent. Per EVAL_PROTOCOL.md §2.1 and U-17 this is SELF-AGREEMENT, not inter-rater reliability. No Cohen's kappa is reported here and none may be computed from these two passes. Human double-labelling under §5 has not been performed."
+  },
+  "known_limits": [
+    "Built from the 21-document Phase 0 corpus. C-3 and C-5 (corpus breadth) remain undecided, so topical coverage is narrow.",
+    "ADR-0003 overlaps adjacent chunks by 150 characters, so a quote near a boundary resolves to two chunks and either is a correct citation. 150 citation IDs across 131 answerable items.",
+    "No LLM judge has scored these items; U-1 is unresolved and no API keys exist. Only deterministic scorers can run."
+  ],
+  "reproduce": {
+    "lint": "uv run python -m app.evals.goldset lint",
+    "repin": "uv run python -m app.evals.goldset pin",
+    "review": "uv run python -m app.evals.goldset review"
+  },
+  "host": {
+    "python": "3.12.14",
+    "platform": "Linux-6.1.158+-x86_64-with-glibc2.41"
+  }
+}
