@@ -67,23 +67,39 @@ committed gold set and has no network access to the ingestion sources.
 
 Directory boundaries are **fixed**; crossing one requires an ADR in `docs/decisions/` (`AGENTS.md`).
 
-### 3.1 `app/ingest/` — offline pipeline — SPECIFIED, 0 bytes
+### 3.1 `app/ingest/` — offline pipeline — VERIFIED
 
-Stages: **fetch → extract → chunk → embed → store.**
+Stages: **fetch → extract → guard → clean → chunk → embed → store.**
 
-| Stage | Specified behaviour | Grounding |
+Built and run against the live database: 21 documents, **170 chunks**, 0 failures, 41.0 s on
+the 2 vCPU floor. Evidence: `docs/setup/verify/m2-ingestion.txt`,
+`docs/corpus/evidence/m2-ingest-run/ingest.json`. Entry point `python -m app.ingest`
+(`make ingest`), never an API route (OUT-5).
+
+| Stage | Behaviour | Status |
 |---|---|---|
-| fetch | `httpx` GET against the host allowlist in `CORPUS_SPEC.md` §2, descriptive User-Agent, rate-limited, no auth | Access patterns VERIFIED by `scripts/verify_corpus_fetch.py` on 20 documents |
-| extract | `pypdf` for PDFs, `trafilatura`/`beautifulsoup4` for HTML; **follow the SEBI `<iframe … file=…>` to the PDF** | VERIFIED failure mode: the SEBI detail page yields ~227 extractable chars (K-17) |
-| guard | Reject any document extracting < 500 clean chars (FR-3) | The ≥ 500-char criterion is the one Phase 0 used (20/20 passed) |
-| clean | Blank Devanagari, mojibake, `U+FFFD` and page furniture **without moving any offset** | **SPECIFIED (ADR-0003)** — equal-length space substitution, so `char_start`/`char_end` stay valid against the original text, as FR-7 requires |
-| chunk | Emit chunks carrying `document_id`, `version`, source offsets | **SPECIFIED (ADR-0003): fixed-width 1,000 chars, 150-char overlap, whitespace boundaries.** Ingest MUST assert the 512-token bound and hard-split rather than let the encoder truncate |
-| embed | Encode chunk text to a fixed-dimension vector | **SPECIFIED (ADR-0002): `bge-small-en-v1.5`, 384 d, L2-normalised.** Queries MUST carry the BGE prefix, passages MUST NOT. 6.9 chunks/s on real corpus text (2 vCPU) |
-| store | Upsert document, version, chunks, embeddings in one transaction per document | SPECIFIED |
+| fetch | Host allowlist of exactly three hosts, HTTPS only, userinfo refused, and **every redirect hop re-validated** — automatic redirects are disabled because an allowed host can 302 anywhere | VERIFIED (`app/ingest/fetch.py`, `allowlist.py`). Crawling the listing pages remains in `scripts/verify_corpus_fetch.py`; ingestion reads the manifest |
+| extract | `pypdf` for PDFs, `trafilatura` for HTML, then **whitespace normalisation** to the canonical document text | VERIFIED — extraction reproduces all 21 of Phase 0's recorded `char_count` values exactly, pinned by a test |
+| guard | Reject under 500 **non-whitespace** clean characters (FR-3) | VERIFIED against a stub-page fixture that reproduces the K-17 failure mode |
+| clean | Blank Devanagari, mojibake, `U+FFFD`, page furniture **without moving any offset**, re-checked on every call | VERIFIED (ADR-0003) |
+| chunk | 1,000 chars / 150 overlap, whitespace boundaries, hard split at 512 tokens | VERIFIED — 170 chunks, mean 253 / max 441 tokens, **0 uncovered non-whitespace characters**, 0 chunks over the ceiling |
+| embed | `bge-small-en-v1.5`, 384 d, L2-normalised, no prefix on passages | VERIFIED — max `abs(norm − 1)` across all 170 stored vectors is 9e-8 |
+| store | One transaction per document; hash-first de-duplication | VERIFIED — runs as `docscout_app` with no DELETE and no DDL |
 
-Idempotency (NFR-8) comes from the content hash: re-running over an unchanged corpus performs no
-writes. The pipeline is a CLI entrypoint, not an API route — nothing in `app/api/` may trigger
-ingestion (OUT-5).
+**Idempotency (NFR-8) is measured, not asserted.** The content-hash check runs *before*
+extraction and embedding, so a re-run over an unchanged corpus takes **0.013 s against
+41.0 s** and leaves every row count identical. See the two report files above.
+
+**Offsets are verified twice.** `chunk_document` refuses to emit a chunk whose offsets do
+not re-extract its own text, and `make ingest-verify` re-derives all 21 documents from
+their source PDFs and re-checks all 170 stored chunks against the database — 170/170.
+
+**Known gap, not fabricated around:** `documents.title` and `published_date` are left NULL.
+The manifest records neither, and the first line of a regulator's PDF is a letterhead, not
+a title. FR-14 requires a citation to state title and date, so that requirement is **not
+yet satisfiable** and closing it needs a titling strategy with its own measurement rather
+than a heuristic quietly invented here. `authority` is populated, being exactly derivable
+from `source`.
 
 ### 3.2 `app/retrieval/` — online retrieval — SPECIFIED, 0 bytes
 

@@ -6,6 +6,38 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 ## [Unreleased]
 
 ### Added
+- **The gold set, `evals/gold/v1/gold.jsonl` — `goldset_version` 1.0.0.** 153 items over all
+  21 corpus documents: 87 extractive, 40 numeric, 4 multi-hop, 22 unanswerable (14.4 %, floor
+  10 %) and 3 injection canaries. The protocol floor is 120. 150 required citations over 72
+  distinct chunks, 42.4 % of the corpus. Evidence: `docs/setup/verify/m3-goldset.txt`.
+- **Items are authored against verbatim `evidence_quotes`, and citation IDs are derived from
+  them**, not hand-written. Re-pinning after a chunking change is `make gold-pin`, and stale IDs
+  fail `make gold-lint` and the test suite — `EVAL_PROTOCOL.md` E-7 turned from a note into a
+  gate. Because ADR-0005 made chunk IDs content-derived, the whole gold set validates with **no
+  database**; verified by stopping Postgres and linting clean.
+- `app/evals/goldset.py`: loader, quote resolver, E-6 review pass and a linter enforcing every
+  floor in `EVAL_PROTOCOL.md` §2. `make gold-lint`, `make gold-pin`, `make gold-review`,
+  `make gold-stats`.
+- `tests/test_goldset.py`: 23 cases. 15 point a deliberately broken item at the linter and
+  assert the matching rule fires; 8 assert properties of the committed set, including that
+  every citation still resolves and that the metadata claims no Cohen's κ.
+- `scripts/dev_db_native.sh`: provisions Postgres 18 + pgvector natively where Docker is
+  unavailable, by executing `infra/initdb/` rather than restating it.
+- `migrations/0002_chunk_id_content_derived`, `app/ingest/ids.py`, `tests/test_ids.py` and
+  `ADR-0005`.
+- **`app/ingest/`: the corpus ingestion pipeline — the first DocScout feature code.**
+  fetch → extract → guard → clean → chunk → embed → store, as a CLI (`make ingest`) and
+  never an API route. Run against the live database: **21 documents, 170 chunks, 0
+  failures, 41.0 s** on 2 vCPU. Evidence: `docs/setup/verify/m2-ingestion.txt` and the raw
+  run reports under `docs/corpus/evidence/`.
+- `make ingest`, `make ingest-dry`, `make ingest-status`, `make ingest-verify`. The last
+  re-derives all 21 documents from their source PDFs and re-checks all 170 stored chunks'
+  offsets against the database — 170/170.
+- `tests/test_ingest.py`: 37 tests, each named for the requirement it proves, covering
+  every M2 exit criterion. `tests/conftest.py` now holds the shared database fixtures.
+- `tests/fixtures/sebi_detail_stub.html`, which reproduces the CORPUS_SPEC K-17 failure
+  mode — a page that returns HTTP 200 and extracts 143 clean characters of navigation
+  furniture while the circular's real text sits in an iframe.
 - **Database schema (migration `0001_initial_schema`), applied to the live Postgres 18.4 /
   pgvector 0.8.2 instance.** `documents`, `document_versions` and `chunks`, with an HNSW index
   (`vector_cosine_ops`, `m = 16`, `ef_construction = 64`) on `chunks.embedding` and a GIN index on
@@ -23,26 +55,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   lets the previously rejected row insert, which proves the constraint is what rejects it.
 - `ADR-0004`: binds the data model, the migration tooling, `uuidv7` keys and HNSW-over-IVFFlat.
 - Evidence: `docs/setup/verify/m1-schema-migration.txt`.
-
-### Changed
-- `ARCHITECTURE.md` §4 moves from **PROPOSED** to **VERIFIED**, and §6's HNSW row is closed by
-  ADR-0004.
-- **FR-5 is enforced more strictly than §4 proposed:** `sha256` is unique *globally*, not per
-  document. The proposed `UNIQUE (document_id, sha256)` would have permitted one payload to be
-  stored under two documents — the exact case FR-5's acceptance test forbids.
-- `chunks` carries `document_id` alongside `version_id`, kept honest by a composite foreign key,
-  so a citation resolves in one row without the denormalised column being able to disagree.
-- **Database roles are split by privilege.** `MIGRATION_DATABASE_URL` is the owner and runs DDL;
-  `DATABASE_URL` is `docscout_app` with SELECT/INSERT/UPDATE and **no DELETE and no DDL**. FR-4's
-  retention guarantee is now a privilege the service lacks rather than a promise it keeps.
-
-### Fixed
-- `DATABASE_URL` in `.env` had never worked: it carried an 11-character placeholder password
-  against a 48-character real one. Nothing in the repository read the variable, so nothing had
-  ever caught it. Both URLs are now derived from the generated passwords and verified by
-  connecting rather than by being present.
-
-### Added — earlier in this release
 - Project documentation set, each document readable alone and cross-referenced into one source of
   truth: `SPEC.md`, `SECURITY.md`, `docs/QUALITY_BAR.md`, `docs/MILESTONES.md`,
   `docs/architecture/ARCHITECTURE.md`, `docs/corpus/CORPUS_SPEC.md`, `docs/eval/EVAL_PROTOCOL.md`.
@@ -65,6 +77,40 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   hooks (format-after-edit, dangerous-bash denylist, end-of-session typegate), CI skeleton.
 - Security documentation: MCP server audit, skills audit, injection canary log, memory write log.
 - Setup tooling: `scripts/mcp_probe.py`, `scripts/verify_corpus_fetch.py`, `scripts/verify_setup.sh`.
+
+### Changed
+- **`chunks.chunk_id` is content-derived and the column default is dropped (ADR-0005).** It was
+  `DEFAULT uuidv7()`, minted from the clock, so re-ingesting the identical corpus produced **0 of
+  170** matching identifiers; it is now `uuid5(namespace, "<version sha256>:<char_start>:<char_end>")`
+  and the same experiment produces **170 of 170**. Breaking: every chunk ID changes, so re-ingest
+  from empty. `documents.document_id` and `document_versions.version_id` keep `uuidv7()`.
+- `EVAL_PROTOCOL.md` §2 moves from *"SPECIFIED, does not exist yet"* to **VERIFIED**, §2.1 is
+  implemented, and a new §2.2 records why items are authored against quotes. §10's claim that
+  U-10 must close before a gold set can be pinned is **corrected**: citation IDs depend on the
+  chunker and the corpus, not on the RRF constant or retrieval depths.
+- `prepare_document` is split so the chunking stage is reusable; verified by re-ingesting and
+  confirming all 170 chunk identifiers unchanged.
+- `ARCHITECTURE.md` §3.1 moves from **SPECIFIED, 0 bytes** to **VERIFIED**, with each
+  stage's status backed by a measurement.
+- **The FR-7 property tests now exercise the production chunker.** They previously carried
+  their own copy of the chunking logic, so they could have passed while the code that
+  actually writes chunks was wrong — and it was: the experiment harness behind ADR-0003
+  stored stripped text against unstripped offsets, which violates FR-7 on **40 of its 170
+  chunks**. The shipped chunker reproduces ADR-0003's 170 chunks exactly with zero
+  violations, zero coverage gaps, and no chunk wholly contained in another.
+- Idempotency (NFR-8) is now a measurement rather than a claim: the content-hash check
+  runs before extraction and embedding, so a re-run over an unchanged corpus takes
+  **0.013 s against 41.0 s** and leaves every row count identical.
+- `ARCHITECTURE.md` §4 moves from **PROPOSED** to **VERIFIED**, and §6's HNSW row is closed by
+  ADR-0004.
+- **FR-5 is enforced more strictly than §4 proposed:** `sha256` is unique *globally*, not per
+  document. The proposed `UNIQUE (document_id, sha256)` would have permitted one payload to be
+  stored under two documents — the exact case FR-5's acceptance test forbids.
+- `chunks` carries `document_id` alongside `version_id`, kept honest by a composite foreign key,
+  so a citation resolves in one row without the denormalised column being able to disagree.
+- **Database roles are split by privilege.** `MIGRATION_DATABASE_URL` is the owner and runs DDL;
+  `DATABASE_URL` is `docscout_app` with SELECT/INSERT/UPDATE and **no DELETE and no DDL**. FR-4's
+  retention guarantee is now a privilege the service lacks rather than a promise it keeps.
 
 ### Decided
 - **ADR-0002 pins the embedding model and vector dimension: `BAAI/bge-small-en-v1.5`, `D = 384`.**
@@ -102,6 +148,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   against the original extracted text as FR-7 requires.
 
 ### Fixed
+- `python -m app.ingest --report-dir <relative path>` crashed with `ValueError` *after*
+  successfully writing all 170 chunks: `Path.relative_to` raises for a relative path that
+  does not literally start with the repository prefix. The run reported success to the
+  database and a traceback to the operator. Covered by a regression test.
+- `DATABASE_URL` in `.env` had never worked: it carried an 11-character placeholder password
+  against a 48-character real one. Nothing in the repository read the variable, so nothing had
+  ever caught it. Both URLs are now derived from the generated passwords and verified by
+  connecting rather than by being present.
 - **Corrected a ~16x error in the embedding-throughput extrapolation.** `CORPUS_SPEC.md` C-5 read
   112.4 *sentences*/s as "~10,000 chunks is ~90 s". Measured on real 1,000-char regulatory chunks
   the rate is 6.9 chunks/s, so 10k chunks is ~24 minutes. The Phase 0 measurement was sound; only
@@ -126,6 +180,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   `Makefile` targets reference by path (Known issue K-14).
 
 ### Security
+- The host allowlist re-validates **every redirect hop** and automatic redirects are
+  disabled. Checking only the URL a caller passes in is decoration: an allowlisted host
+  can answer `302 Location: https://evil.example/…` and the default client follows it.
+- Ingestion refuses to start when deploy or cloud credentials are in its environment
+  (SECURITY S-4, FR-6), before the database connection and before any network call. Error
+  messages name the variable and never its value.
+- The pipeline runs as `docscout_app` — SELECT/INSERT/UPDATE, no DELETE, no DDL — and the
+  database tests run as that role to prove the write path needs nothing more.
 - Rejected the Postgres MCP server named in the original brief: the PyPI package
   `mcp-server-postgres` is an unvetted third-party upload, and the brief's invocation would have
   passed the live database superuser password to it as a command-line argument.

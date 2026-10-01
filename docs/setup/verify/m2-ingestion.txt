@@ -1,0 +1,60 @@
+=== M2 ingestion evidence — 2026-10-01T17:02:22Z ===
+Host: 2 vCPU, 1.9 GiB. Engine:
+PostgreSQL 18.4 (Debian 18.4-1.pgdg12+1) on x86_64-pc-linux-
+pgvector 0.8.2
+
+--- 1. COLD INGEST (docs/corpus/evidence/m2-ingest-run/ingest.json) ---
+  model BAAI/bge-small-en-v1.5  geometry 1000/150 chars, ceiling 512 tok
+  documents 21  inserted 21  failed 0  chunks 170
+  duration 41.009s  (4.1 chunks/s)
+  rows before {'documents': 0, 'document_versions': 0, 'current_versions': 0, 'chunks': 0}
+  rows after  {'documents': 21, 'document_versions': 21, 'current_versions': 21, 'chunks': 170}
+  per-doc chunks: min 1  max 56
+  uncovered non-whitespace characters across all documents: 0
+
+--- 2. IDEMPOTENT RE-RUN, NFR-8 (docs/corpus/evidence/m2-idempotent-rerun/ingest.json) ---
+  documents 21  skipped_unchanged 21  chunks written 0
+  rows before {'documents': 21, 'document_versions': 21, 'current_versions': 21, 'chunks': 170}
+  rows after  {'documents': 21, 'document_versions': 21, 'current_versions': 21, 'chunks': 170}
+  identical: True   duration 0.013s
+  -> a re-run over an unchanged corpus performs NO writes and skips before extracting or embedding
+
+--- 3. ROW COUNTS AND DISTRIBUTION ---
+  source   | documents | versions | chunks | min_tok | avg_tok | max_tok
+-----------+-----------+----------+--------+---------+---------+---------
+ RBI       |        10 |       10 |    103 |      48 |     295 |     441
+ SEBI      |        10 |       10 |     65 |      58 |     189 |     262
+ SYNTHETIC |         1 |        1 |      2 |     128 |     170 |     211
+           |        21 |       21 |    170 |      48 |     253 |     441
+(4 rows)
+
+--- every embedding is a 384-d unit vector, every chunk inside the ADR-0002 ceiling ---
+dims=384..384  max |norm-1|=0.00000009  max tokens=441  over 512: 0
+--- one current version per document (FR-4) ---
+documents=21  with exactly one current version=21
+
+--- 4. FR-7 READ-BACK: every stored chunk re-extracted from its source PDF ---
+verifying stored chunks for 21 manifest documents...
+  versions checked 21, chunks checked 170
+  OK: every stored chunk's offsets re-extract to its stored text (FR-7)
+
+--- 5. THE INDEX IS USABLE, NOT MERELY POPULATED ---
+  query: 'What are the KYC requirements for foreign portfolio investors?'
+  dense arm (pgvector cosine KNN), top 3:
+    SEBI      ord0   cos_dist=0.2747  CIRCULAR HO/19/34/14(8)2026-AFD-POD2/ I/19251/2026 August 20, 2026 To, 1. ...
+    SEBI      ord2   cos_dist=0.2797  to time.             5. Additionally, in respect of clients registered as ...
+    SEBI      ord1   cos_dist=0.2907  l services.” 2. Accordingly, in terms of Regulation 16A(1) of the SEBI KRA...
+  lexical arm (GIN over generated tsvector), top 3:
+    SEBI      ord0   rank=0.67450  CIRCULAR HO/19/34/14(8)2026-AFD-POD2/ I/19251/2026 August 20, 2026 To, 1. ...
+  plan, seqscan disabled : Limit | ->  Index Scan using idx_chunks_embedding_hnsw on chunks
+  plan, default          : Limit | ->  Sort | ->  Seq Scan on chunks
+  -> HNSW is wired correctly and chosen when forced; at 170 rows the planner
+     rightly prefers a sequential scan, so index selection is NOT yet evidence of speed.
+  injection canary chunks present in the index as distractors: 2
+
+--- 6. TEST SUITE ---
+  tests/test_ingest.py + tests/test_schema.py: 56 passed (pytest exit 0)
+  Each test is named for the requirement it proves: FR-1 allowlist and redirect
+  re-validation, FR-3 stub-page rejection, FR-4 supersession with stable chunk IDs,
+  FR-5 hash-first de-duplication, FR-6 credential refusal, FR-7 offsets, NFR-8
+  idempotent and resumable re-runs, and the ADR-0002/0003 contracts.

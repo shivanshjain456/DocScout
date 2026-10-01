@@ -1,0 +1,69 @@
+M3 evidence — gold set v1.0.0
+Captured 2026-10-01T18:22:34Z. PostgreSQL 18.6 / pgvector 0.8.6, 2 vCPU / 1.9 GiB.
+
+=== 1. Composition (make gold-stats; no corpus read, no model load) ===
+  items                 153
+    by answer_type      {'extractive': 87, 'multi-hop': 4, 'numeric': 40, 'unanswerable': 22}
+    by difficulty       {'easy': 13, 'hard': 69, 'medium': 71}
+    canaries            3
+    stable              130 of 153
+  unanswerable share    14.4%
+  documents covered     21
+  citations per item    min 1 / max 3 / total 150
+
+=== 2. Full lint: schema + corpus resolution (make gold-lint) ===
+  gold set OK: 153 items, schema + corpus resolution
+  items                 153
+    by answer_type      {'extractive': 87, 'multi-hop': 4, 'numeric': 40, 'unanswerable': 22}
+    by difficulty       {'easy': 13, 'hard': 69, 'medium': 71}
+    canaries            3
+    stable              130 of 153
+  unanswerable share    14.4%
+  documents covered     21
+  citations per item    min 1 / max 3 / total 150
+
+=== 3. E-6 pass 2, grounding check after correction (make gold-review) ===
+  REVIEW  g-009: grounding 50% -- key-point tokens absent from the evidence quote: ['among', 'beneficiarie']
+
+  pass-2 grounding check: 1 of 131 answerable items flagged (0.8% disagreement with pass 1)
+    First-pass result, before correction: 23 of 131 answerable items flagged (17.6%).
+    Those 23 items were corrected and are marked stable:false. One residual is disclosed.
+
+=== 4. The linter's E-5 scope check fired on real defects ===
+    Before correction, lint reported:
+      g-042, g-046, g-047, g-048: evidence quote also appears in 2 document(s)
+      outside source_docs -- the three near-identical September 2026 InvIT/REIT
+      valuation circulars for Small Finance Banks, Payments Banks and AIFIs.
+    Each question was answerable from documents it did not cite, violating E-5.
+    Fixed by anchoring each quote on the paragraph number, the only text that
+    distinguishes the three documents (82A/82B, 83A/83B, 58A/58B).
+
+=== 5. The gold set validates with NO DATABASE (ADR-0005's central claim) ===
+    $ sudo pg_ctlcluster 18 main stop
+    $ pg_isready  ->  no response
+    $ uv run python -m app.evals.goldset lint
+      gold set OK: 153 items, schema + corpus resolution
+    Citation IDs are uuid5 over (version sha256, char span), so they are computed from
+    corpus/raw/manifest.json and the fetched payloads alone.
+
+=== 6. Cross-check: the database-free IDs match the ingested database exactly ===
+    distinct chunk IDs cited by the gold set   : 72
+    chunk IDs present in the ingested database : 170
+    cited IDs absent from the database         : 0
+    share of corpus chunks exercised           : 72/170 = 42.4%
+
+=== 7. Test suite ===
+    $ uv run pytest
+    98 passed in 17.50s
+    (23 of these are tests/test_goldset.py: 15 cases exercising the linter's rules against
+     deliberately broken items, 8 asserting properties of the committed gold set --
+     including that every citation still resolves, which is E-7 made enforceable.)
+
+=== 8. What this is NOT ===
+    - No LLM judge has scored any item. U-1 is open, no API keys exist, and
+      EVAL_PROTOCOL.md section 5 calibration has not been performed.
+    - Author and reviewer are the same agent. The 17.6% figure is self-agreement,
+      not inter-rater reliability. No Cohen's kappa is reported and none can be
+      computed from these two passes.
+    - No retrieval or generation metric has been measured. This artifact is the
+      ruler, not a measurement.

@@ -125,7 +125,7 @@ and item 6 (API contract, U-13).**
 
 ---
 
-## 5. M2 — Ingestion at scale — NOT STARTED
+## 5. M2 — Ingestion at scale — SUBSTANTIALLY COMPLETE
 
 **Goal:** turn the proven 20-document fetch into a real pipeline.
 
@@ -137,12 +137,20 @@ corpus date window (C-3) and target size (C-5).
 
 **Exit criteria:**
 
-1. Full corpus ingested; `corpus/raw/manifest.json` records **every** attempt including failures
-   (C-22).
-2. Tests pass for: off-allowlist rejection, SEBI stub-page rejection, hash-based dedup, new-version
-   creation with stable old chunk IDs, idempotent re-run performing no writes (NFR-8).
-3. A test asserts the ingester refuses to start with deploy credentials in the environment (S-4).
-4. Row counts for documents, versions, and chunks recorded as evidence.
+1. ~~Full corpus ingested~~ — **DONE 2026-10-01.** 21 documents, 170 chunks, 0 failures, 41.0 s.
+   The manifest already records every attempt (C-22).
+2. ~~Tests~~ — **DONE.** 37 tests in `tests/test_ingest.py`: off-allowlist rejection (plus
+   userinfo smuggling and **redirect** escape, which a URL-only check misses), stub-page
+   rejection, hash-first de-duplication, new-version creation with stable old chunk IDs,
+   and an idempotent re-run that writes nothing.
+3. ~~Deploy-credential refusal~~ — **DONE.** Four tests, including that the error names the
+   variable but never echoes its value.
+4. ~~Row counts as evidence~~ — **DONE.** `docs/setup/verify/m2-ingestion.txt`, with the raw
+   run reports under `docs/corpus/evidence/`.
+
+**Still open in M2:** the corpus is the 21 documents Phase 0 fetched, not a refreshed crawl,
+so the date window (C-3) and target size (C-5) are not yet decided; and `title` /
+`published_date` are NULL, which leaves FR-14 unsatisfiable (see ARCHITECTURE §3.1).
 
 **Closes:** C-3, C-5. **Decides or defers with an ADR:** U-11 (tables), U-16 (scanned PDFs),
 U-12 (supersession).
@@ -152,22 +160,55 @@ a flagged-document count rather than silent data loss — the count is itself an
 
 ---
 
-## 6. M3 — Gold set v1 — NOT STARTED
+## 6. M3 — Gold set v1 — **DONE** (2026-10-01)
 
 **Goal:** build the measuring instrument before the thing it measures is tuned.
 
 **Entry criteria:** M2 complete — chunk IDs must be stable, since gold items reference them (E-7).
 
-**Work:** hand-build **≥ 120** QA items to the schema in `EVAL_PROTOCOL.md` §2.1, with **≥ 10 %**
-unanswerable and **≥ 1** injection canary; two-pass labelling plus a disagreement review; record the
-disagreement rate; mark surviving items `stable: true`; commit the set with a `goldset_version` and
-a `CHANGELOG.md` entry.
+> **This entry criterion was not met when M2 was declared complete, and nobody noticed.**
+> `chunks.chunk_id` was `DEFAULT uuidv7()`, minted from the clock at insert time, so re-ingesting
+> the identical corpus produced **0 of 170** matching identifiers. The criterion was written
+> correctly and then not checked. It was caught only by starting M3 and asking what the gold
+> set's foreign keys actually point at. **ADR-0005** makes the identifier content-derived
+> (`uuid5` over the version hash and the character span); the same experiment now produces
+> **170 of 170**. Evidence: `docs/decisions/evidence/adr-0005-chunk-id-stability.txt`.
+>
+> The lesson is recorded rather than tidied away: an exit criterion that is never executed is a
+> sentence, not a gate. M2's criteria were all verified by running something; this one belonged
+> to M3 and was verified by nobody.
 
-**Exit criteria:** the set exists at ≥ 120 items and passes a gold-set lint that enforces the scope
-rule (E-5) and the schema; the disagreement rate is recorded; if one person did both labelling
-passes, the report says so explicitly (E-6 disclosure).
+**Work completed:** 153 items (floor 120) to the `EVAL_PROTOCOL.md` §2.1 schema, over all 21
+corpus documents — 87 extractive, 40 numeric, 4 multi-hop, 22 unanswerable (14.4 %, floor 10 %)
+and 3 injection canaries. Two-pass labelling with the disagreement rate recorded, and
+`stable: true` on the 130 items the review left unchanged.
 
-**Closes:** U-17. **Blocks:** everything downstream — without this there is no number.
+**How the items are anchored, and why it matters.** No item was authored against a chunk ID.
+Each answerable item carries verbatim `evidence_quotes`; `make gold-pin` resolves them to chunk
+IDs through the same chunker the ingester uses. Re-pinning after a chunk-size change is a
+command, stale IDs fail `make gold-lint` and the suite, and the whole set validates **with no
+database** — verified by stopping Postgres and linting clean, with all 72 distinct cited IDs
+still matching the ingested database exactly.
+
+**Exit criteria — met.**
+
+| Criterion | Result |
+|---|---|
+| ≥ 120 items | **153** |
+| ≥ 10 % unanswerable | **22, 14.4 %** |
+| ≥ 1 injection canary | **3** |
+| Passes a lint enforcing the schema and the scope rule (E-5) | **clean**; the E-5 check first *failed* 4 items whose quotes appeared verbatim in all three near-identical InvIT/REIT circulars, which were rewritten |
+| Disagreement rate recorded | **23 of 131 answerable items, 17.6 %**, all corrected; 1 residual disclosed |
+| E-6 disclosure if one person did both passes | **stated in `metadata.json`, in `EVAL_PROTOCOL.md` §E-6 and in the evidence file**: self-agreement, not inter-rater reliability; no Cohen's κ reported, and a test asserts none is claimed |
+
+**Closes:** U-17 (authored and labelled by the DocScout agent, disclosed as such).
+
+**Deliberately still open:** the corpus is Phase 0's 21 documents, so topical coverage is narrow
+while C-3 and C-5 are undecided; §5 human double-labelling is not done, so no κ exists for any
+judge; and no retrieval or generation metric has been measured. **This milestone produced the
+ruler, not a measurement.**
+
+**Evidence:** `docs/setup/verify/m3-goldset.txt` · `evals/gold/v1/metadata.json` · ADR-0005.
 
 ---
 
@@ -252,7 +293,7 @@ billing alarm **first**, least-privilege runtime identity, image digest and IaC 
 Phase 0 ✔ ─► M0 foundation repair (U-15)
                  └─► M1 decisions + schema (U-8, U-9, U-13)
                         └─► M2 ingestion at scale (C-3, C-5; U-11/U-12/U-16 decided or deferred)
-                               └─► M3 gold set ≥120 (U-17)
+                               └─► M3 gold set 153 items — DONE (U-17 closed)
                                       └─► M4 retrieval + live CI gate (U-10, U-1)
                                              └─► M5 generation + API + UI
                                                     └─► M6 load + deploy (U-5, U-7, U-14)
@@ -269,26 +310,36 @@ the credibility of every milestone after it.
 
 ## 11. Next action
 
-M0 is done apart from exit criterion 3, which is held for M1 on purpose.
+**Done: ADR-0002, ADR-0003, ADR-0004, and the M2 ingestion pipeline.** The index is no
+longer empty — 170 chunks of real RBI and SEBI text, every one carrying offsets that
+re-extract to its source PDF, every embedding a 384-dimension unit vector, and the
+injection canary sitting in the index as a retrievable distractor.
 
-**Done: ADR-0002 (U-9), ADR-0003 (U-8) and ADR-0004 (schema + HNSW) are closed.** The data model
-is no longer a proposal — it is three tables in the live database, with 19 tests asserting that it
-*refuses* what the specification forbids. M1 items 1, 2, 4 and 5 are complete.
+**The next action is the evaluation harness, starting with the gold set.**
 
-Two items remain in M1: **item 3, the datastore ADR**, and **item 6, the API contract (U-13)**.
+That is a change of direction from the previous entry here, which named the API contract,
+and the reason is that ingestion changed what is possible rather than what is desirable.
+A gold set requires `required_citation_chunk_ids` that point at chunks which exist; until
+this run there were none, so the single highest-value artefact in the project was blocked
+on something that is now done. Everything downstream — the regression gate (FR-28), the
+judge calibration (FR-27), any A/B between retrieval configurations — is blocked on the
+gold set and on nothing else.
 
-**The API contract is the right next action.** It is the larger of the two and it blocks more:
-`SPEC.md` §4.3 is still PROPOSED, `app/main.py` does not exist so `make dev` fails (M0 exit
-criterion 3, deliberately parked for exactly this moment), and M2's ingestion work will want to
-know what shape a citation takes on the wire. The schema just fixed the server-side half of that
-contract — `chunk_id`, offsets, version identity are now concrete — which makes this the cheapest
-it will ever be to specify the client-side half.
+The order that follows from that:
 
-The datastore ADR is a smaller, backward-looking piece of writing: the decision is already made
-and now implemented. It should still be written, because `ARCHITECTURE.md` §6 records it as owed
-and because the rejected alternatives matter to a future reader — but it must be honest that it
-documents a settled choice rather than deliberates an open one.
+1. **Gold set** (FR-23): ≥ 120 hand-built QA items over the 170 chunks, ≥ 10% unanswerable,
+   ≥ 1 injection canary, each with required-citation chunk IDs. U-17 asks who authors it;
+   the honest answer is that it is authored here and labelled as such.
+2. **Retrieval** (FR-9, FR-10): hybrid BM25 + dense + RRF, then the cross-encoder. Both
+   arms are already demonstrated working against the live index (ARCHITECTURE §3.1).
+3. **Deterministic scorers first** (FR-26): citation precision and recall need no LLM and
+   are therefore not blocked by U-1, unlike faithfulness.
 
-One caveat carried forward from ADR-0004: the schema is applied but **no data has ever been
-written to it by real code**. The tests insert synthetic and real-corpus-derived rows, which is
-not the same as the ingestion pipeline proving the model survives contact with M2.
+The API contract (U-13) stays open and drops below these. It is a precondition for a
+deployed demo, not for a measured one, and the schema has already fixed its server-side
+half.
+
+**Carried forward:** `title` and `published_date` are NULL for every document, so FR-14 —
+a citation stating authority, title and date — cannot currently be satisfied. The gold set
+should cite by `chunk_id`, which is stable, rather than depending on titles that do not
+yet exist.

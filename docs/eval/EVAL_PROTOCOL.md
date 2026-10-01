@@ -38,44 +38,96 @@ decision, never a quiet edit.
 
 ---
 
-## 2. Gold set specification — SPECIFIED, does not exist yet
+## 2. Gold set — VERIFIED, v1.0.0 exists
 
-| Property | Requirement |
-|---|---|
-| Size | **≥ 120** QA pairs, hand-built. Grown over time, never auto-generated wholesale |
-| Unanswerable share | **≥ 10 %** of items. Correct behaviour is refusal; refusal on an unanswerable item is a **PASS**, not a miss |
-| Canary | **≥ 1** injection canary item, graded as a negative test (`CORPUS_SPEC.md` C-19) |
-| Storage | Committed to the repository. It is the crown-jewel artifact |
-| Versioning | Any change bumps `goldset_version` and is noted in `CHANGELOG.md` |
+| Property | Requirement | v1.0.0 — measured |
+|---|---|---|
+| Size | **≥ 120** QA pairs, hand-built. Grown over time, never auto-generated wholesale | **153** |
+| Unanswerable share | **≥ 10 %** of items. Correct behaviour is refusal; refusal on an unanswerable item is a **PASS**, not a miss | **22 items, 14.4 %** |
+| Canary | **≥ 1** injection canary item, graded as a negative test (`CORPUS_SPEC.md` C-19) | **3** |
+| Storage | Committed to the repository. It is the crown-jewel artifact | `evals/gold/v1/gold.jsonl` |
+| Versioning | Any change bumps `goldset_version` and is noted in `CHANGELOG.md` | `evals/gold/v1/metadata.json` |
 
-### 2.1 Item schema — SPECIFIED
+Composition: 87 extractive, 40 numeric, 4 multi-hop, 22 unanswerable; 13 easy, 71 medium, 69
+hard; all **21** corpus documents covered; 150 required citations over 72 distinct chunks, which
+is 42.4 % of the corpus. Evidence: `docs/setup/verify/m3-goldset.txt`.
+
+Validate with `make gold-lint`. It needs **no database** — see §2.2.
+
+### 2.1 Item schema — VERIFIED, implemented in `app/evals/goldset.py`
 
 | Field | Meaning |
 |---|---|
 | `question` | Natural phrasing, in the voice of a compliance analyst (`SPEC.md` §3.1 — persona is PROPOSED, U-17) |
-| `required_citation_chunk_ids` | The chunk IDs a correct answer MUST cite |
+| `evidence_quotes` | **Verbatim passages** from `source_docs` that justify the answer. The item is authored against these, and `required_citation_chunk_ids` is derived from them (§2.2) |
+| `required_citation_chunk_ids` | The chunk IDs a correct answer MUST cite. **Derived, never hand-written.** Regenerate with `make gold-pin` |
 | `expected_answer_key_points` | Atomic facts that must appear in the answer |
 | `difficulty` | `easy` \| `medium` \| `hard` |
 | `source_docs` | The document set the answer is derived from |
 | `answer_type` | `extractive` \| `numeric` \| `multi-hop` \| `unanswerable` |
 | `stable` | `true` once the item survives the review pass unchanged |
+| `canary` | `true` for an injection canary; requires `forbidden_strings` |
+| `forbidden_strings` | Text that must NOT appear in an answer. Without it, resisting an injection is indistinguishable from obeying it |
+| `distractor_docs` | For unanswerable items: the documents a retriever will plausibly surface. Records what the item is a trap for |
+| `unanswerable_reason` | For unanswerable items: why the corpus cannot answer it. An unanswerable item without this cannot be reviewed |
+
+### 2.2 Why items are authored against quotes — VERIFIED
+
+E-7 (below) warns that gold items break when the chunker changes. Under the original schema
+they were worse than that: they broke when **nothing** changed. `chunks.chunk_id` defaulted to
+`uuidv7()`, so re-ingesting the identical corpus produced **0 of 170** matching identifiers.
+ADR-0005 made the identifier content-derived, and this section is the other half of the fix.
+
+No item in this gold set was authored against a chunk ID. Each answerable item carries verbatim
+`evidence_quotes`, and `make gold-pin` resolves them to chunk IDs through the **same chunker the
+ingester uses** (`app.ingest.pipeline.chunk_source_document`). Three consequences:
+
+1. **Re-pinning is a command.** A chunk-size change moves which chunk contains a quote, not the
+   quote. `make gold-pin` recomputes; `make gold-lint` fails on stale IDs. E-7 becomes a gate
+   rather than a note, and `tests/test_goldset.py` fails the build if it is ignored.
+2. **No database is required.** Identifiers are `uuid5` over `(version sha256, char span)`, all
+   of which comes from the tracked `corpus/raw/manifest.json` and the fetched payloads.
+   *Verified by stopping Postgres and running the full lint clean.* The 72 distinct cited IDs
+   nevertheless match the ingested database exactly.
+3. **Items are reviewable.** A human can check a quote against a circular. Nobody can check a UUID.
+
+The alternative — citing `(url, char_start, char_end)` spans and never using chunk IDs — stays
+open and is argued in ADR-0005 Rejected Alternatives (B). It becomes the right answer if the
+§8.1 chunk-size A/B needs one gold set to span two geometries.
 
 **E-5 — SPECIFIED. Scope rule.** No question may be answerable from more than its intended
 `source_docs`. If it can be answered from general knowledge or from a document outside
 `source_docs`, it is rewritten. *Test:* an item whose answer is reproduced by the generator with an
 empty retrieval context fails the gold-set lint.
 
-**E-6 — SPECIFIED. Labelling protocol.** Two-pass self-label, then a disagreement review pass.
-The disagreement rate is recorded. Items surviving review unchanged are marked `stable: true`.
+**E-6 — VERIFIED for v1.0.0. Labelling protocol.** Two-pass self-label, then a disagreement review
+pass. The disagreement rate is recorded. Items surviving review unchanged are marked `stable: true`.
+
+*How v1.0.0 did it.* Pass 1 authored each question, quote and key-point set from the source text.
+Pass 2 is deliberately **not** a re-reading — one agent re-reading its own work agrees with itself
+by construction, and the resulting number would be self-agreement dressed as review. Pass 2 is
+mechanical (`make gold-review`): every salient token of every key point — each number, amount,
+date part and content word — must occur in the item's own `evidence_quotes`. It can therefore
+genuinely disagree, and did: **23 of 131 answerable items (17.6 %)** asserted facts their own
+cited passage did not contain. All 23 were corrected and carry `stable: false`; **130 of 153** are
+`stable: true`. One residual is disclosed in `metadata.json` rather than reworded to force a pass
+(`g-009`: the source PDF renders "beneficiaries" as "benefi ciaries").
+
+Separately, the linter's E-5 scope check rejected four items whose quotes appeared verbatim in all
+three near-identical September 2026 InvIT/REIT valuation circulars — each question was answerable
+from documents it did not cite. They were rewritten to anchor on the paragraph numbers.
 
 > **Disclosure required (U-17):** if one person performs both passes, the resulting agreement is
 > self-agreement, not inter-rater reliability. Any κ computed that way MUST be labelled as such in
 > the report. Overstating it would be exactly the kind of flattering number this protocol exists to
 > prevent.
 
-**E-7 — SPECIFIED. Chunk-ID stability.** Because `required_citation_chunk_ids` are foreign keys into
-the corpus, gold items break when the chunker changes. On any chunking change the gold set MUST be
-re-pinned and the full suite re-run (§8). This is a direct dependency on U-8.
+**E-7 — VERIFIED, now enforced.** Because `required_citation_chunk_ids` are foreign keys into the
+corpus, gold items break when the chunker changes. On any chunking change the gold set MUST be
+re-pinned (`make gold-pin`) and the full suite re-run (§8). Two things now enforce this rather
+than request it: `make gold-lint` reports any committed ID that the corpus no longer resolves to,
+and `tests/test_goldset.py::test_every_committed_citation_resolves_against_the_corpus` fails the
+build. U-8 is closed by ADR-0003; the identifier scheme is ADR-0005.
 
 ---
 
@@ -249,6 +301,18 @@ gold set into a training set; hold out a slice that is looked at only before a r
 
 ## 10. Open items owned by this document
 
-U-1 (judge feasibility — blocks §4 entirely), U-17 (who writes and labels ≥ 120 items; persona
-validation), and the downstream dependency U-10 that must close before a gold set can be pinned.
-U-8 (ADR-0003) and U-9 (ADR-0002) are closed. All appear in `SPEC.md` §9.
+U-1 (judge feasibility — blocks §4 entirely) and U-17 (who writes and labels the items; persona
+validation). U-8 (ADR-0003) and U-9 (ADR-0002) are closed.
+
+**Correction to an earlier claim in this section.** It previously said U-10 "must close before a
+gold set can be pinned". That was wrong, and acting on it would have blocked the project's
+highest-priority artifact behind a tuning exercise. `required_citation_chunk_ids` depend on the
+chunker (U-8, closed) and the corpus, not on the RRF constant or the candidate and rerank depths.
+U-10 gates the first **baseline run** and the §8.1 ablations, not the item set. The gold set is
+pinned at v1.0.0 with U-10 open.
+
+**U-17, answered for v1.0.0 and disclosed.** The items were authored and labelled by the DocScout
+agent, one author, and `metadata.json` records this as **self-agreement, not inter-rater
+reliability**. No Cohen's κ is reported, none can be computed from these two passes, and a test
+asserts the metadata does not claim one. §5 human double-labelling remains outstanding and is
+what any κ in this project must come from. All appear in `SPEC.md` §9.
