@@ -3,7 +3,7 @@ SHELL := /bin/bash
 TS := $(shell date -u +%Y%m%dT%H%M%SZ)
 
 .PHONY: help setup dev test lint typecheck secret-scan eval load deploy destroy verify-setup down \
-	gold-lint gold-pin gold-review gold-stats \
+	gold-lint gold-pin gold-review gold-stats eval-quick \
         migrate migrate-status migrate-down ingest ingest-dry ingest-status ingest-verify
 
 help:  ## show this help
@@ -65,10 +65,11 @@ typecheck:  ## mypy over app/
 secret-scan:  ## gitleaks over the FULL git history
 	gitleaks git --redact --verbose .
 
-eval:  ## full eval run -> evals/reports/<ts>/   [stub until the gold set exists]
-	@echo "eval harness lands with the gold set (build phase). See skill rag-eval-protocol."
-	@echo "Contract: every run writes evals/reports/<UTC-ts>/{results.json,report.md,raw-judge-outputs/}"
-	uv run pytest tests/eval -q
+eval:  ## retrieval eval over the gold set -> evals/reports/<UTC-ts>/{results.json,report.md}
+	uv run python -m app.evals.runner
+
+eval-quick:  ## same, but only the first 20 gold items (smoke test, not a baseline)
+	uv run python -m app.evals.runner --limit 20 --report-dir /tmp/docscout-eval-quick
 
 load:  ## k6 load test -> loadtests/reports/<ts>/
 	@mkdir -p loadtests/reports/$(TS)
