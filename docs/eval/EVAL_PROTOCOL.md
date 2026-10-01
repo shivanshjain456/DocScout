@@ -311,6 +311,17 @@ chunker (U-8, closed) and the corpus, not on the RRF constant or the candidate a
 U-10 gates the first **baseline run** and the §8.1 ablations, not the item set. The gold set is
 pinned at v1.0.0 with U-10 open.
 
+**U-18 (new, opened by the first baseline run).** The gold set's questions were authored from
+the evidence quotes, so they inherit the vocabulary of the chunk they cite: measured at 73.3 %
+term overlap with the gold chunk against 9.4 % with a random chunk. That is a 7.8× advantage
+handed to the lexical arm before it retrieves anything, and it means the published retrieval
+A/B cannot settle BM25 versus hybrid. Closing U-18 requires paraphrased variants of a sample of
+items, re-asked in wording that shares as little vocabulary with the evidence as possible, and
+the same three configurations re-run against them. Not done now: no API keys for a paraphraser
+(U-1), and paraphrasing with a model from the same family as the embedder would substitute one
+confound for another. Until U-18 closes, every retrieval comparison in this repository is
+reported with its leakage band table beside it. See ADR-0006.
+
 **U-17, answered for v1.0.0 and disclosed.** The items were authored and labelled by the DocScout
 agent, one author, and `metadata.json` records this as **self-agreement, not inter-rater
 reliability**. No Cohen's κ is reported, none can be computed from these two passes, and a test

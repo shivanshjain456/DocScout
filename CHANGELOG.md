@@ -6,6 +6,38 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 ## [Unreleased]
 
 ### Added
+- **`app/retrieval/`: the retrieval layer — a dense arm, a BM25 arm and RRF over both.**
+  BM25 is scored over the lexemes Postgres already stores in `chunks.tsv`, parsed by
+  `unnest(tsvector)`, so the scorer and the GIN index can never disagree about stemming.
+  The three configurations are one code path, so the ablation is hybrid minus a step.
+- **`app/evals/scorers.py`: deterministic retrieval metrics, run before any LLM judge.**
+  Recall, hit rate, MRR and nDCG are computed over *quote groups* — disjunction within a
+  group, conjunction across them — because ADR-0003's 150-char overlap puts a boundary
+  quote in two chunks, and scoring the flat ID list charges a retriever 0.5 for a
+  perfectly correct answer. 11 of 131 answerable items (8.4 %) are affected.
+- **`app/evals/stats.py`: paired bootstrap CIs and discordant-pair counts**, so a
+  difference is published with its uncertainty. This caught a real over-claim — see below.
+- **`app/evals/runner.py` and `make eval`: the first baseline run**, writing
+  `evals/reports/<UTC-ts>/{results.json,report.md}` with full E-14 provenance read from
+  the artifacts at run time. The pinned baseline is committed, because E-13 says a metric
+  that has no raw output does not exist.
+- **ADR-0006 — hybrid retrieval, accepted on evidence that does not prove it.** The A/B
+  put `bm25-only` on top (recall@5 0.970 vs hybrid 0.966 vs dense 0.947), and the honest
+  reading is that **no pairwise difference's 95 % CI excludes zero**: BM25's lead over
+  hybrid is one item out of 131. Worse, the gold set's questions were authored from the
+  evidence quotes and share **73.3 %** of their terms with the chunk they point at versus
+  **9.4 %** for a random chunk — a 7.8× handicap in the lexical arm's favour. Stratified by
+  that overlap, BM25 is the **worst** of the three in the least-contaminated band (0.750 vs
+  0.875). Hybrid is kept because it is never worst in any band, and the experiment that
+  would overturn the decision is named: paraphrased query variants (**U-18**).
+- `scripts/git_history.sh` and `.history/docscout.bundle`: git history persisted as a file
+  in the working tree. This sandbox restores the tree but rolls `.git` back to a fixed
+  baseline — observed twice, reflog included — which would truncate the project's commit
+  history permanently. `bootstrap.sh` restores the bundle, fast-forward only.
+- `app/rowtypes.py`: runtime-checked coercions for psycopg row values, so a column type
+  change raises at the boundary instead of being silenced by a `cast`.
+- `tests/test_retrieval.py` (16 cases) and `tests/test_scorers.py` (18 cases): fusion
+  arithmetic and the group model are pinned against hand-computed values.
 - **The gold set, `evals/gold/v1/gold.jsonl` — `goldset_version` 1.0.0.** 153 items over all
   21 corpus documents: 87 extractive, 40 numeric, 4 multi-hop, 22 unanswerable (14.4 %, floor
   10 %) and 3 injection canaries. The protocol floor is 120. 150 required citations over 72

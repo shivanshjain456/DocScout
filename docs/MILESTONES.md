@@ -212,11 +212,36 @@ ruler, not a measurement.**
 
 ---
 
-## 7. M4 — Retrieval and the live quality gate — NOT STARTED
+## 7. M4 — Retrieval and the live quality gate — PARTIALLY COMPLETE
 
 **Goal:** hybrid retrieval, measured, with CI enforcing regressions.
 
-**Entry criteria:** M3 complete.
+**Entry criteria:** M3 complete. Met — and unlike the M2→M3 transition, checked rather than
+assumed: the gold set's 72 cited chunk IDs were re-resolved against a database rebuilt from
+nothing on a different Postgres install, 72/72.
+
+**Status, honestly (2026-10-01).** Exit criteria 1 and 2 are met for *retrieval*. Criterion 3 is
+met for the lexical/dense ablation and deliberately deferred for rerank. Criteria 4 and 5 are
+NOT met. M4 is therefore not complete, and is not recorded as complete.
+
+| # | Exit criterion | State |
+|---|---|---|
+| 1 | Baseline run with E-14 pinning fields | **DONE** — `evals/reports/20261001T192924Z/`, committed |
+| 2 | recall@k, MRR, nDCG with their artifact | **DONE** for retrieval; citation precision/recall need a generator, so they are absent, not estimated |
+| 3 | Lexical and rerank ablations | **PARTIAL** — dense/BM25/hybrid A/B done (ADR-0006); rerank deferred with a reason, not forgotten (recall@10 ≈ 0.98 leaves a reranker nothing to recover on a 170-chunk corpus) |
+| 4 | `eval-smoke` enforcing the >1pp gate | **NOT DONE** — and the gate needs rethinking first: 1pp is 1.3 items on a 131-item gold set |
+| 5 | U-1 decided | **NOT DONE** — no API keys; the formal re-scope is still owed in writing |
+
+**What the baseline actually showed, recorded because it is inconvenient.** The ablation did not
+produce a winner. Every pairwise 95 % bootstrap CI includes zero, and the gold set leaks 73.3 % of
+each question's terms into its own gold chunk (9.4 % for a random chunk), which flatters the
+lexical arm by 7.8×. §8.1's instruction "if the lexical arm adds nothing, remove it" cannot be
+executed on this evidence in either direction, and acting on it would have deleted the dense arm
+on the strength of a one-item difference. Hybrid is kept, the reasoning is in ADR-0006, and the
+decisive experiment is **U-18**.
+
+**Remaining work:** close U-1 in writing; redesign the CI gate so it is not operating at
+single-item resolution; grow the corpus and the gold set; U-18; then the reranker ablation.
 
 **Work:** implement `app/retrieval/` (lexical arm, dense arm, RRF fusion, cross-encoder rerank) and
 `app/evals/` layer-1 deterministic scorers; run the three required ablations

@@ -16,7 +16,12 @@
 !/corpus/raw/
 /corpus/raw/*
 !/corpus/raw/manifest.json
-evals/reports/
+# Eval run outputs are untracked by default -- a repo should not accumulate every
+# exploratory run. The PINNED baseline is the exception and is force-added: EVAL_PROTOCOL
+# E-13 says a metric does not exist unless its raw output does, so the run the README
+# quotes has to be in the repository, not merely on the machine that produced it.
+evals/reports/*
+!evals/reports/20261001T192924Z/
 # Ingest run reports. The working output of `make ingest` is untracked like every other
 # generated report; the curated evidence for a milestone is committed under
 # docs/corpus/evidence/ instead, so the repo keeps the run it cites and not every run.
