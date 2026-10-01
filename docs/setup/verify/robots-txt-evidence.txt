@@ -1,0 +1,45 @@
+### robots.txt retrieval evidence — 2026-10-01T13:25:38Z
+Purpose: establish crawl directives for the two corpus sources (CORPUS_SPEC.md §6).
+
+======== https://www.sebi.gov.in/robots.txt ========
+User-agent: *
+Disallow:
+Disallow: /js
+Disallow: /hindi/js
+Disallow: /css
+Disallow: /hindi/css
+
+[http_status:200 content_type:text/plain; charset=UTF-8]
+
+======== https://www.rbi.org.in/robots.txt ========
+<html>
+<head>
+<title>Unauthorised Access </title>
+<meta name="author" content="RBIWEBSITE">
+<meta name="description" content=?Unauthorised Access>
+</head>
+<body>
+<center>
+<p>
+<font face="Arial, Helvetica, sans-serif" size="4" color=?auto?>You are not authorized to view this page. Please contact concerned Support Team. <b>
+<p>
+<font face="Arial, Helvetica, sans-serif" size="4" color="Red"></font>
+<p>
+<font face="Arial, Helvetica, sans-serif" size="3" color="Red"><b> Support ID: 679480897054147807
+<br></b></font>
+<p>
+<font face="Arial, Helvetica, sans-serif" size="4" color="red">
+<p>
+</font>
+<p>
+</center>
+</body>
+</html>
+[http_status:418 content_type:text/html; charset=utf-8]
+
+INTERPRETATION:
+  SEBI  : HTTP 200. 'User-agent: *' with an empty 'Disallow:' (allow-all) plus explicit
+          Disallow for /js, /hindi/js, /css, /hindi/css only. The paths DocScout fetches
+          (/legal/..., /sebi_data/attachdocs/...) are NOT disallowed.
+  RBI   : HTTP 418 — a WAF 'Unauthorised Access' interstitial, not a robots file.
+          RBI crawl directives are therefore UNDETERMINED from this environment.
