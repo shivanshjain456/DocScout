@@ -1,0 +1,71 @@
+"""Shared value types for retrieval.
+
+Why a separate module rather than defining these beside the retriever: the dense arm, the
+lexical arm and the fusion step all need the same result shape, and importing that shape
+from whichever arm happened to define it would make the arms depend on each other. They
+must stay independent -- the A/B in ADR-0006 only means something if dense-only can run
+with the lexical arm entirely absent from the call graph.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Literal
+
+Mode = Literal["dense", "bm25", "hybrid"]
+
+# Reciprocal Rank Fusion's smoothing constant. 60 is the value from Cormack et al. (2009),
+# which is also what every mainstream implementation defaults to. It is not tuned here: it
+# is held fixed so the dense/lexical/hybrid comparison varies one thing at a time.
+DEFAULT_RRF_K = 60
+
+
+@dataclass(frozen=True)
+class Retrieved:
+    """One chunk returned by a retriever, with the provenance needed to explain its rank."""
+
+    chunk_id: str
+    rank: int
+    score: float
+    document_id: str
+    source: str
+    text: str
+    # Rank this chunk held in each contributing arm, 1-based. Empty for single-arm runs.
+    # Kept because "why did hybrid beat dense here" is unanswerable without it, and that
+    # question is the entire point of the ablation.
+    arm_ranks: dict[str, int] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class RetrievalConfig:
+    """A named, fully-specified retrieval configuration.
+
+    Every field that can change a result appears here, and the runner serialises this
+    object verbatim into results.json. E-14 requires a report to carry the parameters that
+    produced it; a config that is partly implicit in code cannot satisfy that.
+    """
+
+    name: str
+    mode: Mode = "hybrid"
+    # Depth of each arm BEFORE fusion. Deeper arms give fusion more to work with and cost
+    # more; held equal across arms so neither is handicapped by candidate count.
+    k_dense: int = 50
+    k_lexical: int = 50
+    # Results returned after fusion. Metrics are reported at k <= this.
+    k_final: int = 10
+    rrf_k: int = DEFAULT_RRF_K
+    # Per-arm fusion weights. 1.0/1.0 is unweighted RRF.
+    weight_dense: float = 1.0
+    weight_lexical: float = 1.0
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "name": self.name,
+            "mode": self.mode,
+            "k_dense": self.k_dense,
+            "k_lexical": self.k_lexical,
+            "k_final": self.k_final,
+            "rrf_k": self.rrf_k,
+            "weight_dense": self.weight_dense,
+            "weight_lexical": self.weight_lexical,
+        }
