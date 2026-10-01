@@ -207,6 +207,43 @@ def resolve_item(
     return resolved, problems
 
 
+def resolve_groups(item: dict[str, Any], index: dict[str, IndexedDocument]) -> list[list[str]]:
+    """Return one group of acceptable chunk ids per evidence quote.
+
+    This grouping is what makes citation scoring honest, and the flat
+    `required_citation_chunk_ids` list cannot express it.
+
+    ADR-0003 chunks overlap by 150 characters, so a quote sitting near a boundary is
+    genuinely present in two adjacent chunks and `resolve_item` lists both. Flattened,
+    those two ids look like two separate obligations, and a retriever that returns the
+    perfectly correct chunk scores 0.5 recall for it. Grouped, they are one obligation
+    satisfiable by either member -- which is what "cite your evidence" actually means.
+
+    Conversely a multi-hop item quoting two different documents has two groups, and
+    covering only one of them must not score as a full hit. Disjunction within a group,
+    conjunction across groups.
+    """
+    groups: list[list[str]] = []
+    for quote in item.get("evidence_quotes", []):
+        hits: list[IndexedChunk] = []
+        for url in item.get("source_docs", []):
+            document = index.get(url)
+            if document is None:
+                continue
+            hits.extend(document.chunks_containing(quote))
+        if not hits:
+            continue
+        seen: set[str] = set()
+        group: list[str] = []
+        for hit in sorted(hits, key=lambda c: c.ordinal):
+            key = str(hit.chunk_id)
+            if key not in seen:
+                seen.add(key)
+                group.append(key)
+        groups.append(group)
+    return groups
+
+
 def pin(
     items: list[dict[str, Any]], index: dict[str, IndexedDocument]
 ) -> tuple[list[dict[str, Any]], list[str]]:
