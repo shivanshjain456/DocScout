@@ -94,10 +94,11 @@ is written against a signed API contract rather than to silence a Makefile targe
    `bge-small-en-v1.5` at `D = 384`. A five-arm bake-off on the real corpus found no significant
    quality difference between candidates, so the choice rests on structural grounds (zero
    truncation at 512 tokens, smallest index, $0). A hosted embedder stays BLOCKED by U-1.
-2. **ADR: chunking strategy** (size, overlap, structural awareness) — closes **U-8**. ADR-0002
-   hands it a hard ceiling: **≤1,200 chars** while bilingual mastheads remain in the text,
-   ~2,200 once ingest strips them. It also warns that adjacent-chunk ambiguity is high in this
-   corpus, so chunk-level retrieval metrics will read pessimistically.
+2. ~~**ADR: chunking strategy**~~ — **DONE 2026-10-01, ADR-0003**, closes **U-8**. Fixed-width
+   1,000 chars with 150-char overlap over offset-preserved cleaned text. Overlap raises span
+   integrity 0.855 → 0.965 (p = 0.0001) at no citation cost; 1,200 chars was disqualified for
+   breaching ADR-0002's 512-token ceiling. Clause-aware chunking was tested and parked — it gives
+   the tightest citations but loses span integrity, because pypdf preserved no layout.
 3. **ADR: datastore choice**, recording Elasticsearch and dedicated vector databases as rejected
    alternatives (`ARCHITECTURE.md` §6 flags this ADR as owed).
 4. **ADR: HNSW vs IVFFlat.**
@@ -108,7 +109,8 @@ is written against a signed API contract rather than to silence a Makefile targe
    SPECIFIED.
 
 **Exit criteria:** four ADRs committed; migration applied and tested; `SPEC.md` §4.3 carries no
-PROPOSED tags; `SPEC.md` §9 shows U-8, U-9, U-13 closed with evidence.
+PROPOSED tags; `SPEC.md` §9 shows U-8, U-9, U-13 closed with evidence. **U-8 and U-9 are closed
+(ADR-0003, ADR-0002); items 1 and 2 of this milestone are done.**
 
 ---
 
@@ -260,22 +262,28 @@ M0 is done apart from exit criterion 3, which is held for M1 on purpose. The env
 reproducible from a committed script and the V1–V17 matrix has been re-run green, so the
 foundation-repair work that has occupied the last two sessions is finished.
 
-**Done: ADR-0002 closed U-9 on 2026-10-01.** The next action is now **M1's chunking ADR (U-8)**,
-which ADR-0002 has deliberately de-risked by bounding its option space.
+**Done: ADR-0002 (U-9) and ADR-0003 (U-8) both closed on 2026-10-01.** Every decision gating the
+database schema is now made, so the next action is **the M1 schema migration** — the first
+artefact that turns three ADRs into something executable.
 
-Three things make it the right next step rather than the datastore or index ADRs.
+Three things make the schema the right next step rather than another ADR.
 
-It is **unblocked and bounded**. ADR-0002 fixed `D = 384` and, in doing so, measured the corpus's
-token density: 0.2854 tokens/char on average but 0.4860 at worst. A 512-token model therefore
-caps chunks at **~1,200 characters** while bilingual mastheads remain, and ~2,200 once ingest
-strips them. U-8 no longer starts from a blank page; it starts inside a measured envelope.
+**Every input it needs is now pinned and measured.** `chunks.embedding` is `vector(384)`
+(ADR-0002). Chunk geometry is 1,000 chars with 150-char overlap, and `char_start`/`char_end` are
+guaranteed to index into the original extracted text because ADR-0003 requires cleaning to be
+offset-preserving. There is nothing left to guess in `documents`, `document_versions` or `chunks`.
 
-It is **the last decision gating the schema**. `documents`, `document_versions` and `chunks` can
-all be written once chunk identity is settled, and nothing in M2 can begin until they exist.
+**It converts three documents into something executable.** ADRs are only worth what they unblock,
+and so far M1 has produced reasoning and evidence but nothing a program can run against. The
+migration is the first artefact with a real failure mode — it either applies to the live
+pgvector 18 instance or it does not — and it turns the HNSW and index-parameter questions from
+hypothetical into measurable.
 
-It has **evidence waiting to be collected cheaply**. The bake-off harness already chunks the real
-corpus and scores retrieval; pointing it at several chunk sizes is a parameter sweep, not new
-machinery. ADR-0002 also left U-8 two concrete warnings worth testing: adjacent chunks in
-templated regulatory prose are near-duplicates (the unmasked control topped out at 0.88, not
-1.0), and BM25 matched every neural embedder — so chunk size should be tuned against the hybrid
-retriever, never against the vector arm alone.
+**It is small and sharply bounded.** Three tables, the indexes `ARCHITECTURE.md` §4 already
+specifies, and two constraints worth testing on day one: that a second byte-different payload at
+the same URL creates a new version while old `chunk_id`s stay resolvable (FR-4), and that stored
+offsets re-extract to the stored chunk text (FR-7, which already has a property test specified
+against it). Both are testable against the running database with no ingestion code.
+
+The datastore and HNSW-vs-IVFFlat ADRs still owed by `ARCHITECTURE.md` §6 are better written
+*after* the schema exists, against real DDL and a real index, rather than in the abstract.

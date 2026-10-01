@@ -76,7 +76,8 @@ Stages: **fetch → extract → chunk → embed → store.**
 | fetch | `httpx` GET against the host allowlist in `CORPUS_SPEC.md` §2, descriptive User-Agent, rate-limited, no auth | Access patterns VERIFIED by `scripts/verify_corpus_fetch.py` on 20 documents |
 | extract | `pypdf` for PDFs, `trafilatura`/`beautifulsoup4` for HTML; **follow the SEBI `<iframe … file=…>` to the PDF** | VERIFIED failure mode: the SEBI detail page yields ~227 extractable chars (K-17) |
 | guard | Reject any document extracting < 500 clean chars (FR-3) | The ≥ 500-char criterion is the one Phase 0 used (20/20 passed) |
-| chunk | Emit chunks carrying `document_id`, `version`, source offsets | Strategy UNRESOLVED (U-8) |
+| clean | Blank Devanagari, mojibake, `U+FFFD` and page furniture **without moving any offset** | **SPECIFIED (ADR-0003)** — equal-length space substitution, so `char_start`/`char_end` stay valid against the original text, as FR-7 requires |
+| chunk | Emit chunks carrying `document_id`, `version`, source offsets | **SPECIFIED (ADR-0003): fixed-width 1,000 chars, 150-char overlap, whitespace boundaries.** Ingest MUST assert the 512-token bound and hard-split rather than let the encoder truncate |
 | embed | Encode chunk text to a fixed-dimension vector | **SPECIFIED (ADR-0002): `bge-small-en-v1.5`, 384 d, L2-normalised.** Queries MUST carry the BGE prefix, passages MUST NOT. 6.9 chunks/s on real corpus text (2 vCPU) |
 | store | Upsert document, version, chunks, embeddings in one transaction per document | SPECIFIED |
 

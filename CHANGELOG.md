@@ -43,6 +43,26 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
     which is exactly how such a defect survives a casual benchmark.
   - BM25 alone matched or beat every neural embedder, which makes the hybrid retriever an
     evidence-backed requirement rather than an assumption.
+- **ADR-0003 pins the chunking strategy: fixed-width 1,000 characters with 150-character (15%)
+  overlap, over offset-preserved cleaned text.** Closes U-8 and, with U-9, completes every
+  decision gating the database schema. Chosen from a 14-configuration sweep scored with
+  character-span gold fixed before any chunker runs, plus paired McNemar and 10,000-sample
+  bootstrap tests on identical probes. Evidence:
+  `docs/decisions/evidence/u8-chunking-sweep.json` and `u8-chunking-focus.json`, harness
+  `scripts/experiments/u8_chunking_sweep.py`.
+  - Overlap is the cheapest quality in the sweep: it raises span integrity from 0.855 to 0.965
+    (p = 0.0001) for 21 extra chunks and no loss of citation tightness.
+  - 1,200-character chunks scored the best recall (+0.070, p = 0.0125) and were still rejected:
+    they produced 524-token chunks against ADR-0002's 512-token ceiling, and silent encoder
+    truncation would leave `char_end` claiming coverage of text the embedding never saw.
+  - Clause-aware chunking was built and tested rather than assumed. It gives the tightest
+    citations of any 1,000-char configuration but loses span integrity (p = 0.0433), because
+    pypdf preserved no layout: every real document extracts to zero newlines.
+  - Cleaning turns out not to improve retrieval at all; it earns its place purely by buying token
+    headroom (447 vs 484 peak tokens), which is what keeps 1,000 characters inside the ceiling.
+- **Offset-preserving cleaning is now a normative ingest requirement** (`ARCHITECTURE.md` §3):
+  noise is blanked with equal-length spaces, never deleted, so `char_start`/`char_end` stay valid
+  against the original extracted text as FR-7 requires.
 
 ### Fixed
 - **Corrected a ~16x error in the embedding-throughput extrapolation.** `CORPUS_SPEC.md` C-5 read

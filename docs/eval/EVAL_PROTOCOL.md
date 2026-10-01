@@ -168,7 +168,8 @@ therefore **specified but not enforced**. The two jobs that *are* enforced are `
 --frozen, ruff check, ruff format --check, mypy app, pytest) and `secrets` (gitleaks, full history).
 
 Note the dependency chain: the gate needs a gold set, which needs chunk IDs, which need a chunker
-(U-8) and an embedding dimension (**U-9 — closed by ADR-0002 at `D = 384`**). This ordering is why
+(**U-8 — closed by ADR-0003 at 1,000 chars + 15% overlap**) and an embedding dimension (**U-9 —
+closed by ADR-0002 at `D = 384`**). This ordering is why
 `docs/MILESTONES.md` puts the gate at M4 and not earlier. ADR-0002 also makes the reverse
 dependency explicit: pinning `D` *before* the gold set exists is what keeps it cheap to change,
 because once baselines are recorded a new `D` invalidates them.
@@ -224,7 +225,7 @@ Three numbers are needed to justify the architecture rather than assume it:
    complexity (`ARCHITECTURE.md` §8).
 2. **Rerank ablation** — fused ranking with and without the cross-encoder, reported with its latency
    cost, feeding U-10 and U-14.
-3. **Chunking sweep** — at least two strategies, to produce the U-8 ADR.
+3. ~~**Chunking sweep**~~ — **DONE** (ADR-0003): 14 configurations, span-level gold, paired significance tests. `docs/decisions/evidence/u8-chunking-sweep.json`.
 
 **E-17 — SPECIFIED.** Sweep results MUST NOT be used to pick the final configuration by gold-set
 score alone without holding out a slice. Tuning chunk size by watching the gold-set score turns the
@@ -249,5 +250,5 @@ gold set into a training set; hold out a slice that is looked at only before a r
 ## 10. Open items owned by this document
 
 U-1 (judge feasibility — blocks §4 entirely), U-17 (who writes and labels ≥ 120 items; persona
-validation), and the downstream dependencies U-8 and U-10 that must close before a gold set can be
-pinned. U-9 is closed (ADR-0002). All appear in `SPEC.md` §9.
+validation), and the downstream dependency U-10 that must close before a gold set can be pinned.
+U-8 (ADR-0003) and U-9 (ADR-0002) are closed. All appear in `SPEC.md` §9.

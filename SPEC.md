@@ -189,7 +189,7 @@ Each requirement is identified, testable, and tagged. **None is implemented.**
 | FR-5 | De-duplication MUST be by content hash first, then canonical URL | SPECIFIED | Test ingesting one payload under two URLs, asserting one stored document |
 | FR-6 | Ingestion MUST run with no deploy or cloud credentials present in its environment | SPECIFIED | Test asserting the ingest entrypoint fails fast if deploy-credential env vars are set (`SECURITY.md` S-4) |
 | FR-7 | Chunking MUST attach `document_id`, `version`, and source offsets to every chunk so a citation resolves to a byte range in a specific document version | SPECIFIED | Property test: every chunk's offsets re-extract to its stored text |
-| FR-8 | Chunk boundary strategy (size, overlap, structural awareness) | UNRESOLVED (U-8) | — |
+| FR-8 | Chunk boundary strategy (size, overlap, structural awareness) | SPECIFIED — fixed-width **1,000 chars with 150-char (15%) overlap**, whitespace boundaries, over offset-preserved cleaned text; hard 512-token guard | ADR-0003; `docs/decisions/evidence/u8-chunking-sweep.json` |
 
 ### 4.2 Retrieval and generation
 
@@ -321,7 +321,7 @@ carried in `SETUP_REPORT.md` §15; U-6 onward are additions surfaced while writi
 | **U-5** | Who performs the corpus terms-of-use review? | Name an owner and complete it | A signed section in `docs/corpus/CORPUS_SPEC.md` §6 | Public deployment (M6) |
 | **U-6** | Will there be a GitHub remote? | Provide a PAT and create the repo, or accept local-only | A green CI run URL (V10) | K-2, the entire CI gate story |
 | **U-7** | AWS account, region, and cost cap for the demo deploy | Named account + hard budget cap before any resource is created | Billing alarm screenshot + `docs/deploys/<ts>.md` | M6 |
-| **U-8** | Chunking strategy: size, overlap, structure awareness | ADR choosing a strategy, with the rejected alternatives | ADR in `docs/decisions/` + a parameter sweep report under `evals/reports/` | FR-8, and every retrieval metric |
+| ~~U-8~~ | ~~Chunking strategy: size, overlap, structure awareness~~ | **CLOSED 2026-10-01** (ADR-0003). 1,000 chars + 15% overlap on cleaned text. Chosen from a 14-configuration sweep: overlap raises span integrity 0.855 → 0.965 (p = 0.0001) at no citation cost, and 1,200 chars was disqualified for breaching the 512-token ceiling | `docs/decisions/0003-chunking-strategy.md` + evidence JSON | — |
 | ~~U-9~~ | ~~Production embedding model and vector dimensionality~~ | **CLOSED 2026-10-01** (ADR-0002). `bge-small-en-v1.5` at `D = 384`, chosen on structural and cost grounds after a 5-arm bake-off found **no statistically significant quality difference** between candidates (all McNemar p ≥ 0.42) | `docs/decisions/0002-embedding-model-and-dimension.md` + evidence JSON | — |
 | **U-10** | RRF constant, per-arm candidate depth, rerank depth | ADR with a sweep | Sweep report + ADR | FR-15, NFR-1 |
 | **U-11** | Table-bearing PDFs: table-aware extraction or accept flattening? | ADR | A measured extraction-fidelity comparison on table-heavy circulars | Numeric answer accuracy |
@@ -336,7 +336,7 @@ carried in `SETUP_REPORT.md` §15; U-6 onward are additions surfaced while writi
 
 ## 10. Acceptance of this specification
 
-This specification is accepted when §4 and §5 contain no PROPOSED tags, U-1, U-8, U-13 are
+This specification is accepted when §4 and §5 contain no PROPOSED tags, U-1 and U-13 are
 closed, and `docs/MILESTONES.md` M1 entry criteria are met. Until then it is a working document and
 changes to it are ordinary commits, not ADRs — except changes that close an Unresolved Register item,
 which require the evidence named in §9.

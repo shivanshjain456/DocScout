@@ -70,7 +70,7 @@ characters.
 |---|---|---|
 | C-3 | v1 corpus scope is RBI and SEBI documents published in a date window fixed by ADR before the first full ingest | UNRESOLVED — the window is not chosen; Phase 0 sampled whatever was current on 2026-10-01 |
 | C-4 | Selection MUST be reproducible: the ingester records the listing URL and page it harvested each document from | SPECIFIED (the manifest already carries `detail_page`, VERIFIED) |
-| C-5 | Target corpus size for v1 | UNRESOLVED — no figure is established. Throughput is now measured on **real corpus chunks** rather than extrapolated from generic sentences: **6.9 chunks/s**, so ~10,000 chunks ≈ **24 minutes** of embedding on the 2 vCPU floor (K-15). The earlier "≈ 90 s" figure reasoned from 112.4 *sentences*/s and understated the cost by ~16× — a 1,000-char chunk of regulatory prose is not a short sentence (ADR-0002) |
+| C-5 | Target corpus size for v1 | UNRESOLVED — no figure is established, but the conversion factors now are. Under ADR-0003's chunking the corpus yields **one chunk per ~820 characters** of source text, and ADR-0002 measured **6.9 chunks/s** of embedding. So ~10,000 chunks ≈ 8.2M characters ≈ **~24 minutes** of embedding on the 2 vCPU floor (K-15) — about 59× the current 139k-char sample. The earlier "≈ 90 s" figure reasoned from 112.4 *sentences*/s and understated the cost by ~16× |
 
 No claim is made here about how many documents RBI and SEBI publish, or about corpus completeness.
 Nothing in the repository establishes it.
@@ -193,6 +193,13 @@ canaries).
 
 ## 9. Open items owned by this document
 
-U-5 (terms review owner, and RBI crawl directives per C-17), U-8 (chunking), U-11 (tables),
-U-12 (supersession), U-16 (scanned PDFs), plus C-3 and C-5 above (date window and target size).
+U-5 (terms review owner, and RBI crawl directives per C-17), U-11 (tables), U-12 (supersession),
+U-16 (scanned PDFs), plus C-3 and C-5 above (date window and target size).
 All are listed with their resolution evidence in `SPEC.md` §9.
+
+**U-8 (chunking) closed on 2026-10-01 via ADR-0003** and leaves this document two obligations.
+Ingest cleaning MUST be offset-preserving — noise is blanked with equal-length spaces, never
+deleted — so chunk offsets stay valid against the original extracted text. And extractor quality
+is now a lever on citation quality rather than a convenience: clause-aware chunking produced the
+tightest citations in the sweep but lost span integrity because pypdf preserved no layout (every
+real document extracts to zero newlines), which raises the value of resolving U-16.
