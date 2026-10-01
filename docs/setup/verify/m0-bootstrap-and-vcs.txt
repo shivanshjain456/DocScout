@@ -1,0 +1,103 @@
+M0 VERIFICATION EVIDENCE — environment bootstrap + version-control restoration
+Generated: 2026-10-01T14:02:30Z   Host: Linux 6.1.158+ x86_64, 2 vCPU
+Refs: ADR-0001 · SPEC.md §2.3 · MILESTONES.md M0 · QUALITY_BAR.md Q-1/Q-3
+==============================================================================
+
+### T1. DESTRUCTIVE TEST: delete .venv entirely, rebuild from the committed lockfile
+--- before ---
+1.7G	.venv
+--- .venv removed ---
+ls: cannot access '.venv': No such file or directory
+confirmed: .venv absent
+
+────────────────────────────────────────────────────────────────
+ DocScout bootstrap — tier=core  mode=install
+────────────────────────────────────────────────────────────────
+ OK         shell wiring     ~/.bashrc already configured
+ OK         git              2.47.3
+ OK         uv               0.12.21
+ OK         python           3.12.14 (uv-managed)
+ OK         gitleaks         8.30.1
+ OK         pre-commit       4.6.2
+ INSTALLED  .venv            uv sync --frozen
+ INSTALLED  git hooks        pre-commit + pre-push
+────────────────────────────────────────────────────────────────
+ Next: make verify-setup
+--- elapsed: 2 seconds ---
+
+### T2. Lockfile reproduced exactly
+uv.lock sha256 : 600c90010345412c62226029af2b86419b26821ab0a9cca30b3172fc6ee1b98d
+expected       : 600c90010345412c62226029af2b86419b26821ab0a9cca30b3172fc6ee1b98d
+packages       : 164 installed (169 lock entries, 168 distinct, 4 marker-gated/root)
+python         : Python 3.12.14
+NOTE on timing: 2 s here because uv's package cache (~/.cache/uv) was warm and it hardlinks.
+     The first, cold run earlier in this session took ~14 s. Both are honest; neither is a
+     clean-machine number, since ~/.cache survives within a session.
+
+### T3. The four CI 'quality' gates, re-run AFTER the last edit (QUALITY_BAR Q-3 / define-done)
+$ uv run ruff check .
+All checks passed!
+  -> exit=0
+
+$ uv run ruff format --check .
+98 files already formatted
+  -> exit=0
+
+$ uv run mypy app
+Success: no issues found in 6 source files
+  -> exit=0
+
+$ uv run pytest -q
+.                                                                        [100%]Running teardown with pytest sessionfinish...
+
+  -> exit=0
+
+### T4. gitleaks over the FULL re-initialised history
+$ gitleaks git --redact .
+2:03PM INF 4 commits scanned.
+2:03PM INF scanned ~1142027 bytes (1.14 MB) in 427ms
+2:03PM INF no leaks found
+
+### T5. Version-control assertions
+commits                      : 4
+tracked files                : 174
+working tree                 : 1 modified (0 = clean)
+
+-- the seven deliverables MUST be tracked --
+   SPEC.md                                  TRACKED
+   SECURITY.md                              TRACKED
+   docs/QUALITY_BAR.md                      TRACKED
+   docs/MILESTONES.md                       TRACKED
+   docs/architecture/ARCHITECTURE.md        TRACKED
+   docs/corpus/CORPUS_SPEC.md               TRACKED
+   docs/eval/EVAL_PROTOCOL.md               TRACKED
+
+-- these MUST NOT be tracked --
+   .env                                     untracked, as intended
+   01-RBI-NOTI27401102026AA16BFEFF59341BF97FD2930B1A4A63C.PDF untracked, as intended
+   dummy_server.py                          untracked, as intended
+
+-- the manifest MUST be tracked (provenance anchor, CORPUS_SPEC C-18) --
+   corpus/raw/manifest.json                 TRACKED
+
+### T6. Bootstrap idempotency re-check (installs nothing)
+────────────────────────────────────────────────────────────────
+ DocScout bootstrap — tier=core  mode=check
+────────────────────────────────────────────────────────────────
+ OK         shell wiring     ~/.bashrc already configured
+ OK         git              2.47.3
+ OK         uv               0.12.21
+ OK         python           3.12.14 (uv-managed)
+ OK         gitleaks         8.30.1
+ OK         pre-commit       4.6.2
+ OK         .venv            present
+ OK         git hooks        installed
+────────────────────────────────────────────────────────────────
+ Next: make verify-setup
+
+### T7. Not verified by this evidence file (stated so it is not assumed)
+  - 'bootstrap.sh full' has NOT been run: docker, compose, node/pnpm, k6, aws are absent.
+  - 'make verify-setup' (V1-V17) has NOT been re-run since Phase 0; V2/V3/V12/V14/V15 need
+    the full tier. This is MILESTONES.md M0 exit criterion 2 and the remainder of U-15.
+  - No clean-machine run: ~/.cache/uv and ~/.local/bin persisted within this session.
+  - CI has still never executed (no remote; K-2, U-6).

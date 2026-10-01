@@ -67,7 +67,7 @@ chain that has never failed a commit is a hook chain nobody has tested.
 | `eval-smoke` | stub | **`if: false`** — activates when the gold set exists |
 
 **Q-2 — VERIFIED locally, BLOCKED remotely.** All four `quality` commands are green on the current
-tree: `ruff check` clean, `ruff format --check` clean across 89 files, `mypy app` clean in strict
+tree: `ruff check` clean, `ruff format --check` clean across 98 files, `mypy app` clean in strict
 mode over 6 files, `pytest` 1 passed. The honest statement is: *the gates pass locally and have
 never run in CI.*
 
