@@ -1,0 +1,13 @@
+### §10.2 live model-ID verification attempt — 2026-10-01T10:18:31Z
+Guardrail §1.6: model IDs must be verified against the LIVE API and never guessed.
+
+--- credential presence (names only, never values) ---
+  OPENAI_API_KEY: ABSENT (empty in .env)
+  ANTHROPIC_API_KEY: ABSENT (empty in .env)
+
+--- attempting live model list calls anyway, to record the actual API response ---
+openai  -> OpenAIError: Missing credentials. Please pass an `api_key`, `workload_identity`, `admin_api_key`, or set the `OPENAI_API_KEY` or `OPENAI_ADMIN_KEY` environment variable.
+anthropic -> TypeError: "Could not resolve authentication method. Expected one of api_key, auth_token, or credentials to be set. Or for one of the `X-Api-Key` or `Authorization` header
+
+RESULT: no live verification possible; model roles remain UNPINNED.
+Phase 0 API spend: $0.00 (zero calls billed - no authenticated request was made).

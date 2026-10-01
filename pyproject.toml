@@ -1,0 +1,69 @@
+[project]
+name = "docscout"
+version = "0.1.0"
+description = "Production RAG service over the RBI/SEBI regulatory corpus (hybrid retrieval + reranking + citation-grounded answers)."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "anthropic>=1.11.0",
+    "beautifulsoup4>=4.15.0",
+    "deepeval>=4.2.7",
+    "fastapi>=0.142.2",
+    "httpx>=0.28.1",
+    "jinja2>=3.1.6",
+    "langchain-community>=0.3,<0.4",
+    "mypy>=2.3.1",
+    "openai>=2.0,<3.0",
+    "orjson>=3.12.0",
+    "pgvector>=0.5.0",
+    "psycopg[binary,pool]>=3.3.6",
+    "pydantic>=2.13.5",
+    "pypdf>=6.19.0",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ragas>=0.4.3",
+    "rank-bm25>=0.2.2",
+    "respx>=0.23.1",
+    "ruff>=0.16.9",
+    "sentence-transformers>=6.1.0",
+    "structlog>=26.1.0",
+    "torch>=2.14.1",
+    "trafilatura>=2.2.0",
+    "transformers>=5.17.0",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[tool.uv]
+package = false
+
+# Torch must resolve to the CPU-only build: this box is 2 vCPU / 1.9 GiB RAM with no GPU,
+# and the default PyPI wheel drags in multi-GB CUDA runtimes. Recorded in SETUP_REPORT §4.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "ASYNC"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]          # assert is the point of a test
+"scripts/**" = ["S101", "S310"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_ignores = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

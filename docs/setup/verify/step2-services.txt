@@ -1,0 +1,54 @@
+### DocScout Step 2 verification — 2026-10-01T09:54:36Z
+
+--- compose ps ---
+NAME             IMAGE                          COMMAND                  SERVICE   CREATED          STATUS                    PORTS
+docscout_db      pgvector/pgvector:0.8.2-pg18   "docker-entrypoint.s…"   db        21 seconds ago   Up 20 seconds (healthy)   0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
+docscout_redis   redis:7-alpine                 "docker-entrypoint.s…"   redis     21 seconds ago   Up 20 seconds (healthy)   0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp
+
+--- V2.1 pgvector extversion (expect 0.8.2) ---
+ extversion
+------------
+ 0.8.2
+(1 row)
+
+--- server version ---
+PostgreSQL 18.4 (Debian 18.4-1.pgdg12+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit
+
+--- V2.2 vector cosine distance (expect id=1, cos=0) ---
+CREATE TABLE
+INSERT 0 2
+ id | cos
+----+-----
+  1 |   0
+(1 row)
+
+--- HNSW index build on the check table (proves index path works) ---
+ERROR:  syntax error at or near "\"
+LINE 1: ...ON _setup_check USING hnsw (e vector_cosine_ops); \d+ _setup...
+                                                             ^
+DROP TABLE
+
+--- V2.3 iterative scan GUCs (expect off / 20000) ---
+ERROR:  unrecognized configuration parameter "hnsw.iterative_scan"
+--- halfvec availability (0.8 storage feature) ---
+[1,2,3]
+
+--- V2.4 Postgres FTS / BM25 arm (expect t) ---
+ fts_ok
+--------
+ t
+(1 row)
+
+
+--- least-privilege app role created by initdb hook ---
+   rolname    | rolsuper | rolcreatedb | rolcreaterole | rolcanlogin
+--------------+----------+-------------+---------------+-------------
+ docscout     | t        | t           | t             | t
+ docscout_app | f        | f           | f             | t
+(2 rows)
+
+--- app role can actually log in (password from env, not a literal) ---
+app-role login OK: docscout_app
+
+--- V3 Redis ---
+PONG

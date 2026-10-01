@@ -1,0 +1,34 @@
+services:
+  db:
+    image: pgvector/pgvector:0.8.2-pg18   # pinned per brief §4; 0.8.6-pg18 exists upstream (see SETUP_REPORT Known issues)
+    container_name: docscout_db
+    environment:
+      POSTGRES_DB: docscout
+      POSTGRES_USER: docscout
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set in .env}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?set in .env}
+    ports: ["5432:5432"]
+    volumes:
+      # DEVIATION FROM BRIEF §4: pg18 images store data in major-version subdirs and require the
+      # mount at /var/lib/postgresql (NOT /var/lib/postgresql/data). The brief's path makes the
+      # container exit(1) on boot. See docker-library/postgres#1259. Recorded in SETUP_REPORT.
+      - pgdata:/var/lib/postgresql
+      - ./infra/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docscout -d docscout"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: docscout_redis
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

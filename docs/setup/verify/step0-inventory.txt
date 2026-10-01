@@ -1,0 +1,41 @@
+### Step 0 baseline inventory — captured 2026-10-01 (pre-install state reconstructed from session log)
+--- uname -a ---
+Linux e2b.local 6.1.158+ #1 SMP PREEMPT_DYNAMIC Fri Jul 17 14:31:34 UTC 2026 x86_64 GNU/Linux
+--- os-release ---
+PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+NAME="Debian GNU/Linux"
+VERSION_ID="13"
+VERSION="13 (trixie)"
+VERSION_CODENAME=trixie
+--- nproc / free -h / df -h . ---
+2
+               total        used        free      shared  buff/cache   available
+Mem:           1.9Gi       1.1Gi       154Mi       495Mi       1.4Gi       904Mi
+Swap:             0B          0B          0B
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/root        25G  9.8G   15G  41% /
+--- PID 1 (microVM evidence: systemd, not a nested container) ---
+systemd
+--- MISSING AT STEP 0 (before any install) ---
+uv, pnpm, docker, docker-compose, k6, gh, gcloud, aws, psql, redis-cli, pre-commit, gitleaks, uvx
+--- PRESENT AT STEP 0 ---
+git 2.47.3, python3 3.13.14, node v20.20.2, npm 10.8.2, curl 8.14.1, jq 1.7, make 4.4.1, openssl 3.5.6
+--- egress status codes (Step 0) ---
+pypi:200 npm:200 hf:200 github:200 astral:200 rbi:200 sebi:200 api.openai.com:421 api.anthropic.com:404
+--- current (post-install) toolchain ---
+git: git version 2.47.3
+uv: uv 0.12.21 (x86_64-unknown-linux-gnu)
+python3: Python 3.13.14
+node: v22.23.3
+pnpm: 12.8.1
+docker: Docker version 26.1.5+dfsg1, build a72d7cd
+k6: k6 v2.3.0 (commit/e088784614, go1.26.8, linux/amd64)
+gh: gh version 2.46.0 (2025-01-13 Debian 2.46.0-3)
+psql: psql (PostgreSQL) 17.11 (Debian 17.11-0+deb13u1)
+redis-cli: redis-cli 8.0.2
+curl: curl 8.14.1 (x86_64-pc-linux-gnu) libcurl/8.14.1 OpenSSL/3.5.6 zlib/1.
+jq: jq-1.7
+gitleaks: gitleaks version 8.30.1
+aws: aws-cli/2.37.7 Python/3.14.6 Linux/6.1.158+ exe/x86_64.debian.13
+pre-commit: pre-commit 4.6.2
+Docker Compose version v5.5.1

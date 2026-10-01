@@ -1,0 +1,69 @@
+Knowledge Graph MCP Server running on stdio
+=== MCP server: memory ===
+serverInfo : memory-server v0.6.3
+protocol   : 2025-11-25
+capabilities: {'resources': {'subscribe': True, 'list_changed': True}, 'tools': {'list_changed': True}}
+
+--- tools/list : 9 tools ---
+
+* create_entities
+  Create multiple new entities in the knowledge graph
+
+* create_relations
+  Create multiple new relations between entities in the knowledge graph. Relations should be in active voice
+
+* add_observations
+  Add new observations to existing entities in the knowledge graph
+
+* delete_entities
+  Delete multiple entities and their associated relations from the knowledge graph
+
+* delete_observations
+  Delete specific observations from entities in the knowledge graph
+
+* delete_relations
+  Delete multiple relations from the knowledge graph
+
+* read_graph
+  Read the entire knowledge graph
+
+* search_nodes
+  Search for nodes in the knowledge graph based on a query
+
+* open_nodes
+  Open specific nodes in the knowledge graph by their names
+
+--- guardrail §1.1 audit summary ---
+tools scanned      : 9
+tools with flags   : 0
+flag detail        : none
+
+--- tools/call: create_entities({"entities": [{"name": "docscout-setup-phase", "entityType": "ProjectEvent", "observations": ["setup phase started 2026-) ---
+is_error: False
+[]
+
+--- tools/call: read_graph({}) ---
+is_error: False
+{
+  "entities": [
+    {
+      "name": "docscout-setup-phase",
+      "entityType": "ProjectEvent",
+      "observations": [
+        "setup phase started 2026-10-01"
+      ]
+    }
+  ],
+  "relations": []
+}
+
+--- tools/call: delete_entities({"entityNames": ["docscout-setup-phase"]}) ---
+is_error: False
+Entities deleted successfully
+
+--- tools/call: read_graph({}) ---
+is_error: False
+{
+  "entities": [],
+  "relations": []
+}

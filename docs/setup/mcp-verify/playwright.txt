@@ -1,0 +1,120 @@
+=== MCP server: playwright ===
+serverInfo : Playwright v1.64.0-alpha-1790635538000
+protocol   : 2025-11-25
+capabilities: {'tools': {'list_changed': True}}
+
+--- tools/list : 25 tools ---
+
+* browser_close
+  Close the page
+
+* browser_resize
+  Resize the browser window
+
+* browser_console_messages
+  Returns all console messages
+
+* browser_handle_dialog
+  Handle a dialog
+
+* browser_emulate_media
+  Emulate CSS media features for the page, for example switch between the light and dark color scheme. Omitted parameters are left unchanged; null clears an override.
+
+* browser_evaluate
+  Evaluate JavaScript expression on page or element
+
+* browser_file_upload
+  Upload one or multiple files
+
+* browser_drop
+  Drop files or MIME-typed data onto an element, as if dragged from outside the page. At least one of "paths" or "data" must be provided.
+
+* browser_find
+  Search the accessibility snapshot of the current page for text or a regular expression. Returns matching snapshot nodes with a few lines of surrounding context (like search snippets), each shown under its path from the root of the tree, which is cheaper than capturing the whole snapshot when you only need to locate an element and its ref.
+
+* browser_fill_form
+  Fill multiple form fields
+
+* browser_press_key
+  Press a key on the keyboard
+
+* browser_type
+  Type text into editable element
+
+* browser_navigate
+  Navigate to a URL
+
+* browser_navigate_back
+  Go back to the previous page in the history
+
+* browser_network_requests
+  Returns a numbered list of network requests since loading the page. Use browser_network_request with the number to get full details.
+
+* browser_network_request
+  Returns full details (headers and body) of a single network request, or a single part if `part` is set. Use the number from browser_network_requests.
+
+* browser_run_code_unsafe
+  Run a Playwright code snippet. Unsafe: executes arbitrary JavaScript in the Playwright server process and is RCE-equivalent.
+
+* browser_take_screenshot
+  Take a screenshot of the current page. You can't perform actions based on the screenshot, use browser_snapshot for actions.
+
+* browser_snapshot
+  Capture accessibility snapshot of the current page, this is better than screenshot
+
+* browser_click
+  Perform click on a web page
+
+* browser_drag
+  Perform drag and drop between two elements
+
+* browser_hover
+  Hover over element on page
+
+* browser_select_option
+  Select an option in a dropdown
+
+* browser_tabs
+  List, create, close, or select a browser tab.
+
+* browser_wait_for
+  Wait for text to appear or disappear or a specified time to pass
+
+--- guardrail §1.1 audit summary ---
+tools scanned      : 25
+tools with flags   : 0
+flag detail        : none
+
+--- tools/call: browser_navigate({"url": "about:blank"}) ---
+is_error: False
+### Ran Playwright code
+```js
+await page.goto('about:blank');
+```
+### Page
+- Page URL: about:blank
+### Snapshot
+- [Snapshot](docs/setup/page-2026-10-01T10-02-13-515Z.yml)
+
+--- tools/call: browser_snapshot({}) ---
+is_error: False
+### Page
+- Page URL: about:blank
+### Snapshot
+```yaml
+
+```
+
+--- tools/call: browser_take_screenshot({"filename": "mcp-playwright-smoke.png"}) ---
+is_error: False
+### Result
+- [Screenshot of viewport](./mcp-playwright-smoke.png)
+### Ran Playwright code
+```js
+// Screenshot viewport and save it as ./mcp-playwright-smoke.png
+await page.screenshot({
+  path: './mcp-playwright-smoke.png',
+  scale: 'css',
+  type: 'png'
+});
+```

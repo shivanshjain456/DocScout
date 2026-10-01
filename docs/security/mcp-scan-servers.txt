@@ -1,0 +1,110 @@
+### snyk-agent-scan (formerly mcp-scan) inspect — 2026-10-01T10:03:40Z
+NOTE: full 'scan' (threat analysis) requires SNYK_TOKEN, which is outside the §10.1
+      credential list, so it was NOT requested. 'inspect' runs locally without a token.
+      Independent description audit performed by scripts/mcp_probe.py — see docs/setup/mcp-verify/.
+
+Snyk Agent Scan v0.6.8
+
+--dangerously-run-mcp-servers is set: contacting every MCP server listed in the
+scanned configs without prompting. This starts stdio subprocesses and connects
+to remote URLs.
+
+● Scanning /home/user/docscout/.mcp.json found 4 mcp servers
+│
+├── playwright
+│   ├── tool        browser_close
+│   ├── tool        browser_resize
+│   ├── tool        browser_console_messages
+│   ├── tool        browser_handle_dialog
+│   ├── tool        browser_emulate_media
+│   ├── tool        browser_evaluate
+│   ├── tool        browser_file_upload
+│   ├── tool        browser_drop
+│   ├── tool        browser_find
+│   ├── tool        browser_fill_form
+│   ├── tool        browser_press_key
+│   ├── tool        browser_type
+│   ├── tool        browser_navigate
+│   ├── tool        browser_navigate_back
+│   ├── tool        browser_network_requests
+│   ├── tool        browser_network_request
+│   ├── tool        browser_run_code_unsafe
+│   ├── tool        browser_take_screenshot
+│   ├── tool        browser_snapshot
+│   ├── tool        browser_click
+│   ├── tool        browser_drag
+│   ├── tool        browser_hover
+│   ├── tool        browser_select_option
+│   ├── tool        browser_tabs
+│   └── tool        browser_wait_for
+├── context7
+│   ├── tool        resolve-library-id
+│   └── tool        query-docs
+├── memory
+│   ├── resource    knowledge-graph
+│   ├── tool        create_entities
+│   ├── tool        create_relations
+│   ├── tool        add_observations
+│   ├── tool        delete_entities
+│   ├── tool        delete_observations
+│   ├── tool        delete_relations
+│   ├── tool        read_graph
+│   ├── tool        search_nodes
+│   └── tool        open_nodes
+└── github
+    ├── prompt      AssignCodingAgent
+    ├── prompt      issue_to_fix_workflow
+    ├── resource    get_me_ui
+    ├── resource    issue_write_ui
+    ├── resource    pr_edit_ui
+    ├── resource    pr_write_ui
+    ├── res. temp.  repository_content
+    ├── res. temp.  repository_content_branch
+    ├── res. temp.  repository_content_pr
+    ├── res. temp.  repository_content_tag
+    ├── res. temp.  repository_content_commit
+    ├── tool        add_comment_to_pending_review
+    ├── tool        add_issue_comment
+    ├── tool        add_reply_to_pull_request_comment
+    ├── tool        assign_copilot_to_issue
+    ├── tool        create_branch
+    ├── tool        create_or_update_file
+    ├── tool        create_pull_request
+    ├── tool        create_repository
+    ├── tool        delete_file
+    ├── tool        fork_repository
+    ├── tool        get_commit
+    ├── tool        get_file_contents
+    ├── tool        get_label
+    ├── tool        get_latest_release
+    ├── tool        get_me
+    ├── tool        get_release_by_tag
+    ├── tool        get_tag
+    ├── tool        get_team_members
+    ├── tool        get_teams
+    ├── tool        issue_read
+    ├── tool        issue_write
+    ├── tool        list_branches
+    ├── tool        list_commits
+    ├── tool        list_issue_fields
+    ├── tool        list_issue_types
+    ├── tool        list_issues
+    ├── tool        list_pull_requests
+    ├── tool        list_releases
+    ├── tool        list_repository_collaborators
+    ├── tool        list_tags
+    ├── tool        merge_pull_request
+    ├── tool        pull_request_read
+    ├── tool        pull_request_review_write
+    ├── tool        push_files
+    ├── tool        request_copilot_review
+    ├── tool        search_code
+    ├── tool        search_commits
+    ├── tool        search_issues
+    ├── tool        search_pull_requests
+    ├── tool        search_repositories
+    ├── tool        search_users
+    ├── tool        sub_issue_write
+    ├── tool        update_issue_comment
+    ├── tool        update_pull_request
+    └── tool        update_pull_request_branch

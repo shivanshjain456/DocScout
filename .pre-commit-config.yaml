@@ -1,0 +1,45 @@
+# Pre-commit: repo-level enforcement that travels with the code.
+# Install once:  uv run pre-commit install
+# Run on all:    uv run pre-commit run --all-files
+default_install_hook_types: [pre-commit, pre-push]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-added-large-files
+        args: ["--maxkb=5120"]          # 5 MB
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-json
+        # Vite emits tsconfig files as JSONC (comments are legal there); check-json cannot parse
+        # them. Excluded rather than stripping comments from generated config.
+        exclude: ^ui/tsconfig.*\.json$
+      - id: detect-private-key
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # gitleaks as a local hook: the project pins the binary (installed in Phase 0) rather than
+  # letting pre-commit fetch a toolchain at hook-install time. Secret scanning must not depend
+  # on a network fetch succeeding.
+  - repo: local
+    hooks:
+      - id: gitleaks
+        name: gitleaks (secret scan)
+        entry: gitleaks git --pre-commit --redact --staged --verbose
+        language: system
+        pass_filenames: false
+
+      - id: mypy
+        name: mypy (app)
+        entry: uv run mypy app
+        language: system
+        types: [python]
+        pass_filenames: false

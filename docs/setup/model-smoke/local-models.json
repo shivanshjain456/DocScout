@@ -1,0 +1,10 @@
+{
+  "embed_model_load_s": 5.06,
+  "embedding_dim": 384,
+  "embed_1k_sentences_s": 8.9,
+  "embed_sentences_per_s": 112.4,
+  "rerank_model_load_s": 4.85,
+  "rerank_score_sample": -2.2330358028411865,
+  "rerank_50pairs_s": 0.228,
+  "rerank_ms_per_pair": 4.56
+}

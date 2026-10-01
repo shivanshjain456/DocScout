@@ -1,0 +1,58 @@
+### V2.3 retest — hnsw GUCs + index, 2026-10-01T09:54:54Z
+NOTE: pgvector registers hnsw.* GUCs only after its shared library loads in the session;
+      a bare 'SHOW hnsw.iterative_scan' in a fresh session errors. Forcing load first.
+
+--- single session: touch vector type, then SHOW GUCs ---
+  warmup
+-----------
+ [1,0,0,0]
+(1 row)
+
+ hnsw.iterative_scan
+---------------------
+ off
+(1 row)
+
+ hnsw.max_scan_tuples
+----------------------
+ 20000
+(1 row)
+
+ hnsw.ef_search
+----------------
+ 40
+(1 row)
+
+--- relaxed_order is settable per-session (the filtered-retrieval feature DocScout needs) ---
+ERROR:  syntax error at or near "\"
+LINE 2: SELECT '[1,0,0,0]'::vector AS warmup \gset
+                                             ^
+--- HNSW index build + index-backed KNN query plan ---
+CREATE TABLE
+INSERT 0 500
+CREATE INDEX
+SET
+                         QUERY PLAN
+------------------------------------------------------------
+ Limit
+   ->  Index Scan using idx_setup_hnsw on _setup_hnsw_check
+         Order By: (e <=> '[1,0,0,0]'::vector)
+(3 rows)
+
+       indexname        |                                         indexdef
+------------------------+------------------------------------------------------------------------------------------
+ _setup_hnsw_check_pkey | CREATE UNIQUE INDEX _setup_hnsw_check_pkey ON public._setup_hnsw_check USING btree (id)
+ idx_setup_hnsw         | CREATE INDEX idx_setup_hnsw ON public._setup_hnsw_check USING hnsw (e vector_cosine_ops)
+(2 rows)
+
+DROP TABLE
+  warmup
+-----------
+ [1,0,0,0]
+(1 row)
+
+SET
+ hnsw.iterative_scan
+---------------------
+ relaxed_order
+(1 row)

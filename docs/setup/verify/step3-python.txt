@@ -1,0 +1,40 @@
+### Step 3 verification (final) — 2026-10-01T09:57:33Z
+--- interpreter ---
+Python 3.12.14
+
+--- V4a import smoke (brief §5 list) ---
+all imports OK; torch 2.14.1+cpu cpu-only: True
+  fastapi                0.142.2
+  sentence_transformers  6.1.0
+  openai                 2.54.0
+  anthropic              1.11.0
+  ragas                  0.4.3
+  deepeval               4.2.7
+  pypdf                  6.19.0
+  trafilatura            2.2.0
+
+--- ragas/deepeval are importable AND usable offline (metric objects construct w/o API key) ---
+<stdin>:1: DeprecationWarning: Importing Faithfulness from 'ragas.metrics' is deprecated and will be removed in v1.0. Please use 'ragas.metrics.collections' instead. Example: from ragas.metrics.collections import Faithfulness
+<stdin>:1: DeprecationWarning: Importing LLMContextPrecisionWithoutReference from 'ragas.metrics' is deprecated and will be removed in v1.0. Please use 'ragas.metrics.collections' instead. Example: from ragas.metrics.collections import LLMContextPrecisionWithoutReference
+<stdin>:1: DeprecationWarning: Importing ResponseRelevancy from 'ragas.metrics' is deprecated and will be removed in v1.0. Please use 'ragas.metrics.collections' instead. Example: from ragas.metrics.collections import ResponseRelevancy
+ragas metrics constructed: ['Faithfulness', 'LLMContextPrecisionWithoutReference', 'ResponseRelevancy']
+deepeval metric class import OK: AnswerRelevancyMetric
+
+--- ruff/mypy (CLI; ruff has no importable module) ---
+ruff 0.16.9
+mypy 2.3.1 (compiled: yes)
+
+--- V4b torch CPU compute smoke ---
+cosine smoke: [-0.1366288959980011, 0.7553038001060486]
+torch threads: 1 | cuda: False
+
+--- V5 lockfile integrity: uv sync --frozen (clean check) ---
+Uninstalled 2 packages in 32ms
+ - langchain-classic==1.0.8
+ - langchain-text-splitters==1.1.2
+uv sync --frozen exit: 0
+
+--- venv size / lock hash ---
+1.8G	.venv
+uv.lock sha256: 600c90010345412c62226029af2b86419b26821ab0a9cca30b3172fc6ee1b98d
+locked packages: 169

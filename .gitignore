@@ -1,0 +1,46 @@
+# --- secrets (guardrail §1.4: .env is gitignored from the FIRST commit) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- corpus & generated reports ---
+# Anchor with a leading slash. An UNANCHORED `corpus/` matches a directory named `corpus` at ANY
+# depth, which silently swallowed docs/corpus/ — the home of CORPUS_SPEC.md. Caught by ADR-0001's
+# pre-commit inspection; the deliverable would otherwise have been excluded without any error.
+/corpus/*
+# The manifest is the corpus's provenance anchor: identity, hashes and fetch timestamps for every
+# document, and the thing that makes the raw bytes re-derivable (CORPUS_SPEC.md C-6, C-18, and the
+# reproducibility fields in EVAL_PROTOCOL.md E-14). Track the manifest; ignore the bytes it names.
+!/corpus/raw/
+/corpus/raw/*
+!/corpus/raw/manifest.json
+evals/reports/
+loadtests/reports/
+loadtests/dummy_server.py
+
+# --- python ---
+.venv/
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+*.egg-info/
+
+# --- node / ui ---
+node_modules/
+ui/dist/
+.playwright/
+playwright-report/
+test-results/
+
+# --- models / weights / caches ---
+*.pt
+*.bin
+*.safetensors
+.hf_cache/
+
+# --- os ---
+.DS_Store
