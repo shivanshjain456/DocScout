@@ -1,0 +1,42 @@
+=== U-8 / ADR-0003 verification — 2026-10-01T15:53:54Z ===
+
+--- gate: ruff check ---
+All checks passed!
+
+--- gate: ruff format --check ---
+103 files already formatted
+
+--- gate: make typecheck (scope: app/) ---
+uv run mypy app
+Success: no issues found in 6 source files
+
+--- mypy on the new harness (strict, outside gate scope) ---
+Success: no issues found in 1 source file
+
+--- gate: pytest ---
+
+1 passed in 0.02s
+==============================================================
+ DocScout Phase 0 — verification matrix     2026-10-01T15:54:05Z
+==============================================================
+  PASS   V1 toolchain                 all required tools present
+  PASS   V2 postgres+pgvector         pgvector=0.8.2 cosine=0.000 iterative_scan=off fts=t
+  PASS   V3 redis                     PONG
+  PASS   V4 python env                all imports + torch CPU smoke (2.14.1+cpu)
+  PASS   V5 lockfile                  uv sync --frozen exit 0 (169 pkgs locked)
+  PASS   V6 MCP servers               3/3 verified w/ real tool calls (github BLOCKED: no PAT; postgres REJECTED)
+  PASS   V7 skills                    6/6 project skills valid; 21 SKILL.md total (incl. superpowers v6.4.2)
+  PASS   V8 hooks                     denylist denies 'rm -rf /' (exit 2), allows safe cmd (exit 0)
+  PASS   V9 pre-commit                installed; fake-secret commit was blocked (evidence on file)
+  BLOCK  V10 CI                       workflow present + yamllint-valid, but NO remote (no GitHub PAT) -> no run URL
+  BLOCK  V11 hosted models            UNPINNED: no API keys issued; roles null, spend $0.00 (guardrail §1.6: never guess an ID)
+  PASS   V12 local models             embed dim=384, rerank 4.56 ms/pair (<50 threshold)
+  PASS   V13 corpus machinery         20/20 docs >500 chars; 1 injection canary logged
+  PASS   V14 ui/browser               screenshot 16K at docs/setup/ui-smoke.png
+  PASS   V15 load pipeline            report dir loadtests/reports/verify/20261001T101742Z/ (dummy target; numbers not claimable)
+  PASS   V16 secrets sweep            git log pattern sweep: 0 findings; gitleaks full history: clean
+  PASS   V17 clean state              only db + redis running; no other containers; 0 cloud resources
+--------------------------------------------------------------
+ PASS=15  FAIL=0  BLOCKED=2
+ BLOCKED items are credential/environment limits — see SETUP_REPORT.md §13.
+==============================================================

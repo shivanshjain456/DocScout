@@ -1,0 +1,1062 @@
+{
+  "experiment": "U-8 chunk size, overlap and structural awareness",
+  "method_version": 2,
+  "generated_at": "2026-10-01T15:28:25Z",
+  "status": "DECISION EXPERIMENT - not the evaluation harness, not production code",
+  "seed": 20261001,
+  "embedding_model": "BAAI/bge-small-en-v1.5",
+  "max_tokens_ceiling": 512,
+  "gold": {
+    "definition": "character span in a document; a hit covers >= 50% of the span",
+    "why": "chunk-level gold is not comparable across chunk sizes",
+    "n_probes": 200,
+    "batches": 4,
+    "max_corpus_blank_per_pass": 0.0703,
+    "geometry": "chunk boundaries computed once from clean UNMASKED text",
+    "canary_excluded_from_gold": [
+      0
+    ]
+  },
+  "cleaning": {
+    "blanked_chars": 4113,
+    "ranges": "Devanagari, Latin-Extended-B, IPA, U+FFFD, page furniture"
+  },
+  "configs": [
+    {
+      "name": "fixed-400-ov0-clean",
+      "cleaning": "clean",
+      "strategy": "fixed",
+      "target_chars": 400,
+      "overlap_chars": 0,
+      "n_chunks": 362,
+      "mean_chars": 382.8,
+      "p95_chars": 398,
+      "mean_tokens": 104.5,
+      "max_tokens": 194,
+      "truncated": 0,
+      "embed_s": 18.2,
+      "index_mb_at_10k": 36.8,
+      "citation_tightness": 0.4751,
+      "context_chars_top5": 1914,
+      "span_integrity": 0.575,
+      "spans_split": 85,
+      "retrievers": {
+        "verbatim": {
+          "dense": {
+            "recall@1": 0.725,
+            "recall@5": 0.94,
+            "mrr": 0.8165,
+            "fully_contained@1": 0.445,
+            "citation_tightness@1": 0.484,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.885,
+            "recall@5": 0.995,
+            "mrr": 0.9353,
+            "fully_contained@1": 0.555,
+            "citation_tightness@1": 0.4618,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.755,
+            "recall@5": 0.98,
+            "mrr": 0.856,
+            "fully_contained@1": 0.47,
+            "citation_tightness@1": 0.4751,
+            "n": 200
+          }
+        },
+        "masked": {
+          "dense": {
+            "recall@1": 0.08,
+            "recall@5": 0.235,
+            "mrr": 0.1475,
+            "fully_contained@1": 0.03,
+            "citation_tightness@1": 0.3733,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.06,
+            "recall@5": 0.25,
+            "mrr": 0.136,
+            "fully_contained@1": 0.03,
+            "citation_tightness@1": 0.424,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.095,
+            "recall@5": 0.245,
+            "mrr": 0.1605,
+            "fully_contained@1": 0.045,
+            "citation_tightness@1": 0.3854,
+            "n": 200
+          }
+        }
+      },
+      "doc_level": {}
+    },
+    {
+      "name": "fixed-600-ov0-clean",
+      "cleaning": "clean",
+      "strategy": "fixed",
+      "target_chars": 600,
+      "overlap_chars": 0,
+      "n_chunks": 244,
+      "mean_chars": 568.7,
+      "p95_chars": 598,
+      "mean_tokens": 154.0,
+      "max_tokens": 272,
+      "truncated": 0,
+      "embed_s": 16.9,
+      "index_mb_at_10k": 36.8,
+      "citation_tightness": 0.3423,
+      "context_chars_top5": 2843,
+      "span_integrity": 0.755,
+      "spans_split": 49,
+      "retrievers": {
+        "verbatim": {
+          "dense": {
+            "recall@1": 0.71,
+            "recall@5": 0.915,
+            "mrr": 0.8036,
+            "fully_contained@1": 0.55,
+            "citation_tightness@1": 0.3415,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.915,
+            "recall@5": 0.995,
+            "mrr": 0.9506,
+            "fully_contained@1": 0.71,
+            "citation_tightness@1": 0.3222,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.755,
+            "recall@5": 0.975,
+            "mrr": 0.8554,
+            "fully_contained@1": 0.595,
+            "citation_tightness@1": 0.3423,
+            "n": 200
+          }
+        },
+        "masked": {
+          "dense": {
+            "recall@1": 0.14,
+            "recall@5": 0.375,
+            "mrr": 0.2347,
+            "fully_contained@1": 0.09,
+            "citation_tightness@1": 0.3045,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.14,
+            "recall@5": 0.35,
+            "mrr": 0.2358,
+            "fully_contained@1": 0.09,
+            "citation_tightness@1": 0.2689,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.14,
+            "recall@5": 0.395,
+            "mrr": 0.2444,
+            "fully_contained@1": 0.095,
+            "citation_tightness@1": 0.3035,
+            "n": 200
+          }
+        }
+      },
+      "doc_level": {}
+    },
+    {
+      "name": "fixed-800-ov0-clean",
+      "cleaning": "clean",
+      "strategy": "fixed",
+      "target_chars": 800,
+      "overlap_chars": 0,
+      "n_chunks": 183,
+      "mean_chars": 758.5,
+      "p95_chars": 798,
+      "mean_tokens": 204.7,
+      "max_tokens": 360,
+      "truncated": 0,
+      "embed_s": 19.6,
+      "index_mb_at_10k": 36.8,
+      "citation_tightness": 0.2429,
+      "context_chars_top5": 3792,
+      "span_integrity": 0.815,
+      "spans_split": 37,
+      "retrievers": {
+        "verbatim": {
+          "dense": {
+            "recall@1": 0.705,
+            "recall@5": 0.91,
+            "mrr": 0.7884,
+            "fully_contained@1": 0.605,
+            "citation_tightness@1": 0.2475,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.895,
+            "recall@5": 0.995,
+            "mrr": 0.9411,
+            "fully_contained@1": 0.78,
+            "citation_tightness@1": 0.2355,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.74,
+            "recall@5": 0.965,
+            "mrr": 0.8379,
+            "fully_contained@1": 0.64,
+            "citation_tightness@1": 0.2429,
+            "n": 200
+          }
+        },
+        "masked": {
+          "dense": {
+            "recall@1": 0.2,
+            "recall@5": 0.495,
+            "mrr": 0.3144,
+            "fully_contained@1": 0.145,
+            "citation_tightness@1": 0.2621,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.13,
+            "recall@5": 0.46,
+            "mrr": 0.2649,
+            "fully_contained@1": 0.1,
+            "citation_tightness@1": 0.232,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.16,
+            "recall@5": 0.505,
+            "mrr": 0.2993,
+            "fully_contained@1": 0.12,
+            "citation_tightness@1": 0.2503,
+            "n": 200
+          }
+        }
+      },
+      "doc_level": {}
+    },
+    {
+      "name": "fixed-1000-ov0-clean",
+      "cleaning": "clean",
+      "strategy": "fixed",
+      "target_chars": 1000,
+      "overlap_chars": 0,
+      "n_chunks": 149,
+      "mean_chars": 932.3,
+      "p95_chars": 998,
+      "mean_tokens": 251.0,
+      "max_tokens": 447,
+      "truncated": 0,
+      "embed_s": 23.5,
+      "index_mb_at_10k": 36.8,
+      "citation_tightness": 0.2007,
+      "context_chars_top5": 4661,
+      "span_integrity": 0.855,
+      "spans_split": 29,
+      "retrievers": {
+        "verbatim": {
+          "dense": {
+            "recall@1": 0.68,
+            "recall@5": 0.915,
+            "mrr": 0.7796,
+            "fully_contained@1": 0.595,
+            "citation_tightness@1": 0.203,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.915,
+            "recall@5": 1.0,
+            "mrr": 0.9542,
+            "fully_contained@1": 0.81,
+            "citation_tightness@1": 0.1942,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.74,
+            "recall@5": 0.97,
+            "mrr": 0.8478,
+            "fully_contained@1": 0.645,
+            "citation_tightness@1": 0.2007,
+            "n": 200
+          }
+        },
+        "masked": {
+          "dense": {
+            "recall@1": 0.245,
+            "recall@5": 0.575,
+            "mrr": 0.3867,
+            "fully_contained@1": 0.21,
+            "citation_tightness@1": 0.1798,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.225,
+            "recall@5": 0.58,
+            "mrr": 0.365,
+            "fully_contained@1": 0.19,
+            "citation_tightness@1": 0.1522,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.24,
+            "recall@5": 0.62,
+            "mrr": 0.3898,
+            "fully_contained@1": 0.195,
+            "citation_tightness@1": 0.1775,
+            "n": 200
+          }
+        }
+      },
+      "doc_level": {}
+    },
+    {
+      "name": "fixed-1200-ov0-clean",
+      "cleaning": "clean",
+      "strategy": "fixed",
+      "target_chars": 1200,
+      "overlap_chars": 0,
+      "n_chunks": 125,
+      "mean_chars": 1111.8,
+      "p95_chars": 1198,
+      "mean_tokens": 298.8,
+      "max_tokens": 526,
+      "truncated": 2,
+      "embed_s": 22.1,
+      "index_mb_at_10k": 36.8,
+      "citation_tightness": 0.1752,
+      "context_chars_top5": 5559,
+      "span_integrity": 0.885,
+      "spans_split": 23,
+      "retrievers": {
+        "verbatim": {
+          "dense": {
+            "recall@1": 0.665,
+            "recall@5": 0.91,
+            "mrr": 0.7636,
+            "fully_contained@1": 0.605,
+            "citation_tightness@1": 0.1768,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.925,
+            "recall@5": 1.0,
+            "mrr": 0.96,
+            "fully_contained@1": 0.84,
+            "citation_tightness@1": 0.1662,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.75,
+            "recall@5": 0.975,
+            "mrr": 0.8481,
+            "fully_contained@1": 0.69,
+            "citation_tightness@1": 0.1752,
+            "n": 200
+          }
+        },
+        "masked": {
+          "dense": {
+            "recall@1": 0.315,
+            "recall@5": 0.625,
+            "mrr": 0.4425,
+            "fully_contained@1": 0.28,
+            "citation_tightness@1": 0.1553,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.255,
+            "recall@5": 0.62,
+            "mrr": 0.4133,
+            "fully_contained@1": 0.23,
+            "citation_tightness@1": 0.1514,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.275,
+            "recall@5": 0.66,
+            "mrr": 0.4378,
+            "fully_contained@1": 0.25,
+            "citation_tightness@1": 0.1417,
+            "n": 200
+          }
+        }
+      },
+      "doc_level": {}
+    },
+    {
+      "name": "fixed-800-ov120-clean",
+      "cleaning": "clean",
+      "strategy": "fixed",
+      "target_chars": 800,
+      "overlap_chars": 120,
+      "n_chunks": 209,
+      "mean_chars": 767,
+      "p95_chars": 799,
+      "mean_tokens": 207.0,
+      "max_tokens": 357,
+      "truncated": 0,
+      "embed_s": 24.8,
+      "index_mb_at_10k": 36.8,
+      "citation_tightness": 0.2471,
+      "context_chars_top5": 3835,
+      "span_integrity": 0.915,
+      "spans_split": 17,
+      "retrievers": {
+        "verbatim": {
+          "dense": {
+            "recall@1": 0.745,
+            "recall@5": 0.94,
+            "mrr": 0.8278,
+            "fully_contained@1": 0.63,
+            "citation_tightness@1": 0.2515,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.94,
+            "recall@5": 1.0,
+            "mrr": 0.9679,
+            "fully_contained@1": 0.835,
+            "citation_tightness@1": 0.2397,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.79,
+            "recall@5": 0.995,
+            "mrr": 0.877,
+            "fully_contained@1": 0.675,
+            "citation_tightness@1": 0.2471,
+            "n": 200
+          }
+        },
+        "masked": {
+          "dense": {
+            "recall@1": 0.21,
+            "recall@5": 0.455,
+            "mrr": 0.3086,
+            "fully_contained@1": 0.135,
+            "citation_tightness@1": 0.2319,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.155,
+            "recall@5": 0.43,
+            "mrr": 0.2784,
+            "fully_contained@1": 0.11,
+            "citation_tightness@1": 0.218,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.195,
+            "recall@5": 0.475,
+            "mrr": 0.3163,
+            "fully_contained@1": 0.135,
+            "citation_tightness@1": 0.2262,
+            "n": 200
+          }
+        }
+      },
+      "doc_level": {}
+    },
+    {
+      "name": "fixed-1000-ov150-clean",
+      "cleaning": "clean",
+      "strategy": "fixed",
+      "target_chars": 1000,
+      "overlap_chars": 150,
+      "n_chunks": 170,
+      "mean_chars": 943.6,
+      "p95_chars": 999,
+      "mean_tokens": 253.9,
+      "max_tokens": 441,
+      "truncated": 0,
+      "embed_s": 25.3,
+      "index_mb_at_10k": 36.8,
+      "citation_tightness": 0.2043,
+      "context_chars_top5": 4718,
+      "span_integrity": 0.965,
+      "spans_split": 7,
+      "retrievers": {
+        "verbatim": {
+          "dense": {
+            "recall@1": 0.715,
+            "recall@5": 0.945,
+            "mrr": 0.8132,
+            "fully_contained@1": 0.645,
+            "citation_tightness@1": 0.2085,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.95,
+            "recall@5": 1.0,
+            "mrr": 0.9729,
+            "fully_contained@1": 0.915,
+            "citation_tightness@1": 0.1959,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.78,
+            "recall@5": 0.98,
+            "mrr": 0.8716,
+            "fully_contained@1": 0.71,
+            "citation_tightness@1": 0.2043,
+            "n": 200
+          }
+        },
+        "masked": {
+          "dense": {
+            "recall@1": 0.265,
+            "recall@5": 0.57,
+            "mrr": 0.3964,
+            "fully_contained@1": 0.23,
+            "citation_tightness@1": 0.1772,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.225,
+            "recall@5": 0.57,
+            "mrr": 0.3642,
+            "fully_contained@1": 0.195,
+            "citation_tightness@1": 0.1594,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.245,
+            "recall@5": 0.595,
+            "mrr": 0.3949,
+            "fully_contained@1": 0.22,
+            "citation_tightness@1": 0.1692,
+            "n": 200
+          }
+        }
+      },
+      "doc_level": {}
+    },
+    {
+      "name": "fixed-1200-ov180-clean",
+      "cleaning": "clean",
+      "strategy": "fixed",
+      "target_chars": 1200,
+      "overlap_chars": 180,
+      "n_chunks": 145,
+      "mean_chars": 1106.4,
+      "p95_chars": 1199,
+      "mean_tokens": 297.4,
+      "max_tokens": 524,
+      "truncated": 1,
+      "embed_s": 28.1,
+      "index_mb_at_10k": 36.8,
+      "citation_tightness": 0.1741,
+      "context_chars_top5": 5532,
+      "span_integrity": 0.955,
+      "spans_split": 9,
+      "retrievers": {
+        "verbatim": {
+          "dense": {
+            "recall@1": 0.68,
+            "recall@5": 0.915,
+            "mrr": 0.7701,
+            "fully_contained@1": 0.6,
+            "citation_tightness@1": 0.1764,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.925,
+            "recall@5": 1.0,
+            "mrr": 0.9608,
+            "fully_contained@1": 0.865,
+            "citation_tightness@1": 0.1681,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.76,
+            "recall@5": 0.96,
+            "mrr": 0.8537,
+            "fully_contained@1": 0.68,
+            "citation_tightness@1": 0.1741,
+            "n": 200
+          }
+        },
+        "masked": {
+          "dense": {
+            "recall@1": 0.28,
+            "recall@5": 0.62,
+            "mrr": 0.4159,
+            "fully_contained@1": 0.23,
+            "citation_tightness@1": 0.1597,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.265,
+            "recall@5": 0.64,
+            "mrr": 0.4144,
+            "fully_contained@1": 0.215,
+            "citation_tightness@1": 0.1428,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.28,
+            "recall@5": 0.665,
+            "mrr": 0.4325,
+            "fully_contained@1": 0.22,
+            "citation_tightness@1": 0.1566,
+            "n": 200
+          }
+        }
+      },
+      "doc_level": {}
+    },
+    {
+      "name": "clause-800-clean",
+      "cleaning": "clean",
+      "strategy": "clause",
+      "target_chars": 800,
+      "overlap_chars": 0,
+      "n_chunks": 199,
+      "mean_chars": 697.5,
+      "p95_chars": 798,
+      "mean_tokens": 188.4,
+      "max_tokens": 360,
+      "truncated": 0,
+      "embed_s": 22.4,
+      "index_mb_at_10k": 36.8,
+      "citation_tightness": 0.2948,
+      "context_chars_top5": 3487,
+      "span_integrity": 0.88,
+      "spans_split": 24,
+      "retrievers": {
+        "verbatim": {
+          "dense": {
+            "recall@1": 0.75,
+            "recall@5": 0.92,
+            "mrr": 0.8207,
+            "fully_contained@1": 0.68,
+            "citation_tightness@1": 0.3017,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.92,
+            "recall@5": 1.0,
+            "mrr": 0.9571,
+            "fully_contained@1": 0.84,
+            "citation_tightness@1": 0.2766,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.795,
+            "recall@5": 0.98,
+            "mrr": 0.8745,
+            "fully_contained@1": 0.725,
+            "citation_tightness@1": 0.2948,
+            "n": 200
+          }
+        },
+        "masked": {
+          "dense": {
+            "recall@1": 0.165,
+            "recall@5": 0.435,
+            "mrr": 0.2698,
+            "fully_contained@1": 0.135,
+            "citation_tightness@1": 0.2709,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.125,
+            "recall@5": 0.405,
+            "mrr": 0.2442,
+            "fully_contained@1": 0.105,
+            "citation_tightness@1": 0.2209,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.165,
+            "recall@5": 0.455,
+            "mrr": 0.2821,
+            "fully_contained@1": 0.14,
+            "citation_tightness@1": 0.2577,
+            "n": 200
+          }
+        }
+      },
+      "doc_level": {}
+    },
+    {
+      "name": "clause-1000-clean",
+      "cleaning": "clean",
+      "strategy": "clause",
+      "target_chars": 1000,
+      "overlap_chars": 0,
+      "n_chunks": 163,
+      "mean_chars": 852.2,
+      "p95_chars": 998,
+      "mean_tokens": 229.6,
+      "max_tokens": 444,
+      "truncated": 0,
+      "embed_s": 25.0,
+      "index_mb_at_10k": 36.8,
+      "citation_tightness": 0.2428,
+      "context_chars_top5": 4261,
+      "span_integrity": 0.91,
+      "spans_split": 18,
+      "retrievers": {
+        "verbatim": {
+          "dense": {
+            "recall@1": 0.705,
+            "recall@5": 0.92,
+            "mrr": 0.7973,
+            "fully_contained@1": 0.65,
+            "citation_tightness@1": 0.2522,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.925,
+            "recall@5": 1.0,
+            "mrr": 0.9583,
+            "fully_contained@1": 0.865,
+            "citation_tightness@1": 0.2307,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.78,
+            "recall@5": 0.98,
+            "mrr": 0.8687,
+            "fully_contained@1": 0.72,
+            "citation_tightness@1": 0.2428,
+            "n": 200
+          }
+        },
+        "masked": {
+          "dense": {
+            "recall@1": 0.24,
+            "recall@5": 0.54,
+            "mrr": 0.3616,
+            "fully_contained@1": 0.235,
+            "citation_tightness@1": 0.1972,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.225,
+            "recall@5": 0.525,
+            "mrr": 0.347,
+            "fully_contained@1": 0.21,
+            "citation_tightness@1": 0.1658,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.215,
+            "recall@5": 0.57,
+            "mrr": 0.359,
+            "fully_contained@1": 0.205,
+            "citation_tightness@1": 0.1808,
+            "n": 200
+          }
+        }
+      },
+      "doc_level": {}
+    },
+    {
+      "name": "clause-1200-clean",
+      "cleaning": "clean",
+      "strategy": "clause",
+      "target_chars": 1200,
+      "overlap_chars": 0,
+      "n_chunks": 139,
+      "mean_chars": 999.8,
+      "p95_chars": 1198,
+      "mean_tokens": 268.9,
+      "max_tokens": 517,
+      "truncated": 2,
+      "embed_s": 25.5,
+      "index_mb_at_10k": 36.8,
+      "citation_tightness": 0.204,
+      "context_chars_top5": 4999,
+      "span_integrity": 0.95,
+      "spans_split": 10,
+      "retrievers": {
+        "verbatim": {
+          "dense": {
+            "recall@1": 0.69,
+            "recall@5": 0.905,
+            "mrr": 0.7789,
+            "fully_contained@1": 0.66,
+            "citation_tightness@1": 0.2055,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.925,
+            "recall@5": 1.0,
+            "mrr": 0.9613,
+            "fully_contained@1": 0.89,
+            "citation_tightness@1": 0.189,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.755,
+            "recall@5": 0.98,
+            "mrr": 0.851,
+            "fully_contained@1": 0.725,
+            "citation_tightness@1": 0.204,
+            "n": 200
+          }
+        },
+        "masked": {
+          "dense": {
+            "recall@1": 0.3,
+            "recall@5": 0.585,
+            "mrr": 0.4178,
+            "fully_contained@1": 0.285,
+            "citation_tightness@1": 0.1559,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.235,
+            "recall@5": 0.58,
+            "mrr": 0.3728,
+            "fully_contained@1": 0.22,
+            "citation_tightness@1": 0.1467,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.26,
+            "recall@5": 0.6,
+            "mrr": 0.4029,
+            "fully_contained@1": 0.245,
+            "citation_tightness@1": 0.152,
+            "n": 200
+          }
+        }
+      },
+      "doc_level": {}
+    },
+    {
+      "name": "fixed-800-ov0-raw",
+      "cleaning": "raw",
+      "strategy": "fixed",
+      "target_chars": 800,
+      "overlap_chars": 0,
+      "n_chunks": 183,
+      "mean_chars": 761.0,
+      "p95_chars": 798,
+      "mean_tokens": 218.9,
+      "max_tokens": 419,
+      "truncated": 0,
+      "embed_s": 27.9,
+      "index_mb_at_10k": 36.8,
+      "citation_tightness": 0.2419,
+      "context_chars_top5": 3805,
+      "span_integrity": 0.815,
+      "spans_split": 37,
+      "retrievers": {
+        "verbatim": {
+          "dense": {
+            "recall@1": 0.695,
+            "recall@5": 0.91,
+            "mrr": 0.7858,
+            "fully_contained@1": 0.595,
+            "citation_tightness@1": 0.2452,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.89,
+            "recall@5": 0.995,
+            "mrr": 0.9382,
+            "fully_contained@1": 0.775,
+            "citation_tightness@1": 0.2349,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.75,
+            "recall@5": 0.975,
+            "mrr": 0.8436,
+            "fully_contained@1": 0.65,
+            "citation_tightness@1": 0.2419,
+            "n": 200
+          }
+        },
+        "masked": {
+          "dense": {
+            "recall@1": 0.195,
+            "recall@5": 0.48,
+            "mrr": 0.3104,
+            "fully_contained@1": 0.145,
+            "citation_tightness@1": 0.2598,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.13,
+            "recall@5": 0.46,
+            "mrr": 0.2651,
+            "fully_contained@1": 0.1,
+            "citation_tightness@1": 0.2308,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.16,
+            "recall@5": 0.515,
+            "mrr": 0.2999,
+            "fully_contained@1": 0.125,
+            "citation_tightness@1": 0.2427,
+            "n": 200
+          }
+        }
+      },
+      "doc_level": {}
+    },
+    {
+      "name": "fixed-1000-ov0-raw",
+      "cleaning": "raw",
+      "strategy": "fixed",
+      "target_chars": 1000,
+      "overlap_chars": 0,
+      "n_chunks": 149,
+      "mean_chars": 934.9,
+      "p95_chars": 998,
+      "mean_tokens": 268.4,
+      "max_tokens": 484,
+      "truncated": 0,
+      "embed_s": 23.6,
+      "index_mb_at_10k": 36.8,
+      "citation_tightness": 0.1925,
+      "context_chars_top5": 4674,
+      "span_integrity": 0.855,
+      "spans_split": 29,
+      "retrievers": {
+        "verbatim": {
+          "dense": {
+            "recall@1": 0.67,
+            "recall@5": 0.89,
+            "mrr": 0.7625,
+            "fully_contained@1": 0.58,
+            "citation_tightness@1": 0.1954,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.915,
+            "recall@5": 1.0,
+            "mrr": 0.9542,
+            "fully_contained@1": 0.81,
+            "citation_tightness@1": 0.1932,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.735,
+            "recall@5": 0.97,
+            "mrr": 0.8368,
+            "fully_contained@1": 0.64,
+            "citation_tightness@1": 0.1925,
+            "n": 200
+          }
+        },
+        "masked": {
+          "dense": {
+            "recall@1": 0.24,
+            "recall@5": 0.565,
+            "mrr": 0.3798,
+            "fully_contained@1": 0.21,
+            "citation_tightness@1": 0.1793,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.225,
+            "recall@5": 0.58,
+            "mrr": 0.3646,
+            "fully_contained@1": 0.19,
+            "citation_tightness@1": 0.1516,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.235,
+            "recall@5": 0.62,
+            "mrr": 0.3866,
+            "fully_contained@1": 0.195,
+            "citation_tightness@1": 0.1775,
+            "n": 200
+          }
+        }
+      },
+      "doc_level": {}
+    },
+    {
+      "name": "clause-1000-raw",
+      "cleaning": "raw",
+      "strategy": "clause",
+      "target_chars": 1000,
+      "overlap_chars": 0,
+      "n_chunks": 163,
+      "mean_chars": 854.6,
+      "p95_chars": 998,
+      "mean_tokens": 245.5,
+      "max_tokens": 484,
+      "truncated": 0,
+      "embed_s": 22.4,
+      "index_mb_at_10k": 36.8,
+      "citation_tightness": 0.2382,
+      "context_chars_top5": 4273,
+      "span_integrity": 0.91,
+      "spans_split": 18,
+      "retrievers": {
+        "verbatim": {
+          "dense": {
+            "recall@1": 0.71,
+            "recall@5": 0.905,
+            "mrr": 0.7915,
+            "fully_contained@1": 0.64,
+            "citation_tightness@1": 0.2477,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.925,
+            "recall@5": 1.0,
+            "mrr": 0.9583,
+            "fully_contained@1": 0.865,
+            "citation_tightness@1": 0.2297,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.785,
+            "recall@5": 0.975,
+            "mrr": 0.8678,
+            "fully_contained@1": 0.71,
+            "citation_tightness@1": 0.2382,
+            "n": 200
+          }
+        },
+        "masked": {
+          "dense": {
+            "recall@1": 0.245,
+            "recall@5": 0.52,
+            "mrr": 0.3611,
+            "fully_contained@1": 0.24,
+            "citation_tightness@1": 0.1958,
+            "n": 200
+          },
+          "bm25": {
+            "recall@1": 0.225,
+            "recall@5": 0.52,
+            "mrr": 0.3468,
+            "fully_contained@1": 0.21,
+            "citation_tightness@1": 0.1651,
+            "n": 200
+          },
+          "rrf60": {
+            "recall@1": 0.22,
+            "recall@5": 0.565,
+            "mrr": 0.3623,
+            "fully_contained@1": 0.21,
+            "citation_tightness@1": 0.1792,
+            "n": 200
+          }
+        }
+      },
+      "doc_level": {}
+    }
+  ]
+}
