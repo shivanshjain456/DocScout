@@ -17,6 +17,10 @@
 /corpus/raw/*
 !/corpus/raw/manifest.json
 evals/reports/
+# Ingest run reports. The working output of `make ingest` is untracked like every other
+# generated report; the curated evidence for a milestone is committed under
+# docs/corpus/evidence/ instead, so the repo keeps the run it cites and not every run.
+/corpus/reports/
 # Ad-hoc `make load` runs are ignored, EXCEPT the pinned verification run: V15 of
 # scripts/verify_setup.sh asserts that report exists, so leaving it untracked made the matrix
 # depend on an artifact git would not keep — the same defect class as the corpus manifest above.

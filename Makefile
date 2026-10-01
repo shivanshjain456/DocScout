@@ -3,7 +3,7 @@ SHELL := /bin/bash
 TS := $(shell date -u +%Y%m%dT%H%M%SZ)
 
 .PHONY: help setup dev test lint typecheck secret-scan eval load deploy destroy verify-setup down \
-        migrate migrate-status migrate-down
+        migrate migrate-status migrate-down ingest ingest-dry ingest-status ingest-verify
 
 help:  ## show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-14s\033[0m %s\n",$$1,$$2}'
@@ -26,6 +26,18 @@ migrate-status:  ## show applied / pending / drifted migrations; changes nothing
 migrate-down:  ## revert migrations above TO= (e.g. make migrate-down TO=0)
 	@test -n "$(TO)" || { echo "refusing: set TO=<version>, e.g. make migrate-down TO=0"; exit 2; }
 	uv run python scripts/migrate.py down --to $(TO)
+
+ingest:  ## ingest the corpus into Postgres (idempotent; a re-run writes nothing)
+	uv run python -m app.ingest run
+
+ingest-dry:  ## extract, chunk and embed the corpus but write nothing
+	uv run python -m app.ingest run --dry-run
+
+ingest-status:  ## row counts for documents, versions and chunks
+	uv run python -m app.ingest status
+
+ingest-verify:  ## re-check every stored chunk's offsets against its source document (FR-7)
+	uv run python -m app.ingest verify
 
 test:  ## run the test suite
 	uv run pytest -q
