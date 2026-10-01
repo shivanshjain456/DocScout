@@ -52,5 +52,10 @@ test-results/
 *.safetensors
 .hf_cache/
 
+# --- git history bundle (see scripts/git_history.sh) ---
+# Binary, rewritten on every save, and it exists precisely because .git does not persist.
+# Tracking it inside the repo it backs up would be circular.
+.history/
+
 # --- os ---
 .DS_Store
