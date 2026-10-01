@@ -1,0 +1,120 @@
+=== M1 schema migration evidence — 2026-10-01T16:15:46Z ===
+
+--- engine ---
+PostgreSQL 18.4 (Debian 18.4-1.pgdg12+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit
+pgvector 0.8.2
+
+--- make migrate-status ---
+ ver  state     name
+  --------------------------------------------------------
+   1  applied   initial_schema
+
+  1 applied, 0 pending, 0 problem(s)
+
+--- applied migration record ---
+ version |      name      |                             checksum                             | duration_ms
+---------+----------------+------------------------------------------------------------------+-------------
+       1 | initial_schema | 38696e92a9f8cb109637af5ad64b9e3526d5cd1caa85d579b0c85e9e8352dd8a |          10
+(1 row)
+
+--- checksum of the file on disk (must match above) ---
+38696e92a9f8cb109637af5ad64b9e3526d5cd1caa85d579b0c85e9e8352dd8a  migrations/0001_initial_schema.up.sql
+
+--- tables ---
+                List of tables
+ Schema |       Name        | Type  |  Owner
+--------+-------------------+-------+----------
+ public | chunks            | table | docscout
+ public | document_versions | table | docscout
+ public | documents         | table | docscout
+ public | schema_migrations | table | docscout
+(4 rows)
+
+--- indexes on chunks ---
+         indexname         |                                                               indexdef
+---------------------------+--------------------------------------------------------------------------------------------------------------------------------------
+ chunks_pkey               | CREATE UNIQUE INDEX chunks_pkey ON public.chunks USING btree (chunk_id)
+ idx_chunks_document       | CREATE INDEX idx_chunks_document ON public.chunks USING btree (document_id)
+ idx_chunks_embedding_hnsw | CREATE INDEX idx_chunks_embedding_hnsw ON public.chunks USING hnsw (embedding vector_cosine_ops) WITH (m='16', ef_construction='64')
+ idx_chunks_tsv_gin        | CREATE INDEX idx_chunks_tsv_gin ON public.chunks USING gin (tsv)
+ uq_chunks_version_ordinal | CREATE UNIQUE INDEX uq_chunks_version_ordinal ON public.chunks USING btree (version_id, ordinal)
+(5 rows)
+
+--- constraints enforcing the spec ---
+        tbl        |          conname           |                                                   definition
+-------------------+----------------------------+----------------------------------------------------------------------------------------------------------------
+ documents         | ck_documents_source        | CHECK ((source = ANY (ARRAY['RBI'::text, 'SEBI'::text, 'SYNTHETIC'::text])))
+ documents         | uq_documents_canonical_url | UNIQUE (canonical_url)
+ document_versions | ck_versions_bytes          | CHECK ((bytes > 0))
+ document_versions | ck_versions_char_count     | CHECK ((char_count >= 500))
+ document_versions | ck_versions_http_status    | CHECK (((http_status IS NULL) OR ((http_status >= 100) AND (http_status <= 599))))
+ document_versions | ck_versions_pages          | CHECK (((pages IS NULL) OR (pages > 0)))
+ document_versions | ck_versions_sha256_hex     | CHECK ((sha256 ~ '^[0-9a-f]{64}$'::text))
+ document_versions | fk_versions_document       | FOREIGN KEY (document_id) REFERENCES documents(document_id) ON DELETE RESTRICT
+ document_versions | uq_versions_doc_version    | UNIQUE (document_id, version_id)
+ document_versions | uq_versions_sha256         | UNIQUE (sha256)
+ chunks            | ck_chunks_ordinal          | CHECK ((ordinal >= 0))
+ chunks            | ck_chunks_span             | CHECK (((char_start >= 0) AND (char_end > char_start)))
+ chunks            | ck_chunks_text             | CHECK ((length(text) > 0))
+ chunks            | ck_chunks_token_ceiling    | CHECK (((token_count > 0) AND (token_count <= 512)))
+ chunks            | ck_chunks_unit_norm        | CHECK ((abs((vector_norm(embedding) - (1.0)::double precision)) < (0.0001)::double precision))
+ chunks            | fk_chunks_version          | FOREIGN KEY (document_id, version_id) REFERENCES document_versions(document_id, version_id) ON DELETE RESTRICT
+ chunks            | uq_chunks_version_ordinal  | UNIQUE (version_id, ordinal)
+(17 rows)
+
+--- least-privilege grants (note: no DELETE anywhere) ---
+    table_name     |       privileges
+-------------------+------------------------
+ chunks            | INSERT, SELECT, UPDATE
+ document_versions | INSERT, SELECT, UPDATE
+ documents         | INSERT, SELECT, UPDATE
+(3 rows)
+
+
+--- test suite ---
+============================== 19 passed in 0.30s ==============================
+
+==============================================================
+RUNNER BEHAVIOUR — each property exercised, not assumed
+==============================================================
+
+--- 1. REVERSIBILITY: down --to 0, then up (round trip) ---
+  reverted 0001_initial_schema
+tables after down: schema_migrations
+  applied 0001_initial_schema (11 ms)
+  up to date
+tables after up:   chunks, document_versions, documents, schema_migrations
+
+--- 2. down refuses without an explicit --to ---
+  refusing to revert without an explicit --to (e.g. --to 0)
+exit=2
+
+--- 3. TAMPER DETECTION (file edited after apply) ---
+ ver  state     name
+  --------------------------------------------------------
+   1  DRIFTED   initial_schema
+
+  1 applied, 0 pending, 1 problem(s)
+status exit=1
+  REFUSING: 0001_initial_schema was applied, but its file has changed since.
+  Applied checksum 38696e92a9f8…, on disk 34e22c9517c4…
+  Write a new migration instead of editing an applied one.
+up exit=1
+(file restored)
+ ver  state     name
+  --------------------------------------------------------
+   1  applied   initial_schema
+
+  1 applied, 0 pending, 0 problem(s)
+
+--- 4. SERIALISATION: competing session holds advisory lock 7314825190112233 for 8s ---
+    migrate.py up blocked and returned only after the holder released:  7s elapsed, exit 0
+    (if the lock were not taken the run would return in well under 1s)
+
+--- 5. MUTATION CHECK: constraints are load-bearing ---
+    Inside a rolled-back transaction, dropping each constraint lets the previously
+    rejected row insert, proving the constraint is what rejects it:
+      ck_chunks_token_ceiling  -> token_count=513 then accepted
+      ck_chunks_unit_norm      -> unnormalised vector then accepted
+      uq_versions_sha256       -> duplicate sha256 under a 2nd URL then accepted
+    Post-rollback row counts: documents=0 versions=0 chunks=0 (nothing persisted)
