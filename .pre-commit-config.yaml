@@ -18,6 +18,11 @@ repos:
         # them. Excluded rather than stripping comments from generated config.
         exclude: ^ui/tsconfig.*\.json$
       - id: detect-private-key
+      # Added after a sandbox snapshot stripped the executable bit from all 16 shebang scripts and
+      # the loss was committed unnoticed. That silently disabled .claude/hooks/dangerous-bash.sh —
+      # the agent command denylist (SECURITY.md S-16) — and failed V8 of the verification matrix.
+      # A file-mode regression is invisible in a diff; this hook makes it impossible to commit.
+      - id: check-shebang-scripts-are-executable
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.16.9
