@@ -13,7 +13,6 @@ environment without Postgres.
 from __future__ import annotations
 
 import hashlib
-import os
 import re
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -22,6 +21,9 @@ from typing import Any
 
 import psycopg
 import pytest
+
+from app.ingest.chunk import chunk_document
+from app.ingest.ids import chunk_id
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CORPUS_DIR = REPO_ROOT / "corpus" / "raw"
@@ -32,35 +34,6 @@ TOKEN_CEILING = 512
 # --------------------------------------------------------------------------------------
 # helpers
 # --------------------------------------------------------------------------------------
-def _load_dotenv() -> None:
-    path = REPO_ROOT / ".env"
-    if not path.is_file():
-        return
-    for raw in path.read_text().splitlines():
-        line = raw.strip()
-        if line and not line.startswith("#") and "=" in line:
-            key, _, value = line.partition("=")
-            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
-
-
-def _url(*names: str) -> str | None:
-    _load_dotenv()
-    for name in names:
-        value = os.environ.get(name, "").strip()
-        if value:
-            return value
-    return None
-
-
-def _connect(url: str | None) -> psycopg.Connection[Any]:
-    if not url:
-        pytest.skip("no database URL configured")
-    try:
-        return psycopg.connect(url, connect_timeout=5)
-    except psycopg.OperationalError as exc:  # pragma: no cover - environment dependent
-        pytest.skip(f"database not reachable: {exc}")
-
-
 def unit_vector(seed: int, dim: int = EMBED_DIM) -> str:
     """A deterministic L2-normalised vector in pgvector's text form."""
     values = [((seed * 37 + i * 11) % 1000) / 1000.0 - 0.5 for i in range(dim)]
@@ -68,33 +41,19 @@ def unit_vector(seed: int, dim: int = EMBED_DIM) -> str:
     return "[" + ",".join(f"{v / norm:.9f}" for v in values) + "]"
 
 
-def chunk_with_offsets(
-    text: str, size: int = 1000, overlap: int = 150
-) -> list[tuple[int, int, str]]:
-    """ADR-0003 geometry: fixed 1,000 chars, 150 overlap, whitespace boundaries.
+def chunk_spans(text: str) -> list[tuple[int, int, str]]:
+    """ADR-0003 geometry via the production chunker.
 
-    Offsets bracket the *stored* text exactly, which is what FR-7 means by "offsets
-    re-extract to the stored text". Trimming the text without moving the offsets with it is
-    the obvious way to get this subtly wrong.
+    These tests used to carry their own copy of the chunking logic, which meant the FR-7
+    property test could pass while the code that actually writes chunks was wrong. It now
+    exercises `app.ingest.chunk`, so a regression in shipped behaviour fails here.
+
+    Token counting is stubbed with a cheap length heuristic: this asserts *geometry and
+    offsets*, and loading a 128 MB encoder to do it would make the schema suite depend on
+    a model download.
     """
-    out: list[tuple[int, int, str]] = []
-    step = size - overlap
-    pos = 0
-    while pos < len(text):
-        end = min(pos + size, len(text))
-        if end < len(text):
-            cut = text.rfind(" ", pos + step, end)
-            if cut > pos:
-                end = cut
-        window = text[pos:end]
-        lead = len(window) - len(window.lstrip())
-        body = window.strip()
-        if body:
-            out.append((pos + lead, pos + lead + len(body), body))
-        if end <= pos:
-            break
-        pos += step
-    return out
+    chunks = chunk_document(text, lambda s: max(1, len(s) // 4))
+    return [(c.char_start, c.char_end, c.text) for c in chunks]
 
 
 def seed_document(
@@ -129,22 +88,43 @@ def insert_chunk(
     *,
     ordinal: int = 0,
     text: str = "A chunk of regulatory text about KYC norms.",
-    char_start: int = 0,
+    char_start: int | None = None,
     char_end: int | None = None,
     token_count: int = 12,
     embedding: str | None = None,
 ) -> str:
+    """Insert one chunk, deriving its identifier exactly as the ingester does (ADR-0005).
+
+    `chunk_id` has no database default on purpose, so this helper must supply one. It reads
+    the version's real `sha256` back out of the database rather than taking it as an argument,
+    which keeps the helper honest: a chunk's identity is a function of the version it belongs
+    to, and a test that passed a convenient hash could drift from the row it is writing.
+
+    `char_start` defaults to `ordinal * 10_000` rather than to 0 because the span is now part
+    of the primary key. Two chunks of one version sharing a span is no longer merely untidy;
+    it is a key collision. Spacing them by ordinal keeps the default spans disjoint while
+    callers that care about real offsets still pass them explicitly.
+    """
+    start = char_start if char_start is not None else ordinal * 10_000
+    end = char_end if char_end is not None else start + len(text)
+
+    sha_row = conn.execute(
+        "SELECT sha256 FROM document_versions WHERE version_id = %s", (version_id,)
+    ).fetchone()
+    assert sha_row is not None, f"no document_version {version_id}"
+
     row = conn.execute(
-        "INSERT INTO chunks (document_id, version_id, ordinal, text, char_start, char_end, "
-        "token_count, embedding_model, embedding) "
-        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING chunk_id",
+        "INSERT INTO chunks (chunk_id, document_id, version_id, ordinal, text, char_start, "
+        "char_end, token_count, embedding_model, embedding) "
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING chunk_id",
         (
+            chunk_id(str(sha_row[0]), start, end),
             doc_id,
             version_id,
             ordinal,
             text,
-            char_start,
-            char_end if char_end is not None else char_start + len(text),
+            start,
+            end,
             token_count,
             "BAAI/bge-small-en-v1.5",
             embedding or unit_vector(ordinal + 1),
@@ -173,28 +153,6 @@ def sha(n: int) -> str:
 # --------------------------------------------------------------------------------------
 # fixtures
 # --------------------------------------------------------------------------------------
-@pytest.fixture(scope="session")
-def owner_conn() -> Iterator[psycopg.Connection[Any]]:
-    conn = _connect(_url("MIGRATION_DATABASE_URL", "DATABASE_URL"))
-    try:
-        applied = conn.execute(
-            "SELECT count(*) FROM information_schema.tables "
-            "WHERE table_schema='public' AND table_name='chunks'"
-        ).fetchone()
-        if not applied or int(str(applied[0])) == 0:
-            pytest.skip("schema not migrated; run `make migrate`")
-        yield conn
-    finally:
-        conn.close()
-
-
-@pytest.fixture
-def db(owner_conn: psycopg.Connection[Any]) -> Iterator[psycopg.Connection[Any]]:
-    """Each test runs in a transaction that is always rolled back."""
-    with owner_conn.transaction(force_rollback=True):
-        yield owner_conn
-
-
 # --------------------------------------------------------------------------------------
 # the migration itself
 # --------------------------------------------------------------------------------------
@@ -320,7 +278,7 @@ def test_fr7_offsets_reextract_to_stored_text_synthetic(db: psycopg.Connection[A
     doc_id, version_id = seed_document(
         db, url="https://rbi.example/offsets", sha=sha(30), char_count=len(source)
     )
-    spans = chunk_with_offsets(source)
+    spans = chunk_spans(source)
     assert len(spans) >= 2, "fixture too small to exercise chunking"
     for ordinal, (start, end, body) in enumerate(spans):
         insert_chunk(
@@ -361,7 +319,7 @@ def test_fr7_offsets_reextract_on_real_corpus_documents(db: psycopg.Connection[A
             sha=sha(100 + n),
             char_count=len(source),
         )
-        for ordinal, (start, end, body) in enumerate(chunk_with_offsets(source)):
+        for ordinal, (start, end, body) in enumerate(chunk_spans(source)):
             insert_chunk(
                 db,
                 doc_id,
@@ -436,10 +394,10 @@ def test_tsv_is_generated_and_not_writable(db: psycopg.Connection[Any]) -> None:
     assert row is not None and row[0] is True, "English stemming is not being applied to tsv"
     with rejects(db, psycopg.errors.GeneratedAlways):
         db.execute(
-            "INSERT INTO chunks (document_id, version_id, ordinal, text, char_start, char_end, "
-            "token_count, embedding_model, embedding, tsv) "
-            "VALUES (%s, %s, 99, 'x', 0, 1, 1, 'm', %s, 'fake'::tsvector)",
-            (doc_id, version_id, unit_vector(9)),
+            "INSERT INTO chunks (chunk_id, document_id, version_id, ordinal, text, "
+            "char_start, char_end, token_count, embedding_model, embedding, tsv) "
+            "VALUES (%s, %s, %s, 99, 'x', 990000, 990001, 1, 'm', %s, 'fake'::tsvector)",
+            (chunk_id(sha(1), 990000, 990001), doc_id, version_id, unit_vector(9)),
         )
 
 
@@ -487,18 +445,6 @@ def test_hnsw_and_gin_indexes_exist_with_expected_configuration(
 # --------------------------------------------------------------------------------------
 # SECURITY.md — least privilege is a property of the role, not a promise
 # --------------------------------------------------------------------------------------
-@pytest.fixture(scope="session")
-def app_conn() -> Iterator[psycopg.Connection[Any]]:
-    url = _url("DATABASE_URL")
-    if not url or "docscout_app" not in url:
-        pytest.skip("DATABASE_URL is not the least-privilege application role")
-    conn = _connect(url)
-    try:
-        yield conn
-    finally:
-        conn.close()
-
-
 def test_application_role_cannot_delete_corpus_data(app_conn: psycopg.Connection[Any]) -> None:
     """FR-4 retention is enforced by privilege: the service cannot discard history."""
     with app_conn.transaction(force_rollback=True):
