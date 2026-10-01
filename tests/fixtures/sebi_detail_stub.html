@@ -1,0 +1,49 @@
+<!doctype html>
+<!--
+  A representative SEBI circular detail page, reduced to the structure that matters.
+
+  This is NOT a byte-for-byte capture of a live SEBI page: the corpus payloads are not
+  git-tracked, and committing a regulator's HTML would add a licensing question for no
+  test value. What it reproduces faithfully is the failure mode CORPUS_SPEC K-17 records
+  and that cost Phase 0 real debugging time — the page carries navigation, a title and a
+  date, the circular's actual text lives only in the PDF referenced by the iframe, and so
+  extracting the HTML yields a couple of hundred characters that look like a successful
+  fetch. HTTP 200, non-empty text, no exception.
+
+  tests/test_ingest.py asserts this fixture still extracts to under FR-3's 500-character
+  floor, so the fixture cannot silently stop reproducing the bug it exists to pin.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Acceptance of digitally signed Power of Attorney from FPIs</title>
+  </head>
+  <body>
+    <nav>
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="/legal/circulars">Legal</a></li>
+        <li><a href="/legal/circulars">Circulars</a></li>
+      </ul>
+    </nav>
+
+    <main>
+      <h1>Acceptance of digitally signed Power of Attorney from FPIs</h1>
+      <p class="circular-meta">Circular No. SEBI/HO/AFD/AFD-PoD-2/P/CIR/2026/118</p>
+      <p class="circular-meta">Aug 21, 2026 | Reports : Circulars</p>
+
+      <div class="attachment">
+        <iframe
+          src="/sebiweb/include/viewpdf.jsp?file=/sebi_data/attachdocs/aug-2026/1787224027885.pdf"
+          width="100%"
+          height="800"
+          title="Circular PDF"
+        ></iframe>
+      </div>
+    </main>
+
+    <footer>
+      <p>&copy; Securities and Exchange Board of India. All rights reserved.</p>
+    </footer>
+  </body>
+</html>
