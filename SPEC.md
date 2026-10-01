@@ -93,7 +93,7 @@ back to one. A verification matrix nobody can re-run is folklore.
 | `scripts/bootstrap.sh` added — pinned, idempotent, tiered (`core` / `full`), with a `--check` mode that installs nothing and exits non-zero on a gap | `core` tier rebuilt the environment in **~14 s** |
 | `uv sync --frozen` from the committed lockfile | `uv.lock` SHA-256 **unchanged** at `600c9001…1b98d`; **164** packages installed on linux-x86_64 |
 | The four CI `quality` gates re-run | `ruff check`, `ruff format --check`, `mypy app` (strict), `pytest` — **all green** |
-| Version control re-initialised, history **not** fabricated | Three commits, each through the full **11-hook** chain, no `--no-verify` |
+| Version control re-initialised, history **not** fabricated | Three commits, each through the full hook chain, no `--no-verify` |
 
 **Two latent defects were caught during that repair**, both of which would have failed silently:
 
@@ -104,12 +104,31 @@ back to one. A verification matrix nobody can re-run is folklore.
    tracked. The manifest is what makes the corpus re-derivable, so the claim was hollow. The
    manifest (16 KB) is now tracked; the fetched bytes remain ignored.
 
-**Residual risk, stated plainly.** Bootstrap does not make the environment persistent — the
+**The repair was then tested end to end — VERIFIED**, evidence
+`docs/setup/verify/m0-verify-setup-rerun.txt`. `scripts/bootstrap.sh full` reinstalled the complete
+toolchain and **every version matched its Phase 0 pin** (uv 0.12.21, Python 3.12.14, Docker
+26.1.5+dfsg1, Compose 5.5.1, Node v22.23.3, pnpm 12.8.1, k6 v2.3.0, gitleaks 8.30.1, psql 17.11,
+gh 2.46.0, aws 2.37.7, pre-commit 4.6.2). Postgres and Redis came up healthy in 6 s with pgvector
+0.8.2 and the least-privilege `docscout_app` role. `make verify-setup` then reproduced
+**PASS=15 / FAIL=0 / BLOCKED=2** — Phase 0's result, from a committed script, on a machine where
+none of it existed an hour earlier. **U-15 is closed.**
+
+The run also earned its keep by failing first. Two defects it exposed:
+
+- `bootstrap.sh full` did not install `gh`, `psql` or `jq`, which V1 requires. Fixed.
+- **A security control had been silently disabled.** The snapshot stripped the executable bit from
+  all 16 shebang scripts, and the loss was committed unnoticed in `c2eeb90` — a file mode is
+  invisible when reading a diff. One of those files is `.claude/hooks/dangerous-bash.sh`, the agent
+  command denylist (`SECURITY.md` S-16). A non-executable hook does not run, so the control that
+  blocks destructive commands was inert while still appearing present. Modes restored, and the
+  pre-commit hook `check-shebang-scripts-are-executable` now makes the regression uncommittable.
+
+**Residual risk, stated plainly.** Bootstrap does not make the environment *persistent* — the
 toolchain still lives outside the repository and will be lost again at the next snapshot. What
-changed is the cost of recovery: one command and ~14 s, instead of re-deriving the install steps
-from a report. The `full` tier (Docker, Compose, Node/pnpm, k6, AWS CLI) has **not** been exercised
-on a clean machine, so `make verify-setup` has not been re-run since Phase 0. U-15 stays open for
-exactly that remainder.
+changed is that recovery is now one command and a few minutes, with a matrix that proves it worked.
+One caveat remains on the evidence: `~/.cache/uv` and `~/.cache/pre-commit` persisted within the
+session, so this was a rebuild-in-place rather than a pristine-host run. Every binary and both
+container images were nonetheless fetched fresh.
 
 ### 2.4 Non-goals for this specification
 
@@ -309,7 +328,7 @@ carried in `SETUP_REPORT.md` §15; U-6 onward are additions surfaced while writi
 | **U-12** | How is supersession represented and surfaced? | Data-model decision: metadata field, link graph, or out of scope for v1 | Schema + a gold-set item that fails without it | Answer correctness on "current rule" questions |
 | **U-13** | API contract: auth scheme, rate-limit values, response schema | Sign-off on §4.3 or a revision | §4.3 retagged SPECIFIED, plus contract tests | FR-18 … FR-22 |
 | **U-14** | Is p95 < 3 s achievable on 2 vCPU / 1.9 GiB with rerank in the path? | Measure, then either accept, change hardware, or revise the target | A k6 report against the real service on that hardware | NFR-1, NFR-3 |
-| **U-15** | How is the verified environment reproduced? | **Largely resolved 2026-10-01** (ADR-0001): `scripts/bootstrap.sh` exists and version control is restored. **Remaining:** exercise the `full` tier (Docker, Compose, Node/pnpm, k6, AWS CLI) and re-run the V1–V17 matrix | A clean machine running `bash scripts/bootstrap.sh full && make verify-setup` reaching PASS=15 / FAIL=0 / BLOCKED=2, output saved under `docs/setup/verify/` | §2.3; `make verify-setup`, `make dev` |
+| ~~U-15~~ | ~~How is the verified environment reproduced?~~ | **CLOSED 2026-10-01** (ADR-0001). `scripts/bootstrap.sh full` rebuilt the entire toolchain to the exact Phase 0 pins, and `make verify-setup` reproduced **PASS=15 / FAIL=0 / BLOCKED=2** | `docs/setup/verify/m0-verify-setup-rerun.txt` | — (caveat: not yet run on a host with a cold `~/.cache`) |
 | **U-16** | Policy for scanned / image-only PDFs | OCR, or exclude with an explicit flag | ADR + a test over a scanned fixture | FR-3, corpus coverage |
 | **U-17** | Who writes and double-labels ≥ 120 gold items, and is the persona (§3.1) validated? | Named owner and a labelling plan; single-author labelling makes κ self-agreement, which must be disclosed | A gold set at ≥ 120 items with a recorded disagreement rate | FR-23, FR-27, M3 |
 

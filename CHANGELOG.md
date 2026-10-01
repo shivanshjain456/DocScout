@@ -15,6 +15,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   Phase 0 toolchain, with a `--check` mode that installs nothing and exits non-zero on a gap.
 - `ADR-0001`: re-initialise version control without fabricating the lost Phase 0 history, and make
   the environment reproducible by script.
+- Verification evidence for the rebuild: `docs/setup/verify/m0-bootstrap-and-vcs.txt` and
+  `docs/setup/verify/m0-verify-setup-rerun.txt`. The V1–V17 matrix was re-run for the first time
+  since Phase 0 and reproduced **PASS=15 / FAIL=0 / BLOCKED=2** on a toolchain rebuilt entirely by
+  `scripts/bootstrap.sh full`, with every version matching its Phase 0 pin.
 - Primary-source `robots.txt` evidence for both corpus sources
   (`docs/setup/verify/robots-txt-evidence.txt`), partially closing Known issue K-16.
 - Phase 0 environment: Docker Compose data layer (Postgres 18 + pgvector 0.8.2, Redis 7),
@@ -26,6 +30,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 - Setup tooling: `scripts/mcp_probe.py`, `scripts/verify_corpus_fetch.py`, `scripts/verify_setup.sh`.
 
 ### Fixed
+- **Restored the executable bit on all 16 shebang scripts.** A workspace snapshot stripped it and
+  the loss was committed unnoticed, because file modes are invisible in a diff. One of the affected
+  files is `.claude/hooks/dangerous-bash.sh`, the agent command denylist — a security control that
+  was present, correct and **not running**. Found by V8 on the first re-run of the verification
+  matrix. Guarded by a new `check-shebang-scripts-are-executable` pre-commit hook.
+- `scripts/bootstrap.sh` full tier: added `jq`, `postgresql-client` and `gh`, which V1 of the
+  verification matrix requires and the script did not install.
+- `.gitignore`: `loadtests/reports/verify/` is now tracked. V15 asserts that report exists, so the
+  matrix depended on an artifact git would not keep. Ad-hoc `make load` runs remain ignored.
 - `.gitignore`: anchored `corpus/` to `/corpus/`. Unanchored, it matched any directory named
   `corpus` at any depth and silently excluded `docs/corpus/` — the new `CORPUS_SPEC.md` would not
   have been committed, with no error reported.

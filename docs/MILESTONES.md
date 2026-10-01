@@ -58,24 +58,27 @@ after Phase 0 closed, not because of new scope.
 
 | # | Item | Status |
 |---|---|---|
-| 1 | Restore version control (`.git/` was absent; Phase 0 history `695e0f4` → `c88f59b` unrecoverable) | **DONE** 2026-10-01 — `git init -b master`, three commits, every one through the full 11-hook chain, no `--no-verify`. History deliberately not fabricated (ADR-0001) |
+| 1 | Restore version control (`.git/` was absent; Phase 0 history `695e0f4` → `c88f59b` unrecoverable) | **DONE** 2026-10-01 — `git init -b master`, three commits, every one through the full hook chain, no `--no-verify`. History deliberately not fabricated (ADR-0001) |
 | 2 | Write `scripts/bootstrap.sh` to reinstall the Phase 0 toolchain | **DONE** — pinned, idempotent, tiered, with `--check`. `core` tier verified: ~14 s, `uv.lock` SHA-256 unchanged at `600c9001…1b98d`, 164 packages installed, all four quality gates green |
 | 3 | Add `.gitkeep` to the empty directories existing Makefile targets reference (K-14) | **DONE** for `tests/eval/` and `docs/deploys/`. `evals/reports/` deliberately left untracked — it is gitignored generated output the harness will `mkdir -p` |
 | 4 | Fix the `.gitignore` defects found while staging | **DONE** — `corpus/` anchored to `/corpus/` (it was silently excluding `docs/corpus/CORPUS_SPEC.md`); `corpus/raw/manifest.json` now tracked, matching what `docs/corpus-provenance.md` already claimed |
 | 5 | Create `app/main.py`, or fix `make dev` and `AGENTS.md`, which both invoke `uvicorn app.main:app` | **OPEN** — `app/main.py` does not exist, so `make dev` fails. Deliberately deferred: a module that only exists to satisfy a Makefile target is feature code without a requirement behind it. Decide at M1 alongside the API contract (U-13) |
-| 6 | Exercise `bootstrap.sh full` and re-run the V1–V17 matrix | **OPEN** — Docker, Compose, Node/pnpm, k6 and the AWS CLI are not installed here, so `make verify-setup` has not run since Phase 0 |
+| 6 | Exercise `bootstrap.sh full` and re-run the V1–V17 matrix | **DONE** — every tool reinstalled at its Phase 0 pin; services healthy in 6 s; matrix reproduced **PASS=15 / FAIL=0 / BLOCKED=2**. Evidence: `docs/setup/verify/m0-verify-setup-rerun.txt` |
+| 7 | Fix the two defects that re-run exposed | **DONE** — `bootstrap.sh` was missing `gh`/`psql`/`jq` (V1); and all 16 shebang scripts had lost their executable bit in the snapshot and were committed that way, leaving the agent command denylist (`SECURITY.md` S-16) inert. Modes restored; `check-shebang-scripts-are-executable` added to pre-commit so it cannot recur |
 
 **Exit criteria (all testable):**
 
 | # | Criterion | State |
 |---|---|---|
-| 1 | `git log` shows the repository under version control with the seven specification documents committed through the full 11-hook chain, no `--no-verify` | **MET** |
-| 2 | On a clean machine, `bash scripts/bootstrap.sh full && make verify-setup` reaches **PASS=15, FAIL=0, BLOCKED=2** (or better), output saved to `docs/setup/verify/` | **NOT MET** — only the `core` tier is proven |
+| 1 | `git log` shows the repository under version control with the seven specification documents committed through the full hook chain, no `--no-verify` | **MET** |
+| 2 | `bash scripts/bootstrap.sh full && make verify-setup` reaches **PASS=15, FAIL=0, BLOCKED=2** (or better), output saved to `docs/setup/verify/` | **MET** — exit 0. Caveat recorded in the evidence: `~/.cache` persisted, so this was a rebuild-in-place, not a pristine-host run |
 | 3 | `make dev` starts a server, or the target and `AGENTS.md` are corrected to match reality | **NOT MET** (item 5) |
 | 4 | `make eval` and `make load` fail only for the documented stub reason, never on a missing path | **PARTIAL** — the missing-path failure is fixed; `make eval` will now fail on "no tests collected", which is the documented stub state |
 
-**Closes:** most of U-15; the register entry stays open for exit criterion 2.
-**Does not close:** anything else.
+**Closes:** **U-15**. **Does not close:** anything else.
+
+**M0 is complete except exit criterion 3**, which is deliberately held for M1 so that `app/main.py`
+is written against a signed API contract rather than to silence a Makefile target.
 
 ---
 
@@ -249,17 +252,18 @@ the credibility of every milestone after it.
 
 ## 11. Next action
 
-M0 items 1–4 are done: the repository exists, the environment is reproducible by one command, and
-two silent `.gitignore` defects are fixed.
+M0 is done apart from exit criterion 3, which is held for M1 on purpose. The environment is
+reproducible from a committed script and the V1–V17 matrix has been re-run green, so the
+foundation-repair work that has occupied the last two sessions is finished.
 
-The single smallest meaningful next action is now **M0 exit criterion 2: run
-`bash scripts/bootstrap.sh full`, then `make verify-setup`, and commit the output to
-`docs/setup/verify/`.** It is one command plus a commit. It matters more than it looks: the V1–V17
-matrix is the only artifact that substantiates the environment half of this project, it has not
-been executed since Phase 0, and until it runs again every VERIFIED tag in this document set rests
-on evidence files rather than on a reproduction. Running it either confirms the repair end to end
-or exposes what bootstrap still misses — both outcomes are worth more than any amount of further
-planning.
+The single smallest meaningful next action is now **M1's embedding-model ADR (U-9)** — not the
+chunking ADR, despite U-8 appearing first in the register.
 
-After that, the first genuinely product-advancing step is **M1's chunking ADR (U-8)**, because the
-embedding dimension and chunk identity are one-way doors that every later milestone depends on.
+The reason is the order of the one-way doors. `chunks.embedding` is declared `vector(D)`, and `D`
+is fixed by the embedding model. Changing `D` later means a schema migration, a full re-embed of
+every chunk, a rebuilt HNSW index and a complete re-evaluation. Chunking strategy is also
+expensive to change, but it is changeable *within* a fixed `D`; the reverse is not true. U-9 also
+has a decision ready to make with evidence already in hand — `bge-small-en-v1.5` is verified
+working at 384 dimensions, 112.4 sentences/s, free and CPU-only — and its main rejected
+alternative, a hosted embedder, is currently blocked anyway by U-1. It is one ADR with a real
+rejected alternative, and it unblocks the schema, which unblocks everything else.

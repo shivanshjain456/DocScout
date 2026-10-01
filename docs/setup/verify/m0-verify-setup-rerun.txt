@@ -1,0 +1,130 @@
+M0 EXIT CRITERION 2 — full-tier bootstrap + V1-V17 re-run
+==========================================================================
+First execution of the verification matrix since Phase 0. The toolchain it
+needs did not exist at the start of this session; it was reconstructed by
+scripts/bootstrap.sh, which is the point of the exercise.
+
+Refs: ADR-0001 · SPEC.md §2.3, U-15 · MILESTONES.md M0 · QUALITY_BAR.md Q-3
+Generated: 2026-10-01T14:17:11Z
+Host     : Debian GNU/Linux 13 (trixie), kernel 6.1.158+, x86_64, 2 vCPU, 1.9 GiB RAM
+
+### S1. bootstrap.sh full — tool versions installed, vs the Phase 0 pins
+  TOOL             INSTALLED              PHASE 0 (SETUP_REPORT)
+  uv               0.12.21                0.12.21
+  python           3.12.14                3.12.14
+  docker           26.1.5+dfsg1           26.1.5+dfsg1
+  compose          5.5.1                  5.5.1
+  node             v22.23.3               v22.23.3
+  pnpm             12.8.1                 12.8.1
+  k6               v2.3.0                 v2.3.0
+  gitleaks         8.30.1                 8.30.1
+  psql             17.11                  17.11
+  gh               2.46.0                 2.46.0
+  aws              2.37.7                 2.37.7
+  pre-commit       4.6.2                  4.6.2
+  -> every pin matches.
+
+  GAP FOUND: bootstrap.sh full did not install gh, psql or jq, which V1 requires.
+             Fixed by adding ensure_apt_clis() before this run.
+
+### S2. Data layer
+  SERVICE   IMAGE                          STATUS
+  db        pgvector/pgvector:0.8.2-pg18   Up 3 minutes (healthy)
+  redis     redis:7-alpine                 Up 3 minutes (healthy)
+  roles     : docscout(super=true) docscout_app(super=false)
+  extensions: plpgsql 1.0, vector 0.8.2
+  -> least-privilege app role docscout_app created by infra/initdb/02-app-role.sh.
+
+### S3. FIRST RUN — one genuine failure
+  ==============================================================
+   DocScout Phase 0 — verification matrix     2026-10-01T14:14:16Z
+  ==============================================================
+    PASS   V1 toolchain                 all required tools present
+    PASS   V2 postgres+pgvector         pgvector=0.8.2 cosine=0.000 iterative_scan=off fts=t
+    PASS   V3 redis                     PONG
+    PASS   V4 python env                all imports + torch CPU smoke (2.14.1+cpu)
+    PASS   V5 lockfile                  uv sync --frozen exit 0 (169 pkgs locked)
+    PASS   V6 MCP servers               3/3 verified w/ real tool calls (github BLOCKED: no PAT; postgres REJECTED)
+    PASS   V7 skills                    6/6 project skills valid; 21 SKILL.md total (incl. superpowers v6.4.2)
+    FAIL   V8 hooks                     settings.json or dangerous-bash.sh missing
+    PASS   V9 pre-commit                installed; fake-secret commit was blocked (evidence on file)
+    BLOCK  V10 CI                       workflow present + yamllint-valid, but NO remote (no GitHub PAT) -> no run URL
+    BLOCK  V11 hosted models            UNPINNED: no API keys issued; roles null, spend $0.00 (guardrail §1.6: never guess an ID)
+    PASS   V12 local models             embed dim=384, rerank 4.56 ms/pair (<50 threshold)
+    PASS   V13 corpus machinery         20/20 docs >500 chars; 1 injection canary logged
+    PASS   V14 ui/browser               screenshot 16K at docs/setup/ui-smoke.png
+    PASS   V15 load pipeline            report dir loadtests/reports/verify/20261001T101742Z/ (dummy target; numbers not claimable)
+    PASS   V16 secrets sweep            git log pattern sweep: 0 findings; gitleaks full history: clean
+    PASS   V17 clean state              only db + redis running; no other containers; 0 cloud resources
+  --------------------------------------------------------------
+   PASS=14  FAIL=1  BLOCKED=2
+   BLOCKED items are credential/environment limits — see SETUP_REPORT.md §13.
+  ==============================================================
+  make: *** [Makefile:57: verify-setup] Error 1
+
+### S4. Diagnosis of the V8 failure — a security control silently disabled
+
+V8 requires .claude/hooks/dangerous-bash.sh to be EXECUTABLE. The hook logic was
+intact (deny 'rm -rf /' -> exit 2, allow 'uv run pytest -q' -> exit 0); only the
+file mode was wrong.
+
+Root cause: the workspace snapshot stripped the executable bit from every shebang
+script in the repository, and commit c2eeb90 recorded all 16 of them as 100644.
+A file-mode change is invisible when reading a diff, so it was committed unnoticed.
+
+Consequence, stated plainly: .claude/hooks/dangerous-bash.sh is the agent command
+denylist (SECURITY.md S-16). A non-executable hook does not run. The control that
+blocks destructive commands was disabled by an invisible metadata loss - a control
+that still *looked* present in every listing of the repository.
+
+Scope: 16 files, including all three .claude/hooks/, scripts/verify_setup.sh,
+infra/initdb/02-app-role.sh, both scripts/*.py and six vendored Superpowers helpers.
+(The initdb script still worked, because Postgres SOURCES a non-executable *.sh
+instead of running it - so the app role exists. Luck, not design.)
+
+Fix: chmod +x on all 16, recorded by git as mode 100644 => 100755.
+
+Guard: added pre-commit hook `check-shebang-scripts-are-executable`, so a shebang
+script without the exec bit can no longer be committed. Proven to fire:
+
+  $ chmod -x .claude/hooks/dangerous-bash.sh && pre-commit run check-shebang-scripts-are-executable --all-files
+    .claude/hooks/dangerous-bash.sh: has a shebang but is not marked executable!
+  $ chmod +x .claude/hooks/dangerous-bash.sh && pre-commit run ... --all-files
+    check that scripts with shebangs are executable..........................Passed
+
+### S5. SECOND RUN — after the fix
+  ==============================================================
+   DocScout Phase 0 — verification matrix     2026-10-01T14:16:05Z
+  ==============================================================
+    PASS   V1 toolchain                 all required tools present
+    PASS   V2 postgres+pgvector         pgvector=0.8.2 cosine=0.000 iterative_scan=off fts=t
+    PASS   V3 redis                     PONG
+    PASS   V4 python env                all imports + torch CPU smoke (2.14.1+cpu)
+    PASS   V5 lockfile                  uv sync --frozen exit 0 (169 pkgs locked)
+    PASS   V6 MCP servers               3/3 verified w/ real tool calls (github BLOCKED: no PAT; postgres REJECTED)
+    PASS   V7 skills                    6/6 project skills valid; 21 SKILL.md total (incl. superpowers v6.4.2)
+    PASS   V8 hooks                     denylist denies 'rm -rf /' (exit 2), allows safe cmd (exit 0)
+    PASS   V9 pre-commit                installed; fake-secret commit was blocked (evidence on file)
+    BLOCK  V10 CI                       workflow present + yamllint-valid, but NO remote (no GitHub PAT) -> no run URL
+    BLOCK  V11 hosted models            UNPINNED: no API keys issued; roles null, spend $0.00 (guardrail §1.6: never guess an ID)
+    PASS   V12 local models             embed dim=384, rerank 4.56 ms/pair (<50 threshold)
+    PASS   V13 corpus machinery         20/20 docs >500 chars; 1 injection canary logged
+    PASS   V14 ui/browser               screenshot 16K at docs/setup/ui-smoke.png
+    PASS   V15 load pipeline            report dir loadtests/reports/verify/20261001T101742Z/ (dummy target; numbers not claimable)
+    PASS   V16 secrets sweep            git log pattern sweep: 0 findings; gitleaks full history: clean
+    PASS   V17 clean state              only db + redis running; no other containers; 0 cloud resources
+  --------------------------------------------------------------
+   PASS=15  FAIL=0  BLOCKED=2
+   BLOCKED items are credential/environment limits — see SETUP_REPORT.md §13.
+  ==============================================================
+
+### S6. Caveats — what this run does NOT establish
+  - Not a pristine host. ~/.cache/uv and ~/.cache/pre-commit persisted within the
+    session, so wheel and hook downloads were warm. Every BINARY (uv, docker, node,
+    k6, gitleaks, psql, gh, aws) and both container images were fetched fresh.
+  - V10 and V11 remain BLOCKED by design: no GitHub PAT (K-2) and no LLM API keys
+    (K-1). Phase 0 API spend remains $0.00.
+  - V6, V12, V14 and V15 assert recorded Phase 0 artifacts rather than re-executing
+    MCP probes, model benchmarks, the browser smoke test or the k6 run.
+  - CI has still never executed on a remote (U-6).
+  - db and redis are intentionally left running: V17 asserts exactly those two.

@@ -32,18 +32,23 @@ a cosmetic all-green.
 
 ## 2. Gates enforced today — VERIFIED
 
-### 2.1 Pre-commit — 11 hooks, demonstrated on real commits
+### 2.1 Pre-commit — 12 hooks, demonstrated on real commits
 
 From `.pre-commit-config.yaml` (`default_install_hook_types: [pre-commit, pre-push]`):
 
 | Hook | Source |
 |---|---|
-| `trailing-whitespace`, `end-of-file-fixer`, `check-added-large-files` (max 5 MB), `check-merge-conflict`, `check-yaml`, `check-json`, `detect-private-key` | `pre-commit-hooks` v6.0.0 |
+| `trailing-whitespace`, `end-of-file-fixer`, `check-added-large-files` (max 5 MB), `check-merge-conflict`, `check-yaml`, `check-json`, `detect-private-key`, `check-shebang-scripts-are-executable` | `pre-commit-hooks` v6.0.0 |
 | `ruff` (`--fix`), `ruff-format` | `ruff-pre-commit` v0.16.9 |
 | `gitleaks` — `gitleaks git --pre-commit --redact --staged --verbose` | local hook, pinned binary |
 | `mypy` — `uv run mypy app` | local hook |
 
-Two deliberate configuration choices that must not be "cleaned up":
+Three deliberate configuration choices that must not be "cleaned up":
+
+- `check-shebang-scripts-are-executable` was added on 2026-10-01 after a snapshot stripped the
+  executable bit from all 16 shebang scripts and the loss was committed unnoticed — silently
+  disabling the agent command denylist (`SECURITY.md` S-16). File modes do not show up when
+  reading a diff, so the guard is the only reliable defence.
 
 - `check-json` excludes `^ui/tsconfig.*\.json$` — Vite emits JSONC, where comments are legal.
   Stripping the comments from generated config was rejected.
@@ -55,7 +60,7 @@ Two deliberate configuration choices that must not be "cleaned up":
 **VERIFIED, and not merely asserted.** The chain is known to bite: on 2026-10-01 the first attempt
 at the version-control restoration commit was **rejected** by `trailing-whitespace` and
 `end-of-file-fixer`, which modified six files; the commit only succeeded after re-staging. Every
-commit in this repository has passed all 11 hooks, including `gitleaks` and strict `mypy`. A hook
+commit in this repository has passed every hook, including `gitleaks` and strict `mypy`. A hook
 chain that has never failed a commit is a hook chain nobody has tested.
 
 ### 2.2 CI — `.github/workflows/ci.yml`
@@ -87,10 +92,13 @@ never run in CI.*
 
 **Q-3 — SPECIFIED.** `make verify-setup` must still be green after any change.
 
-*Caveat, VERIFIED 2026-10-01:* the matrix has **not** been re-run since Phase 0. `scripts/bootstrap.sh`
-restores the `core` toolchain — enough for every gate in §2.1 to 2.3 — but the `full` tier (Docker,
-Compose, Node/pnpm, k6, AWS CLI) that V2, V3, V12, V14 and V15 depend on has not been exercised
-here. Closing that is `docs/MILESTONES.md` M0 exit criterion 2, and the remaining scope of U-15.
+**VERIFIED 2026-10-01, re-run and reproduced.** After `scripts/bootstrap.sh full` rebuilt the
+toolchain from scratch, the matrix returned **PASS=15 / FAIL=0 / BLOCKED=2**, exit 0 — matching
+Phase 0. Evidence: `docs/setup/verify/m0-verify-setup-rerun.txt`.
+
+It is worth noting *how* that result was reached, because it is the clearest justification for
+Q-0 in this document: the first run **failed** on V8, which turned out to be a disabled security
+control rather than a flaky check. The matrix paid for itself the first time it was re-run.
 
 ---
 

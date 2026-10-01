@@ -139,6 +139,25 @@ execution. Measured in Phase 0: **11/11 dangerous commands denied, 6/6 benign co
 (`docs/setup/verify/step6-hooks-denylist.txt`, V8). MCP tool results are treated as untrusted input
 (`AGENTS.md`).
 
+> **Incident, 2026-10-01 — this control was inert and nobody could see it.**
+> A workspace snapshot stripped the executable bit from every shebang script in the repository,
+> including `.claude/hooks/dangerous-bash.sh`. The file was present, tracked, and byte-for-byte
+> correct; its logic still returned exit 2 for `rm -rf /` when invoked explicitly. But a hook
+> without the executable bit is not run by the agent runtime, so the denylist was **not enforcing
+> anything**. The loss was then committed in `c2eeb90` without anyone noticing, because a file
+> mode does not appear when you read a diff.
+>
+> Detected by V8 of the verification matrix on its first re-run — not by review, and not by
+> reading the repository, both of which showed a perfectly healthy control.
+>
+> Fixed: executable bits restored on all 16 affected files. Guarded: the pre-commit hook
+> `check-shebang-scripts-are-executable` now rejects any shebang script that is not executable,
+> and was tested by deliberately re-breaking the file and confirming the hook fires.
+>
+> **The transferable lesson:** a security control is only "enforced" if something executes it and
+> reports. Presence in the repository is not enforcement, and a control whose failure mode is
+> *silent absence* needs an automated check that it is still live.
+
 ### 4.6 Deployment and spend — SPECIFIED, BLOCKED
 
 **S-14.** Before any cloud resource is created: a dedicated account, a hard cost cap, and a billing
@@ -161,7 +180,8 @@ resources exist**; Phase 0 API spend **$0.00** (V17, K-3). Deployment is BLOCKED
 |---|---|---|
 | Secret scanning (pre-commit + CI, full history) | **Yes** | V9, V16 |
 | Dependency pinning | **Yes** | V5, `uv.lock` |
-| Agent command denylist | **Yes** | V8 |
+| Agent command denylist | **Yes** — re-verified 2026-10-01 after being found inert (see S-16) | V8, `docs/setup/verify/m0-verify-setup-rerun.txt` |
+| Executable-bit integrity of hooks and scripts | **Yes** — `check-shebang-scripts-are-executable` pre-commit hook | `.pre-commit-config.yaml` |
 | MCP/skill pinning + manual audit | **Yes** (manual only) | V6, V7, `docs/security/` |
 | Injection canary detection | **Yes** (detection only) | V13 |
 | Least-privilege DB role | Partial — role is created; application does not use it yet | `infra/initdb/02-app-role.sh` |
