@@ -90,10 +90,14 @@ is written against a signed API contract rather than to silence a Makefile targe
 
 **Work and exit criteria:**
 
-1. **ADR: chunking strategy** (size, overlap, structural awareness) — closes **U-8**.
-2. **ADR: embedding model and dimension** — local `bge-small-en-v1.5` (384 d, verified, free) vs a
-   hosted embedder — closes **U-9**. Interacts with U-1: a hosted embedder reintroduces the
-   credential dependency.
+1. ~~**ADR: embedding model and dimension**~~ — **DONE 2026-10-01, ADR-0002**, closes **U-9**.
+   `bge-small-en-v1.5` at `D = 384`. A five-arm bake-off on the real corpus found no significant
+   quality difference between candidates, so the choice rests on structural grounds (zero
+   truncation at 512 tokens, smallest index, $0). A hosted embedder stays BLOCKED by U-1.
+2. **ADR: chunking strategy** (size, overlap, structural awareness) — closes **U-8**. ADR-0002
+   hands it a hard ceiling: **≤1,200 chars** while bilingual mastheads remain in the text,
+   ~2,200 once ingest strips them. It also warns that adjacent-chunk ambiguity is high in this
+   corpus, so chunk-level retrieval metrics will read pessimistically.
 3. **ADR: datastore choice**, recording Elasticsearch and dedicated vector databases as rejected
    alternatives (`ARCHITECTURE.md` §6 flags this ADR as owed).
 4. **ADR: HNSW vs IVFFlat.**
@@ -256,14 +260,22 @@ M0 is done apart from exit criterion 3, which is held for M1 on purpose. The env
 reproducible from a committed script and the V1–V17 matrix has been re-run green, so the
 foundation-repair work that has occupied the last two sessions is finished.
 
-The single smallest meaningful next action is now **M1's embedding-model ADR (U-9)** — not the
-chunking ADR, despite U-8 appearing first in the register.
+**Done: ADR-0002 closed U-9 on 2026-10-01.** The next action is now **M1's chunking ADR (U-8)**,
+which ADR-0002 has deliberately de-risked by bounding its option space.
 
-The reason is the order of the one-way doors. `chunks.embedding` is declared `vector(D)`, and `D`
-is fixed by the embedding model. Changing `D` later means a schema migration, a full re-embed of
-every chunk, a rebuilt HNSW index and a complete re-evaluation. Chunking strategy is also
-expensive to change, but it is changeable *within* a fixed `D`; the reverse is not true. U-9 also
-has a decision ready to make with evidence already in hand — `bge-small-en-v1.5` is verified
-working at 384 dimensions, 112.4 sentences/s, free and CPU-only — and its main rejected
-alternative, a hosted embedder, is currently blocked anyway by U-1. It is one ADR with a real
-rejected alternative, and it unblocks the schema, which unblocks everything else.
+Three things make it the right next step rather than the datastore or index ADRs.
+
+It is **unblocked and bounded**. ADR-0002 fixed `D = 384` and, in doing so, measured the corpus's
+token density: 0.2854 tokens/char on average but 0.4860 at worst. A 512-token model therefore
+caps chunks at **~1,200 characters** while bilingual mastheads remain, and ~2,200 once ingest
+strips them. U-8 no longer starts from a blank page; it starts inside a measured envelope.
+
+It is **the last decision gating the schema**. `documents`, `document_versions` and `chunks` can
+all be written once chunk identity is settled, and nothing in M2 can begin until they exist.
+
+It has **evidence waiting to be collected cheaply**. The bake-off harness already chunks the real
+corpus and scores retrieval; pointing it at several chunk sizes is a parameter sweep, not new
+machinery. ADR-0002 also left U-8 two concrete warnings worth testing: adjacent chunks in
+templated regulatory prose are near-duplicates (the unmasked control topped out at 0.88, not
+1.0), and BM25 matched every neural embedder — so chunk size should be tuned against the hybrid
+retriever, never against the vector arm alone.

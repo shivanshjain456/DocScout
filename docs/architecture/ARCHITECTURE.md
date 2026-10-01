@@ -77,7 +77,7 @@ Stages: **fetch → extract → chunk → embed → store.**
 | extract | `pypdf` for PDFs, `trafilatura`/`beautifulsoup4` for HTML; **follow the SEBI `<iframe … file=…>` to the PDF** | VERIFIED failure mode: the SEBI detail page yields ~227 extractable chars (K-17) |
 | guard | Reject any document extracting < 500 clean chars (FR-3) | The ≥ 500-char criterion is the one Phase 0 used (20/20 passed) |
 | chunk | Emit chunks carrying `document_id`, `version`, source offsets | Strategy UNRESOLVED (U-8) |
-| embed | Encode chunk text to a fixed-dimension vector | Model UNRESOLVED (U-9); local `bge-small-en-v1.5` VERIFIED at 384 d, 112.4 sentences/s |
+| embed | Encode chunk text to a fixed-dimension vector | **SPECIFIED (ADR-0002): `bge-small-en-v1.5`, 384 d, L2-normalised.** Queries MUST carry the BGE prefix, passages MUST NOT. 6.9 chunks/s on real corpus text (2 vCPU) |
 | store | Upsert document, version, chunks, embeddings in one transaction per document | SPECIFIED |
 
 Idempotency (NFR-8) comes from the content hash: re-running over an unchanged corpus performs no
@@ -176,7 +176,7 @@ requirements FR-2, FR-4, FR-5, FR-7 and by `CORPUS_SPEC.md` §4.
 |---|---|---|
 | `documents` | `document_id` (PK), `canonical_url`, `source` (`RBI`\|`SEBI`), `title`, `authority`, `published_date`, `detail_page` | One logical circular, stable across reissues |
 | `document_versions` | `version_id` (PK), `document_id` (FK), `sha256` (unique with `document_id`), `fetch_ts`, `http_status`, `bytes`, `pages`, `extractor`, `char_count`, `is_current` | One observed byte-state; a new `sha256` at a known URL is a new row (FR-4) |
-| `chunks` | `chunk_id` (PK), `version_id` (FK), `ordinal`, `text`, `char_start`, `char_end`, `tsv` (`tsvector`, generated), `embedding` (`vector(D)`) | The retrievable unit; `D` is fixed by U-9 |
+| `chunks` | `chunk_id` (PK), `version_id` (FK), `ordinal`, `text`, `char_start`, `char_end`, `tsv` (`tsvector`, generated), `embedding` (**`vector(384)`**) | The retrievable unit; `D = 384` fixed by ADR-0002 |
 
 Indexes: HNSW with `vector_cosine_ops` on `chunks.embedding`; GIN on `chunks.tsv`; unique
 `(document_id, sha256)` on versions; `(version_id, ordinal)` on chunks.
@@ -186,7 +186,10 @@ Three constraints that are easy to get wrong and are therefore stated normativel
 - `chunk_id` MUST remain resolvable after its version is superseded, so historical evaluation runs
   stay reproducible (FR-4, `EVAL_PROTOCOL.md` §7).
 - The embedding column dimension is **not** changeable without a reindex and a full re-evaluation;
-  it is a one-way door and the reason U-9 must close before M2.
+  it is a one-way door, now closed at `vector(384)` by ADR-0002. The cost of reopening it is
+  dominated by evaluation, not compute: re-embedding 10k chunks takes ~24 min on the 2 vCPU floor,
+  but every historical eval run becomes incomparable and the regression gate needs three fresh
+  baselines. That cost is near-zero until U-17 lands and steep afterwards.
 - Supersession between *different* documents (a master circular replacing earlier ones) is **not**
   modelled above and is **UNRESOLVED (U-12)**.
 
@@ -221,7 +224,7 @@ server-side error, never a silently returned uncited answer.
 | Postgres + pgvector as the single store for lexical **and** dense retrieval | SPECIFIED | One datastore, transactional consistency between text and vectors, no separate search cluster to operate; VERIFIED working at 18.4 / 0.8.2 | Yes — rejected alternatives (Elasticsearch, a dedicated vector DB) must be recorded |
 | HNSW over IVFFlat | PROPOSED | HNSW needs no training step and gives better recall at small corpus sizes; `hnsw.iterative_scan` available if filtered recall is poor | Yes |
 | Cross-encoder reranking on CPU | SPECIFIED | Measured 4.56 ms/pair, 88 MB — affordable at the 2 vCPU floor | No |
-| Local embedder `bge-small-en-v1.5` (384 d) | UNRESOLVED (U-9) | VERIFIED runnable and free; a hosted embedder may score better but reintroduces the credential dependency (K-1) | Yes |
+| Local embedder `bge-small-en-v1.5` (384 d) | **DECIDED (ADR-0002)** | Measured on the real corpus against MiniLM-L6, bge-base (768 d), multilingual-e5 and a BM25 control: no significant quality difference, so chosen for zero truncation at 512 tokens, smallest index and $0 cost. A hosted embedder stays BLOCKED by U-1 (K-1) | Yes |
 | Redis for cache + rate limiting | SPECIFIED | VERIFIED running; `AGENTS.md` assigns rate limiting to `app/api/` | No |
 | Provider-agnostic generator port | SPECIFIED | Forced by U-1 — the model identity cannot be chosen yet | No |
 | FastAPI | SPECIFIED | Pinned and locked (0.142.2); async-native, matches `ASYNC` ruff rules already enabled | No |

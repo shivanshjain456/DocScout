@@ -29,7 +29,27 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 - Security documentation: MCP server audit, skills audit, injection canary log, memory write log.
 - Setup tooling: `scripts/mcp_probe.py`, `scripts/verify_corpus_fetch.py`, `scripts/verify_setup.sh`.
 
+### Decided
+- **ADR-0002 pins the embedding model and vector dimension: `BAAI/bge-small-en-v1.5`, `D = 384`.**
+  Closes U-9 and unblocks the schema. The decision rests on a five-arm bake-off over the real
+  RBI/SEBI corpus (149 chunks, 21 documents) with a BM25 lexical control, two independent probe
+  sets, a harness sanity control, and paired significance testing. Evidence:
+  `docs/decisions/evidence/u9-embedding-bakeoff.json`, harness
+  `scripts/experiments/u9_embedding_bakeoff.py`.
+  - No candidate was significantly better than another (all McNemar p >= 0.42; every 95% CI
+    straddles zero), so the choice is made on structural and cost grounds and says so.
+  - `all-MiniLM-L6-v2` is rejected on evidence rather than leaderboard reputation: its 256-token
+    window truncates **72 of 149 chunks**. It still scored 1.0 on the easy document-level probe,
+    which is exactly how such a defect survives a casual benchmark.
+  - BM25 alone matched or beat every neural embedder, which makes the hybrid retriever an
+    evidence-backed requirement rather than an assumption.
+
 ### Fixed
+- **Corrected a ~16x error in the embedding-throughput extrapolation.** `CORPUS_SPEC.md` C-5 read
+  112.4 *sentences*/s as "~10,000 chunks is ~90 s". Measured on real 1,000-char regulatory chunks
+  the rate is 6.9 chunks/s, so 10k chunks is ~24 minutes. The Phase 0 measurement was sound; only
+  the extrapolation to chunks was not. `SETUP_REPORT.md` keeps its signed wording with a pointer
+  to the correction.
 - **Restored the executable bit on all 16 shebang scripts.** A workspace snapshot stripped it and
   the loss was committed unnoticed, because file modes are invisible in a diff. One of the affected
   files is `.claude/hooks/dangerous-bash.sh`, the agent command denylist — a security control that

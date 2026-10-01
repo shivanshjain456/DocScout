@@ -428,6 +428,10 @@ Every deviation, failure, and version drift. No omissions.
 **Environment limits that will shape the build phase:**
 - **K-15 — 2 vCPU / 1.9 GiB RAM.** Embedding throughput measured at **112 sentences/s**; a
   10k-chunk corpus is ~90 s of pure embedding, and anything larger will dominate iteration time.
+  *(Correction, 2026-10-01, ADR-0002: the "~90 s" extrapolation is wrong by ~16×. Measured on real
+  1,000-char corpus chunks the rate is 6.9 chunks/s, so 10k chunks is ~24 min. The 112 sentences/s
+  measurement itself stands; only the extrapolation to chunks was unsound. Original wording kept
+  because this report is the signed Phase 0 record.)*
   Memory is tight enough that Postgres + Redis + torch + Chromium should not run concurrently under
   load. Any latency/throughput number produced on this box must carry that caveat.
 - **K-16 — No `robots.txt`/ToS audit performed** for rbi.org.in or sebi.gov.in, and no explicit

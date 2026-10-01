@@ -70,7 +70,7 @@ characters.
 |---|---|---|
 | C-3 | v1 corpus scope is RBI and SEBI documents published in a date window fixed by ADR before the first full ingest | UNRESOLVED — the window is not chosen; Phase 0 sampled whatever was current on 2026-10-01 |
 | C-4 | Selection MUST be reproducible: the ingester records the listing URL and page it harvested each document from | SPECIFIED (the manifest already carries `detail_page`, VERIFIED) |
-| C-5 | Target corpus size for v1 | UNRESOLVED — no figure is established. The only measured datapoint is embedding throughput: **112.4 sentences/s**, so ~10,000 chunks ≈ 90 s of embedding on the 2 vCPU floor (K-15) |
+| C-5 | Target corpus size for v1 | UNRESOLVED — no figure is established. Throughput is now measured on **real corpus chunks** rather than extrapolated from generic sentences: **6.9 chunks/s**, so ~10,000 chunks ≈ **24 minutes** of embedding on the 2 vCPU floor (K-15). The earlier "≈ 90 s" figure reasoned from 112.4 *sentences*/s and understated the cost by ~16× — a 1,000-char chunk of regulatory prose is not a short sentence (ADR-0002) |
 
 No claim is made here about how many documents RBI and SEBI publish, or about corpus completeness.
 Nothing in the repository establishes it.

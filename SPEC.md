@@ -202,7 +202,7 @@ Each requirement is identified, testable, and tagged. **None is implemented.**
 | FR-13 | When retrieved context does not support an answer, the system MUST refuse explicitly rather than answer from parametric knowledge | SPECIFIED | Test over gold-set `answer_type: unanswerable` items asserting refusal (`EVAL_PROTOCOL.md` E-6) |
 | FR-14 | Answers MUST state the issuing authority, document title or number, and date for each citation | SPECIFIED | Schema test on the citation object |
 | FR-15 | RRF constant, candidate depth per arm, and rerank depth | UNRESOLVED (U-10) | — |
-| FR-16 | Production embedding model and its vector dimensionality | UNRESOLVED (U-9) | — |
+| FR-16 | Production embedding model and its vector dimensionality | SPECIFIED — `BAAI/bge-small-en-v1.5`, `D = 384`, L2-normalised, BGE query prefix mandatory | ADR-0002; `docs/decisions/evidence/u9-embedding-bakeoff.json` |
 | FR-17 | Generator model identity | BLOCKED (U-1) — `config/models.json` holds `id: null`, `status: BLOCKED_NO_CREDENTIAL` for every hosted role | — |
 
 ### 4.3 API surface
@@ -289,7 +289,7 @@ Authoritative detail: `docs/corpus/CORPUS_SPEC.md` and `ARCHITECTURE.md` §4.
 | Redis | 7-alpine | VERIFIED (`PONG`) |
 | FastAPI / uvicorn | 0.142.2 / 0.54.0 | VERIFIED locked, unused |
 | sentence-transformers / transformers / torch | 6.1.0 / 5.17.0 / 2.14.1+cpu | VERIFIED |
-| Embedder | `BAAI/bge-small-en-v1.5`, 384 dims, 129 MB | VERIFIED runnable |
+| Embedder | `BAAI/bge-small-en-v1.5`, 384 dims, 128.3 MB | VERIFIED runnable **and measured on the real corpus** (ADR-0002): 0/149 chunks truncated, 39 ms query p95, 6.9 chunks/s |
 | Reranker | `cross-encoder/ms-marco-MiniLM-L-6-v2`, 88 MB | VERIFIED runnable |
 | ragas / deepeval | 0.4.3 / 4.2.7 | VERIFIED locked, unused; `openai` held at 2.54.0 by a `jiter` conflict (K-4) |
 | Hosted LLM roles | none | **BLOCKED** — all `id: null` in `config/models.json`; Phase 0 API spend $0.00 |
@@ -322,7 +322,7 @@ carried in `SETUP_REPORT.md` §15; U-6 onward are additions surfaced while writi
 | **U-6** | Will there be a GitHub remote? | Provide a PAT and create the repo, or accept local-only | A green CI run URL (V10) | K-2, the entire CI gate story |
 | **U-7** | AWS account, region, and cost cap for the demo deploy | Named account + hard budget cap before any resource is created | Billing alarm screenshot + `docs/deploys/<ts>.md` | M6 |
 | **U-8** | Chunking strategy: size, overlap, structure awareness | ADR choosing a strategy, with the rejected alternatives | ADR in `docs/decisions/` + a parameter sweep report under `evals/reports/` | FR-8, and every retrieval metric |
-| **U-9** | Production embedding model and vector dimensionality | ADR: local `bge-small-en-v1.5` (384 d, verified, free) vs a hosted embedder | ADR + the index DDL that fixes the column dimension | FR-16, the database schema, U-1 |
+| ~~U-9~~ | ~~Production embedding model and vector dimensionality~~ | **CLOSED 2026-10-01** (ADR-0002). `bge-small-en-v1.5` at `D = 384`, chosen on structural and cost grounds after a 5-arm bake-off found **no statistically significant quality difference** between candidates (all McNemar p ≥ 0.42) | `docs/decisions/0002-embedding-model-and-dimension.md` + evidence JSON | — |
 | **U-10** | RRF constant, per-arm candidate depth, rerank depth | ADR with a sweep | Sweep report + ADR | FR-15, NFR-1 |
 | **U-11** | Table-bearing PDFs: table-aware extraction or accept flattening? | ADR | A measured extraction-fidelity comparison on table-heavy circulars | Numeric answer accuracy |
 | **U-12** | How is supersession represented and surfaced? | Data-model decision: metadata field, link graph, or out of scope for v1 | Schema + a gold-set item that fails without it | Answer correctness on "current rule" questions |
@@ -336,7 +336,7 @@ carried in `SETUP_REPORT.md` §15; U-6 onward are additions surfaced while writi
 
 ## 10. Acceptance of this specification
 
-This specification is accepted when §4 and §5 contain no PROPOSED tags, U-1, U-8, U-9, U-13 are
+This specification is accepted when §4 and §5 contain no PROPOSED tags, U-1, U-8, U-13 are
 closed, and `docs/MILESTONES.md` M1 entry criteria are met. Until then it is a working document and
 changes to it are ordinary commits, not ADRs — except changes that close an Unresolved Register item,
 which require the evidence named in §9.

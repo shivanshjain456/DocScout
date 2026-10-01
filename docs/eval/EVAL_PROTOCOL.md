@@ -168,8 +168,10 @@ therefore **specified but not enforced**. The two jobs that *are* enforced are `
 --frozen, ruff check, ruff format --check, mypy app, pytest) and `secrets` (gitleaks, full history).
 
 Note the dependency chain: the gate needs a gold set, which needs chunk IDs, which need a chunker
-(U-8) and an embedding dimension (U-9). This ordering is why `docs/MILESTONES.md` puts the gate at
-M4 and not earlier.
+(U-8) and an embedding dimension (**U-9 — closed by ADR-0002 at `D = 384`**). This ordering is why
+`docs/MILESTONES.md` puts the gate at M4 and not earlier. ADR-0002 also makes the reverse
+dependency explicit: pinning `D` *before* the gold set exists is what keeps it cheap to change,
+because once baselines are recorded a new `D` invalidates them.
 
 ---
 
@@ -194,8 +196,9 @@ remaining fields recorded inside the report, a past run still cannot be reconstr
 copied out of the gitignored directory into a tracked location, or the citation is dangling.
 
 **E-16 — SPECIFIED.** Hardware context is mandatory on any latency-bearing number. The Phase 0
-baseline hardware is 2 vCPU / 1.9 GiB RAM (K-15); measured reranker cost is 4.56 ms/pair and
-embedding throughput is 112.4 sentences/s on that hardware.
+baseline hardware is 2 vCPU / 1.9 GiB RAM (K-15); measured reranker cost is 4.56 ms/pair, and
+embedding throughput is 112.4 sentences/s on generic sentences but **6.9 chunks/s on real
+1,000-char corpus chunks** — quote the latter for any corpus-scale estimate (ADR-0002).
 
 ---
 
@@ -246,5 +249,5 @@ gold set into a training set; hold out a slice that is looked at only before a r
 ## 10. Open items owned by this document
 
 U-1 (judge feasibility — blocks §4 entirely), U-17 (who writes and labels ≥ 120 items; persona
-validation), and the downstream dependencies U-8, U-9, U-10 that must close before a gold set can be
-pinned. All appear in `SPEC.md` §9.
+validation), and the downstream dependencies U-8 and U-10 that must close before a gold set can be
+pinned. U-9 is closed (ADR-0002). All appear in `SPEC.md` §9.

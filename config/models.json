@@ -1,9 +1,8 @@
 {
-  "_status": "BLOCKED — hosted model roles are UNPINNED. No API keys were provisioned in Phase 0 (the human declined paid keys). Guardrail §1.6 forbids guessing a model ID, so every hosted `id` below is null, not a remembered string. The `brief_candidate_sep2026` field records what the brief proposed, purely as a starting point for live verification when keys exist.",
-  "_verification_procedure": "Set OPENAI_API_KEY / ANTHROPIC_API_KEY, then run the §10.2 procedure: list live models, pick the current ID (or the documented successor), make one minimal call per role (1 token in, <=16 out), save the response to docs/setup/model-smoke/<role>.json, and write the returned response id into verified_by.",
+  "_status": "BLOCKED \u2014 hosted model roles are UNPINNED. No API keys were provisioned in Phase 0 (the human declined paid keys). Guardrail \u00a71.6 forbids guessing a model ID, so every hosted `id` below is null, not a remembered string. The `brief_candidate_sep2026` field records what the brief proposed, purely as a starting point for live verification when keys exist.",
+  "_verification_procedure": "Set OPENAI_API_KEY / ANTHROPIC_API_KEY, then run the \u00a710.2 procedure: list live models, pick the current ID (or the documented successor), make one minimal call per role (1 token in, <=16 out), save the response to docs/setup/model-smoke/<role>.json, and write the returned response id into verified_by.",
   "_evidence": "docs/setup/model-smoke/VERIFICATION-BLOCKED.txt",
   "_phase0_api_spend_usd": 0.0,
-
   "generator_primary": {
     "provider": "anthropic",
     "id": null,
@@ -27,7 +26,10 @@
   "judge_strong": {
     "provider": null,
     "id": null,
-    "brief_candidate_sep2026": ["gpt-5.5", "claude-opus-5-5"],
+    "brief_candidate_sep2026": [
+      "gpt-5.5",
+      "claude-opus-5-5"
+    ],
     "verified_at": null,
     "verified_by": null,
     "status": "BLOCKED_NO_CREDENTIAL",
@@ -36,7 +38,10 @@
   "judge_fast": {
     "provider": null,
     "id": null,
-    "brief_candidate_sep2026": ["claude-haiku-4-5", "gpt-5.4-mini"],
+    "brief_candidate_sep2026": [
+      "claude-haiku-4-5",
+      "gpt-5.4-mini"
+    ],
     "verified_at": null,
     "verified_by": null,
     "agreement_with_strong": null,
@@ -45,7 +50,6 @@
     "status": "BLOCKED_NO_CREDENTIAL",
     "note": "ci_approved may only become true after >=0.8 agreement with the strong judge AND human labels on 60-100 double-labeled items."
   },
-
   "embeddings_hosted_quality": {
     "provider": "openai",
     "id": null,
@@ -64,7 +68,6 @@
     "verified_at": null,
     "status": "BLOCKED_NO_CREDENTIAL"
   },
-
   "embeddings_local": {
     "repo": "BAAI/bge-small-en-v1.5",
     "dims": 384,
@@ -76,7 +79,12 @@
       "sentences_per_s": 112.4,
       "disk_mb": 129
     },
-    "rationale": "Chosen over all-MiniLM-L6-v2: stronger retrieval quality on MTEB at comparable size and speed, 384 dims keeps the pgvector index small, and it runs comfortably on a 2-vCPU CPU-only box. Full ADR due in the build phase."
+    "rationale": "Pinned by ADR-0002 after a five-arm bake-off on the real RBI/SEBI corpus (149 chunks, 21 docs) against all-MiniLM-L6-v2, bge-base-en-v1.5 (768 d), multilingual-e5-small and a BM25 lexical control. No candidate was significantly better (paired bootstrap + exact McNemar, all p >= 0.42, every 95% CI straddling zero). Chosen on structural grounds instead: 0/149 chunks truncated at its 512-token limit where MiniLM truncated 72/149 at 256, smallest index at 384 d (1544 B/vector), 128.3 MB on disk, CPU-only and free. Supersedes the earlier MTEB-leaderboard rationale, which was never measured on this corpus.",
+    "decided_by": "ADR-0002",
+    "evidence": "docs/decisions/evidence/u9-embedding-bakeoff.json",
+    "query_prefix": "Represent this sentence for searching relevant passages: ",
+    "passage_prefix": "",
+    "normalize_embeddings": true
   },
   "reranker_local": {
     "repo": "cross-encoder/ms-marco-MiniLM-L-6-v2",
@@ -90,10 +98,9 @@
       "sample_score": -2.2330358028411865,
       "disk_mb": 88
     },
-    "threshold_check": "PASS — 4.56 ms/pair is well under the 50 ms/pair limit in §10.2, so the heavier BAAI/bge-reranker-v2-m3 remains a viable build-phase A/B arm rather than being ruled out on latency.",
+    "threshold_check": "PASS \u2014 4.56 ms/pair is well under the 50 ms/pair limit in \u00a710.2, so the heavier BAAI/bge-reranker-v2-m3 remains a viable build-phase A/B arm rather than being ruled out on latency.",
     "rationale": "Fast, CPU-friendly, well-established baseline cross-encoder. Quality A/B against bge-reranker-v2-m3 is a build-phase ADR."
   },
-
   "_hardware_context": {
     "note": "All local timings measured on the Phase 0 box and are not portable.",
     "cpus": 2,
