@@ -122,6 +122,54 @@ ensure_git() {
   record "git" "INSTALLED" "$(git --version | awk '{print $3}')"
 }
 
+ensure_git_history() {
+  # `.git` itself does not survive this platform's snapshots -- the tree comes back, the
+  # commits do not (observed twice, reflog included). scripts/git_history.sh keeps a bundle
+  # of all refs as an ordinary file in the tree, which does survive. Restore it before
+  # anything else touches git, and never overwrite newer local commits (restore fast-forwards
+  # only). See the header of that script for the evidence and the rejected alternatives.
+  local out
+  if [[ ! -x "$REPO_ROOT/scripts/git_history.sh" ]]; then
+    report "SKIP" "git history" "scripts/git_history.sh not present"
+    return 0
+  fi
+  if [[ "$MODE" == "check" ]]; then
+    out="$("$REPO_ROOT/scripts/git_history.sh" status 2>&1 | sed -n 's/^ *state *//p')"
+    report "OK" "git history" "${out:-no bundle}"
+    return 0
+  fi
+  out="$("$REPO_ROOT/scripts/git_history.sh" restore 2>&1 | sed -n 's/^ *\(restored\|restore\) *//p' | head -1)"
+  report "OK" "git history" "${out:-nothing to restore}"
+}
+
+ensure_git_identity() {
+  # .git/config is excluded from workspace snapshots on this platform, so a restored tree can
+  # have 25 commits of history and still refuse to make the 26th: "empty ident name". Observed,
+  # not hypothetical. Adopt the identity the existing history already uses rather than inventing
+  # one, so authorship stays consistent across sessions.
+  local name email
+  name="$(git -C "${REPO_ROOT}" config user.name  || true)"
+  email="$(git -C "${REPO_ROOT}" config user.email || true)"
+  if [[ -n "${name}" && -n "${email}" ]]; then
+    record "git identity" "OK" "${name} <${email}>"
+    return
+  fi
+  if [[ "${CHECK_ONLY}" == "1" ]]; then
+    record "git identity" "MISSING" "unset; commits will fail"
+    return
+  fi
+  local head_name head_email
+  head_name="$(git -C "${REPO_ROOT}" log -1 --format='%an' 2>/dev/null || true)"
+  head_email="$(git -C "${REPO_ROOT}" log -1 --format='%ae' 2>/dev/null || true)"
+  if [[ -z "${head_name}" ]]; then
+    record "git identity" "SKIPPED" "no commits yet to copy an identity from"
+    return
+  fi
+  git -C "${REPO_ROOT}" config user.name  "${head_name}"
+  git -C "${REPO_ROOT}" config user.email "${head_email}"
+  record "git identity" "RESTORED" "${head_name} <${head_email}> (from HEAD)"
+}
+
 ensure_uv() {
   if have uv && [[ "$(uv --version | awk '{print $2}')" == "${UV_VERSION}" ]]; then
     record "uv" "OK" "${UV_VERSION}"; return
@@ -222,6 +270,29 @@ ensure_apt_clis() {
   sudo apt-get update -qq
   sudo apt-get install -y -qq "${want[@]}"
   record "jq/psql/gh" "INSTALLED" "$(jq --version 2>/dev/null), psql $(psql --version 2>/dev/null | awk '{print $3}'), gh $(gh --version 2>/dev/null | head -1 | awk '{print $3}')"
+}
+
+ensure_database_fallback() {
+  # docker-compose.yml is the documented way to run Postgres and stays the default. Some
+  # environments cannot run Docker at all -- this one could not, on 2026-10-01 -- and without a
+  # database nothing in the project is verifiable. scripts/dev_db_native.sh provisions an
+  # equivalent native cluster by executing infra/initdb/, the same files compose mounts.
+  if have docker; then return; fi
+  if [[ "${CHECK_ONLY}" == "1" ]]; then
+    if command -v pg_lsclusters >/dev/null 2>&1 \
+       && pg_lsclusters -h 2>/dev/null | awk '$4=="online"{found=1} END{exit !found}'; then
+      record "database" "OK" "native cluster online (no docker; see scripts/dev_db_native.sh)"
+    else
+      record "database" "MISSING" "no docker and no running cluster; run scripts/dev_db_native.sh"
+    fi
+    return
+  fi
+  step "docker unavailable — provisioning Postgres natively"
+  if bash "${REPO_ROOT}/scripts/dev_db_native.sh" >&2; then
+    record "database" "INSTALLED" "native PG cluster (scripts/dev_db_native.sh)"
+  else
+    record "database" "FAILED" "scripts/dev_db_native.sh exited non-zero"
+  fi
 }
 
 ensure_docker() {
@@ -332,6 +403,8 @@ main() {
   log "DocScout bootstrap — repo: ${REPO_ROOT}"
   ensure_shell_wiring
   ensure_git
+  ensure_git_history
+  ensure_git_identity
   ensure_uv
   ensure_python
   ensure_gitleaks
@@ -342,6 +415,7 @@ main() {
     ensure_apt_clis
     ensure_docker
     ensure_compose
+    ensure_database_fallback
     ensure_node
     ensure_k6
     ensure_awscli
