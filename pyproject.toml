@@ -55,7 +55,12 @@ select = ["E", "F", "I", "B", "UP", "S", "ASYNC"]
 ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"]          # assert is the point of a test
+# S101: assert is the point of a test.
+# S603/S607: tests/test_git_history.py drives a shell script through subprocess, which is
+# the only way to test a shell script. Every argument is a literal or a pytest tmp_path,
+# and resolving git and bash by absolute path would make the suite fail on any machine
+# whose layout differs. Scoped to tests only -- app/** keeps the full rule set.
+"tests/**" = ["S101", "S603", "S607"]
 "scripts/**" = ["S101", "S310"]
 
 [tool.mypy]

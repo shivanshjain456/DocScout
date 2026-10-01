@@ -128,18 +128,25 @@ ensure_git_history() {
   # of all refs as an ordinary file in the tree, which does survive. Restore it before
   # anything else touches git, and never overwrite newer local commits (restore fast-forwards
   # only). See the header of that script for the evidence and the rejected alternatives.
-  local out
-  if [[ ! -x "$REPO_ROOT/scripts/git_history.sh" ]]; then
-    report "SKIP" "git history" "scripts/git_history.sh not present"
-    return 0
+  local script="${REPO_ROOT}/scripts/git_history.sh" out
+  if [[ ! -f "${script}" ]]; then
+    record "git history" "SKIPPED" "scripts/git_history.sh not present"
+    return
   fi
-  if [[ "$MODE" == "check" ]]; then
-    out="$("$REPO_ROOT/scripts/git_history.sh" status 2>&1 | sed -n 's/^ *state *//p')"
-    report "OK" "git history" "${out:-no bundle}"
-    return 0
+  # The snapshot strips the executable bit, so invoke through bash rather than relying on
+  # the mode. Testing -x here would make the restore silently skip on every fresh session --
+  # exactly the sessions it exists for.
+  if [[ "${CHECK_ONLY}" == "1" ]]; then
+    out="$(bash "${script}" status 2>&1 | sed -n 's/^ *state  *//p' | head -1)"
+    record "git history" "OK" "${out:-no bundle}"
+    return
   fi
-  out="$("$REPO_ROOT/scripts/git_history.sh" restore 2>&1 | sed -n 's/^ *\(restored\|restore\) *//p' | head -1)"
-  report "OK" "git history" "${out:-nothing to restore}"
+  out="$(bash "${script}" restore 2>&1 | sed -n 's/^ *restored  *//p' | head -1)"
+  if [[ -n "${out}" ]]; then
+    record "git history" "RESTORED" "${out}"
+  else
+    record "git history" "OK" "already at or ahead of the bundle"
+  fi
 }
 
 ensure_git_identity() {

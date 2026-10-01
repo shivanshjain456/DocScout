@@ -46,8 +46,15 @@ cd "$REPO_ROOT"
 
 bundle_head() {
   # The bundle's tip for $BRANCH, or empty when the bundle is absent or unreadable.
+  #
+  # The `|| true` is load-bearing. Under `set -o pipefail` a corrupt bundle makes
+  # `git bundle list-heads` fail, which fails the pipeline, which trips `set -e` and kills
+  # the script with status 1 and not one word of output -- the single worst way for a
+  # disaster-recovery tool to behave. Swallow it here and let cmd_restore diagnose it.
   [[ -f "$BUNDLE" ]] || return 0
-  git bundle list-heads "$BUNDLE" 2>/dev/null | awk -v b="refs/heads/$BRANCH" '$2==b {print $1}'
+  local heads
+  heads="$(git bundle list-heads "$BUNDLE" 2>/dev/null || true)"
+  awk -v b="refs/heads/$BRANCH" '$2==b {print $1}' <<<"$heads"
 }
 
 cmd_save() {
@@ -77,6 +84,12 @@ cmd_save() {
 }
 
 cmd_restore() {
+  # Diagnose corruption before anything else: a present-but-unreadable bundle is a louder
+  # problem than an absent one, and must not be reported as "nothing to restore".
+  if [[ -f "$BUNDLE" ]] && ! git bundle verify "$BUNDLE" >/dev/null 2>&1; then
+    die "bundle at .history/docscout.bundle is corrupt; refusing to restore"
+  fi
+
   local bh
   bh="$(bundle_head)"
   [[ -n "$bh" ]] || { say "restore" "no bundle at .history/ -- nothing to restore"; return 0; }
@@ -86,7 +99,6 @@ cmd_restore() {
     return 0
   fi
 
-  git bundle verify "$BUNDLE" >/dev/null 2>&1 || die "bundle is corrupt; refusing to restore"
   git fetch -q "$BUNDLE" "refs/heads/*:refs/remotes/history/*" 2>/dev/null \
     || die "could not fetch objects from the bundle"
 
@@ -99,9 +111,19 @@ cmd_restore() {
 
   local before after
   before="$(git rev-list --count HEAD)"
-  # --soft moves the branch pointer and leaves the index and working tree exactly as they are.
-  # That is the whole point: the tree is the surviving copy and must not be overwritten.
-  git reset -q --soft "$bh"
+  # --mixed, NOT --soft. Both leave the working tree untouched, which is the requirement:
+  # the tree is the surviving copy. The difference is the index, and --soft leaves it pinned
+  # to the baseline commit. After the branch pointer jumps forward over commits that ADD
+  # files, an index still describing the old commit reports every one of those files as a
+  # staged deletion AND as untracked -- 60+ phantom changes on a tree that is in fact
+  # identical to the restored HEAD. --mixed resets the index to match the new HEAD and still
+  # never writes to the working tree.
+  #
+  # Not caught by simulating the reset with `git reset --soft <baseline>`: that leaves an
+  # index consistent with the tree, so the round trip cancels out. A real restored session
+  # begins with an index belonging to the baseline commit, which is the case that breaks.
+  # A simulation has to reproduce the index state, not only the ref state.
+  git reset -q --mixed "$bh"
   after="$(git rev-list --count HEAD)"
   say "restored" "$before -> $after commits, head ${bh:0:7}"
   say "working tree" "untouched (git reset --soft)"
