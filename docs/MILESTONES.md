@@ -82,7 +82,7 @@ is written against a signed API contract rather than to silence a Makefile targe
 
 ---
 
-## 4. M1 — Decisions and data model — NOT STARTED
+## 4. M1 — Decisions and data model — IN PROGRESS
 
 **Goal:** close the one-way-door decisions and put a schema in the database.
 
@@ -100,17 +100,28 @@ is written against a signed API contract rather than to silence a Makefile targe
    breaching ADR-0002's 512-token ceiling. Clause-aware chunking was tested and parked — it gives
    the tightest citations but loses span integrity, because pypdf preserved no layout.
 3. **ADR: datastore choice**, recording Elasticsearch and dedicated vector databases as rejected
-   alternatives (`ARCHITECTURE.md` §6 flags this ADR as owed).
-4. **ADR: HNSW vs IVFFlat.**
-5. **Schema migration** implementing `ARCHITECTURE.md` §4 (`documents`, `document_versions`,
-   `chunks`) with the HNSW and GIN indexes, applied to the compose database and covered by a test
-   that asserts `chunk_id` survives a version supersession (FR-4).
+   alternatives (`ARCHITECTURE.md` §6 flags this ADR as owed). **STILL OPEN.** ADR-0004 applied
+   the schema to Postgres, which deepens the commitment, but it deliberately did not argue the
+   alternatives; writing that ADR after the fact must not become a rationalisation of a choice
+   already made.
+4. ~~**ADR: HNSW vs IVFFlat**~~ — **DONE 2026-10-01, in ADR-0004.** HNSW, because IVFFlat needs a
+   training corpus up front and rebuilds as data grows, which fits incremental ingestion badly.
+   Decided on structure, not measurement: at ~170 chunks the difference is unmeasurable, and
+   `m = 16 / ef_construction = 64` are pgvector's defaults held deliberately pending U-10.
+5. ~~**Schema migration**~~ — **DONE 2026-10-01, ADR-0004.** `migrations/0001_initial_schema`
+   applied to the compose database (PG 18.4 / pgvector 0.8.2) in 28 ms; `documents`,
+   `document_versions`, `chunks` with HNSW and GIN. 19 tests in `tests/test_schema.py`, including
+   the required FR-4 test that `chunk_id` resolves after its version is superseded. Three
+   constraints were mutation-checked to prove they are load-bearing, and the runner's four claimed
+   properties — serialisation, atomicity, drift detection, reversibility — were each exercised
+   rather than assumed. Evidence: `docs/setup/verify/m1-schema-migration.txt`.
 6. **Sign-off or revision of the API contract** in `SPEC.md` §4.3 — closes **U-13** and retags it
    SPECIFIED.
 
 **Exit criteria:** four ADRs committed; migration applied and tested; `SPEC.md` §4.3 carries no
-PROPOSED tags; `SPEC.md` §9 shows U-8, U-9, U-13 closed with evidence. **U-8 and U-9 are closed
-(ADR-0003, ADR-0002); items 1 and 2 of this milestone are done.**
+PROPOSED tags; `SPEC.md` §9 shows U-8, U-9, U-13 closed with evidence. **Items 1, 2, 4 and 5 are
+done (ADR-0002, ADR-0003, ADR-0004); U-8 and U-9 are closed. Remaining: item 3 (datastore ADR)
+and item 6 (API contract, U-13).**
 
 ---
 
@@ -258,32 +269,26 @@ the credibility of every milestone after it.
 
 ## 11. Next action
 
-M0 is done apart from exit criterion 3, which is held for M1 on purpose. The environment is
-reproducible from a committed script and the V1–V17 matrix has been re-run green, so the
-foundation-repair work that has occupied the last two sessions is finished.
+M0 is done apart from exit criterion 3, which is held for M1 on purpose.
 
-**Done: ADR-0002 (U-9) and ADR-0003 (U-8) both closed on 2026-10-01.** Every decision gating the
-database schema is now made, so the next action is **the M1 schema migration** — the first
-artefact that turns three ADRs into something executable.
+**Done: ADR-0002 (U-9), ADR-0003 (U-8) and ADR-0004 (schema + HNSW) are closed.** The data model
+is no longer a proposal — it is three tables in the live database, with 19 tests asserting that it
+*refuses* what the specification forbids. M1 items 1, 2, 4 and 5 are complete.
 
-Three things make the schema the right next step rather than another ADR.
+Two items remain in M1: **item 3, the datastore ADR**, and **item 6, the API contract (U-13)**.
 
-**Every input it needs is now pinned and measured.** `chunks.embedding` is `vector(384)`
-(ADR-0002). Chunk geometry is 1,000 chars with 150-char overlap, and `char_start`/`char_end` are
-guaranteed to index into the original extracted text because ADR-0003 requires cleaning to be
-offset-preserving. There is nothing left to guess in `documents`, `document_versions` or `chunks`.
+**The API contract is the right next action.** It is the larger of the two and it blocks more:
+`SPEC.md` §4.3 is still PROPOSED, `app/main.py` does not exist so `make dev` fails (M0 exit
+criterion 3, deliberately parked for exactly this moment), and M2's ingestion work will want to
+know what shape a citation takes on the wire. The schema just fixed the server-side half of that
+contract — `chunk_id`, offsets, version identity are now concrete — which makes this the cheapest
+it will ever be to specify the client-side half.
 
-**It converts three documents into something executable.** ADRs are only worth what they unblock,
-and so far M1 has produced reasoning and evidence but nothing a program can run against. The
-migration is the first artefact with a real failure mode — it either applies to the live
-pgvector 18 instance or it does not — and it turns the HNSW and index-parameter questions from
-hypothetical into measurable.
+The datastore ADR is a smaller, backward-looking piece of writing: the decision is already made
+and now implemented. It should still be written, because `ARCHITECTURE.md` §6 records it as owed
+and because the rejected alternatives matter to a future reader — but it must be honest that it
+documents a settled choice rather than deliberates an open one.
 
-**It is small and sharply bounded.** Three tables, the indexes `ARCHITECTURE.md` §4 already
-specifies, and two constraints worth testing on day one: that a second byte-different payload at
-the same URL creates a new version while old `chunk_id`s stay resolvable (FR-4), and that stored
-offsets re-extract to the stored chunk text (FR-7, which already has a property test specified
-against it). Both are testable against the running database with no ingestion code.
-
-The datastore and HNSW-vs-IVFFlat ADRs still owed by `ARCHITECTURE.md` §6 are better written
-*after* the schema exists, against real DDL and a real index, rather than in the abstract.
+One caveat carried forward from ADR-0004: the schema is applied but **no data has ever been
+written to it by real code**. The tests insert synthetic and real-corpus-derived rows, which is
+not the same as the ingestion pipeline proving the model survives contact with M2.

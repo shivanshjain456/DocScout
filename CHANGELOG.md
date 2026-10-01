@@ -6,6 +6,43 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 ## [Unreleased]
 
 ### Added
+- **Database schema (migration `0001_initial_schema`), applied to the live Postgres 18.4 /
+  pgvector 0.8.2 instance.** `documents`, `document_versions` and `chunks`, with an HNSW index
+  (`vector_cosine_ops`, `m = 16`, `ef_construction = 64`) on `chunks.embedding` and a GIN index on
+  a generated `tsvector`. Primary keys use PostgreSQL 18's native `uuidv7()`. Every constraint
+  carries an inline comment naming the FR or ADR it enforces, because a rule that lives only in
+  prose silently stops being true.
+- `scripts/migrate.py`: a plain-SQL migration runner (`status` / `up` / `down --to N`) with an
+  advisory lock, one transaction per migration, SHA-256 drift detection that refuses to run when
+  an applied file has been edited, and a `down` that will not run without an explicit `--to`. All
+  four properties were exercised, not assumed. Exposed as `make migrate`, `make migrate-status`
+  and `make migrate-down TO=N`.
+- `tests/test_schema.py`: 19 tests, each named for the requirement it proves — FR-3, FR-4, FR-5,
+  FR-7, FR-9, ADR-0002's dimension and token ceiling, and the least-privilege grants. Three
+  constraints were additionally mutation-checked: dropping them inside a rolled-back transaction
+  lets the previously rejected row insert, which proves the constraint is what rejects it.
+- `ADR-0004`: binds the data model, the migration tooling, `uuidv7` keys and HNSW-over-IVFFlat.
+- Evidence: `docs/setup/verify/m1-schema-migration.txt`.
+
+### Changed
+- `ARCHITECTURE.md` §4 moves from **PROPOSED** to **VERIFIED**, and §6's HNSW row is closed by
+  ADR-0004.
+- **FR-5 is enforced more strictly than §4 proposed:** `sha256` is unique *globally*, not per
+  document. The proposed `UNIQUE (document_id, sha256)` would have permitted one payload to be
+  stored under two documents — the exact case FR-5's acceptance test forbids.
+- `chunks` carries `document_id` alongside `version_id`, kept honest by a composite foreign key,
+  so a citation resolves in one row without the denormalised column being able to disagree.
+- **Database roles are split by privilege.** `MIGRATION_DATABASE_URL` is the owner and runs DDL;
+  `DATABASE_URL` is `docscout_app` with SELECT/INSERT/UPDATE and **no DELETE and no DDL**. FR-4's
+  retention guarantee is now a privilege the service lacks rather than a promise it keeps.
+
+### Fixed
+- `DATABASE_URL` in `.env` had never worked: it carried an 11-character placeholder password
+  against a 48-character real one. Nothing in the repository read the variable, so nothing had
+  ever caught it. Both URLs are now derived from the generated passwords and verified by
+  connecting rather than by being present.
+
+### Added — earlier in this release
 - Project documentation set, each document readable alone and cross-referenced into one source of
   truth: `SPEC.md`, `SECURITY.md`, `docs/QUALITY_BAR.md`, `docs/MILESTONES.md`,
   `docs/architecture/ARCHITECTURE.md`, `docs/corpus/CORPUS_SPEC.md`, `docs/eval/EVAL_PROTOCOL.md`.

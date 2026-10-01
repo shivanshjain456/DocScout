@@ -167,32 +167,59 @@ brief's path makes the container exit(1) (K-5). Likewise `infra/initdb/02-app-ro
 
 ---
 
-## 4. Data model — PROPOSED
+## 4. Data model — VERIFIED
 
-No schema exists in the repository; `infra/initdb/` creates extensions and a role only. The
-following is the first written form of the schema and needs an ADR before it binds. It is shaped by
-requirements FR-2, FR-4, FR-5, FR-7 and by `CORPUS_SPEC.md` §4.
+**Bound by ADR-0004** and applied to the live database as `migrations/0001_initial_schema.up.sql`
+(PG 18.4 / pgvector 0.8.2). This section now describes a schema that exists; `migrate.py status`
+reports version 1 applied. Evidence: `docs/setup/verify/m1-schema-migration.txt`; 19 tests in
+`tests/test_schema.py`.
 
 | Table | Key columns | Purpose |
 |---|---|---|
-| `documents` | `document_id` (PK), `canonical_url`, `source` (`RBI`\|`SEBI`), `title`, `authority`, `published_date`, `detail_page` | One logical circular, stable across reissues |
-| `document_versions` | `version_id` (PK), `document_id` (FK), `sha256` (unique with `document_id`), `fetch_ts`, `http_status`, `bytes`, `pages`, `extractor`, `char_count`, `is_current` | One observed byte-state; a new `sha256` at a known URL is a new row (FR-4) |
-| `chunks` | `chunk_id` (PK), `version_id` (FK), `ordinal`, `text`, `char_start`, `char_end`, `tsv` (`tsvector`, generated), `embedding` (**`vector(384)`**) | The retrievable unit; `D = 384` fixed by ADR-0002 |
+| `documents` | `document_id` (PK, `uuidv7()`), `canonical_url` (unique), `source` (`RBI`\|`SEBI`\|`SYNTHETIC`), `title`, `authority`, `published_date`, `detail_page` | One logical circular, stable across reissues |
+| `document_versions` | `version_id` (PK), `document_id` (FK), `sha256` (**globally unique**), `fetch_ts`, `http_status`, `bytes`, `pages`, `extractor`, `char_count`, `is_current` | One observed byte-state; a new `sha256` at a known URL is a new row (FR-4) |
+| `chunks` | `chunk_id` (PK), `document_id` + `version_id` (**composite FK**), `ordinal`, `text`, `char_start`, `char_end`, `token_count`, `tsv` (generated STORED), `embedding_model`, `embedding` (**`vector(384)`**) | The retrievable unit; `D = 384` fixed by ADR-0002 |
 
-Indexes: HNSW with `vector_cosine_ops` on `chunks.embedding`; GIN on `chunks.tsv`; unique
-`(document_id, sha256)` on versions; `(version_id, ordinal)` on chunks.
+Indexes: HNSW `vector_cosine_ops (m = 16, ef_construction = 64)` on `chunks.embedding`; GIN on
+`chunks.tsv`; unique `(version_id, ordinal)` on chunks; partial unique on `is_current`.
+
+**Four deltas from the PROPOSED sketch this section previously carried** (argued in ADR-0004):
+`sha256` is unique *globally*, not per document, because the per-document form permits one payload
+under two documents and FR-5 forbids exactly that · `chunks` also carries `document_id`, held
+honest by a composite FK, because FR-7 cites document + version + offsets · `token_count` and
+`embedding_model` are new, enforcing ADR-0002's ceiling and making re-embedding auditable ·
+`source` admits `SYNTHETIC` so the injection canary is storable.
+
+The schema enforces the specification rather than describing it. `ON DELETE RESTRICT` and the
+absence of a `DELETE` grant make FR-4 retention a privilege rather than a promise; CHECKs reject a
+chunk over 512 tokens, a non-unit vector, a `char_count` below 500 (the ~227-char SEBI failure
+mode, K-17) and an inverted offset span. Each constraint names its requirement in an inline
+comment, and `tests/test_schema.py` asserts the database *refuses* each forbidden thing.
 
 Three constraints that are easy to get wrong and are therefore stated normatively:
 
 - `chunk_id` MUST remain resolvable after its version is superseded, so historical evaluation runs
-  stay reproducible (FR-4, `EVAL_PROTOCOL.md` §7).
+  stay reproducible (FR-4, `EVAL_PROTOCOL.md` §7). Enforced: `ON DELETE RESTRICT`, no `DELETE`
+  privilege, tested both ways.
 - The embedding column dimension is **not** changeable without a reindex and a full re-evaluation;
   it is a one-way door, now closed at `vector(384)` by ADR-0002. The cost of reopening it is
   dominated by evaluation, not compute: re-embedding 10k chunks takes ~24 min on the 2 vCPU floor,
   but every historical eval run becomes incomparable and the regression gate needs three fresh
   baselines. That cost is near-zero until U-17 lands and steep afterwards.
 - Supersession between *different* documents (a master circular replacing earlier ones) is **not**
-  modelled above and is **UNRESOLVED (U-12)**.
+  modelled above and is **UNRESOLVED (U-12)**. The schema does not pretend otherwise: `is_current`
+  scopes supersession within a single document only.
+
+**Ingest inherits one obligation from FR-7**: `char_start`/`char_end` MUST bracket the *stored*
+text. ADR-0003's cleaning strips leading whitespace from a chunk, so ingest MUST advance
+`char_start` by the trimmed count and set `char_end = char_start + len(text)`. A property test
+asserts `source[char_start:char_end] == text` on both synthetic and real corpus documents.
+
+**Migrations** are numbered plain-SQL `.up`/`.down` pairs under `migrations/`, applied by
+`scripts/migrate.py` (`make migrate`, `make migrate-status`, `make migrate-down TO=N`). The runner
+takes an advisory lock, runs one transaction per migration, and refuses to proceed if an applied
+file's SHA-256 has changed. It connects as `MIGRATION_DATABASE_URL` (owner, DDL); the service
+connects as `DATABASE_URL` (`docscout_app`: SELECT/INSERT/UPDATE, no DELETE, no DDL).
 
 ---
 
@@ -222,8 +249,8 @@ server-side error, never a silently returned uncited answer.
 
 | Decision | Status | Rationale / evidence | ADR needed |
 |---|---|---|---|
-| Postgres + pgvector as the single store for lexical **and** dense retrieval | SPECIFIED | One datastore, transactional consistency between text and vectors, no separate search cluster to operate; VERIFIED working at 18.4 / 0.8.2 | Yes — rejected alternatives (Elasticsearch, a dedicated vector DB) must be recorded |
-| HNSW over IVFFlat | PROPOSED | HNSW needs no training step and gives better recall at small corpus sizes; `hnsw.iterative_scan` available if filtered recall is poor | Yes |
+| Postgres + pgvector as the single store for lexical **and** dense retrieval | SPECIFIED, schema applied | One datastore, transactional consistency between text and vectors, no separate search cluster to operate; VERIFIED working at 18.4 / 0.8.2 | Yes — ADR-0004 applied the schema but did **not** argue the rejected alternatives (Elasticsearch, a dedicated vector DB); that ADR is still owed |
+| HNSW over IVFFlat | **DECIDED (ADR-0004)** | No training step and tolerates incremental inserts, which IVFFlat does not; chosen on structure, as the difference is unmeasurable at this corpus size | Closed by ADR-0004 |
 | Cross-encoder reranking on CPU | SPECIFIED | Measured 4.56 ms/pair, 88 MB — affordable at the 2 vCPU floor | No |
 | Local embedder `bge-small-en-v1.5` (384 d) | **DECIDED (ADR-0002)** | Measured on the real corpus against MiniLM-L6, bge-base (768 d), multilingual-e5 and a BM25 control: no significant quality difference, so chosen for zero truncation at 512 tokens, smallest index and $0 cost. A hosted embedder stays BLOCKED by U-1 (K-1) | Yes |
 | Redis for cache + rate limiting | SPECIFIED | VERIFIED running; `AGENTS.md` assigns rate limiting to `app/api/` | No |
