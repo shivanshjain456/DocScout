@@ -96,6 +96,8 @@ class Retriever:
             fused = [(cid, raw_scores[cid], {arm: i + 1}) for i, cid in enumerate(arms[arm])]
 
         top = fused[: config.k_final]
+        if config.anchor_arm_top1 and config.mode == "hybrid":
+            top = _anchor_arm_leaders(top, arms, fused, config.k_final)
         meta = self._metadata([cid for cid, _, _ in top])
         results: list[Retrieved] = []
         for index, (chunk_id, score, arm_ranks) in enumerate(top):
@@ -112,3 +114,34 @@ class Retriever:
                 )
             )
         return results
+
+
+def _anchor_arm_leaders(
+    top: list[tuple[str, float, dict[str, int]]],
+    arms: dict[str, list[str]],
+    fused: list[tuple[str, float, dict[str, int]]],
+    k_final: int,
+) -> list[tuple[str, float, dict[str, int]]]:
+    """Ensure every arm's own rank-1 chunk survives into the returned k.
+
+    Fusion by rank alone cannot express certainty: an arm that put a chunk first contributes
+    the same 1/(k+1) whether it was certain or barely preferred it. When the other arm
+    disagrees, consensus beats conviction and the confident arm's best answer can fall out of
+    the result set entirely -- measured on g-038, where BM25 ranked the correct chunk first
+    and the fused rank was 14.
+
+    A reserved seat is the narrowest possible fix: it changes nothing about how the other
+    results are scored or ordered, and it is bounded -- at most one chunk per arm. Any chunk
+    inserted keeps its real fused score, so the report never shows a fabricated number.
+    """
+    present = {chunk_id for chunk_id, _, _ in top}
+    scores = {chunk_id: (score, ranks) for chunk_id, score, ranks in fused}
+    missing = [ids[0] for ids in arms.values() if ids and ids[0] not in present]
+    if not missing:
+        return top
+    # Drop from the tail to make room, so the highest-fused results are never displaced.
+    keep = top[: max(0, k_final - len(missing))]
+    for chunk_id in missing:
+        score, ranks = scores.get(chunk_id, (0.0, {}))
+        keep.append((chunk_id, score, ranks))
+    return keep[:k_final]

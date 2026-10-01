@@ -3,6 +3,17 @@
 from __future__ import annotations
 
 from app.retrieval.search import Retriever
-from app.retrieval.types import DEFAULT_RRF_K, RetrievalConfig, Retrieved
+from app.retrieval.types import (
+    DEFAULT_RRF_K,
+    SERVING_CONFIG,
+    RetrievalConfig,
+    Retrieved,
+)
 
-__all__ = ["DEFAULT_RRF_K", "RetrievalConfig", "Retrieved", "Retriever"]
+__all__ = [
+    "DEFAULT_RRF_K",
+    "SERVING_CONFIG",
+    "RetrievalConfig",
+    "Retrieved",
+    "Retriever",
+]

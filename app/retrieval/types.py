@@ -57,6 +57,12 @@ class RetrievalConfig:
     # Per-arm fusion weights. 1.0/1.0 is unweighted RRF.
     weight_dense: float = 1.0
     weight_lexical: float = 1.0
+    # Guarantee each arm's own top hit a seat in the final k, even if fusion ranked it out.
+    # RRF scores by 1/(k + rank), so at rrf_k=60 the gap between rank 1 and rank 41 is only
+    # 1.66x: a chunk both arms rank near the top outranks a chunk one arm is CERTAIN about.
+    # Measured on gold item g-038, where BM25 ranked the answer first and fusion buried it at
+    # 14. This reserves a seat rather than re-weighting, so no other result is reordered.
+    anchor_arm_top1: bool = False
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -68,4 +74,20 @@ class RetrievalConfig:
             "rrf_k": self.rrf_k,
             "weight_dense": self.weight_dense,
             "weight_lexical": self.weight_lexical,
+            "anchor_arm_top1": self.anchor_arm_top1,
         }
+
+
+# The configuration DocScout actually serves, defined once so the eval runner, the
+# regression gate and any future API cannot drift apart. A bare RetrievalConfig(mode=
+# "hybrid") is deliberately NOT the serving shape: it omits the arm-anchor fix, and a
+# caller who forgets it would silently ship the g-038 defect again.
+SERVING_CONFIG = RetrievalConfig(
+    name="hybrid-rrf",
+    mode="hybrid",
+    k_dense=50,
+    k_lexical=50,
+    k_final=10,
+    rrf_k=DEFAULT_RRF_K,
+    anchor_arm_top1=True,
+)

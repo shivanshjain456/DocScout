@@ -41,7 +41,7 @@ from app.evals.goldset import (
 )
 from app.ingest.chunk import CHUNK_OVERLAP, CHUNK_SIZE, MAX_TOKENS
 from app.ingest.embed import EMBEDDING_DIM, MODEL_ID, QUERY_PREFIX, Embedder
-from app.retrieval import RetrievalConfig, Retriever
+from app.retrieval import SERVING_CONFIG, RetrievalConfig, Retriever
 from app.rowtypes import as_int, as_str
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -62,7 +62,7 @@ AB_CUTOFF = 5
 BASELINE_CONFIGS: tuple[RetrievalConfig, ...] = (
     RetrievalConfig(name="dense-only", mode="dense", k_dense=50, k_final=10),
     RetrievalConfig(name="bm25-only", mode="bm25", k_lexical=50, k_final=10),
-    RetrievalConfig(name="hybrid-rrf", mode="hybrid", k_dense=50, k_lexical=50, k_final=10),
+    SERVING_CONFIG,
 )
 
 
