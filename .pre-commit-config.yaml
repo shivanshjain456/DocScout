@@ -7,8 +7,16 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
+      # corpus/raw/ holds the tracked corpus payloads and evals/reports/ holds committed
+      # raw eval output. Both are EVIDENCE, and both are verified by hash: ingest re-hashes
+      # every payload against corpus/raw/manifest.json and refuses a mismatch. A hook that
+      # helpfully strips a trailing space from a regulator's extracted text would change its
+      # sha256 and break ingestion with a message about the file having been tampered with.
+      # Formatting must never touch bytes whose hash is part of the measurement.
       - id: trailing-whitespace
+        exclude: ^(corpus/raw/|evals/reports/)
       - id: end-of-file-fixer
+        exclude: ^(corpus/raw/|evals/reports/)
       - id: check-added-large-files
         args: ["--maxkb=5120"]          # 5 MB
       - id: check-merge-conflict

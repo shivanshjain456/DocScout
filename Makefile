@@ -3,7 +3,7 @@ SHELL := /bin/bash
 TS := $(shell date -u +%Y%m%dT%H%M%SZ)
 
 .PHONY: help setup dev test lint typecheck secret-scan eval load deploy destroy verify-setup down \
-	gold-lint gold-pin gold-review gold-stats eval-quick \
+	gold-lint gold-pin gold-review gold-stats eval-quick eval-gate eval-baseline \
         migrate migrate-status migrate-down ingest ingest-dry ingest-status ingest-verify
 
 help:  ## show this help
@@ -70,6 +70,12 @@ eval:  ## retrieval eval over the gold set -> evals/reports/<UTC-ts>/{results.js
 
 eval-quick:  ## same, but only the first 20 gold items (smoke test, not a baseline)
 	uv run python -m app.evals.runner --limit 20 --report-dir /tmp/docscout-eval-quick
+
+eval-gate:  ## fail if the newest run regressed >1pp vs the last three baselines (E-12)
+	uv run python -m app.evals.gate
+
+eval-baseline:  ## accept the newest run into evals/baselines/ as a comparison point
+	uv run python -m app.evals.gate --accept
 
 load:  ## k6 load test -> loadtests/reports/<ts>/
 	@mkdir -p loadtests/reports/$(TS)

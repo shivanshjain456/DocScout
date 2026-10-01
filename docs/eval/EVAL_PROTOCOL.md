@@ -311,6 +311,28 @@ chunker (U-8, closed) and the corpus, not on the RRF constant or the candidate a
 U-10 gates the first **baseline run** and the §8.1 ablations, not the item set. The gold set is
 pinned at v1.0.0 with U-10 open.
 
+**E-12 is implemented (2026-10-02).** `app/evals/gate.py`, `make eval-gate`. It enforces the
+1pp rule against the mean of the last three accepted baselines in `evals/baselines/`, over the
+serving configuration's recall, MRR and nDCG at k=5 — any one of them failing fails the build,
+because a system that holds recall while its ranking collapses has regressed.
+
+Two deliberate design points:
+
+*Invariants run before the comparison.* A metric threshold cannot catch a gold set that quietly
+shrinks to its easy items: every number improves. The gate fails hard if the gold set's contents
+changed without a version bump, if the corpus manifest digest moved, or if fewer items were
+scored than in the baseline — none of which are regressions, all of which mean the numbers are
+not comparable.
+
+*The threshold is enforced, and its noise floor is published beside it.* One item on this gold
+set is 0.76pp and the measured minimum detectable effect against the newest baseline is 3.24pp,
+so 1pp is inside the noise. The gate does not widen the rule on its own authority; it reports
+`minimum_detectable_effect_pp` with every verdict so a failure is never read as more certain
+than the data allows. Grow the gold set, do not loosen the gate.
+
+Baselines are accepted explicitly with `make eval-baseline`, never automatically — otherwise a
+regression silently becomes the new reference and the gate measures drift against itself.
+
 **U-18 (new, opened by the first baseline run).** The gold set's questions were authored from
 the evidence quotes, so they inherit the vocabulary of the chunk they cite: measured at 73.3 %
 term overlap with the gold chunk against 9.4 % with a random chunk. That is a 7.8× advantage

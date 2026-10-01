@@ -111,6 +111,55 @@ Requires: Docker, [uv](https://astral.sh/uv), Node 22 (for the UI), k6 (for load
 | `make verify-setup` | the V1–V17 environment matrix |
 | `make destroy` | tear down all cloud resources (deploy phase) |
 
+## Limitations
+
+Written to be read by someone deciding whether to trust the numbers above. Everything here
+is a known gap, not a discovered one, and each line says what would close it.
+
+**The retrieval A/B cannot currently pick a winner.** Every pairwise 95% bootstrap CI in the
+published baseline includes zero. `bm25-only` leads `hybrid-rrf` by one item out of 131. Any
+statement stronger than "these three are indistinguishable on this gold set" would be
+unsupported. Closing it needs a larger gold set and a larger corpus.
+
+**The gold set leaks vocabulary to the lexical arm.** Items were authored from their evidence
+quotes, so a question shares 73.3% of its analyzed terms with the chunk it cites, against 9.4%
+for a random chunk. That is a 7.8x advantage handed to BM25 before retrieval starts. Results
+are reported stratified by that overlap so the effect is visible rather than averaged away.
+Tracked as U-18; closing it needs paraphrased query variants.
+
+**The corpus is 21 documents and 170 chunks.** Recall@10 is ~0.98 for every configuration, so
+the benchmark is close to saturated and has little power to separate architectures. Numbers
+here will fall when the corpus grows, and that is expected rather than a regression.
+
+**The regression gate runs below its own noise floor.** The gate enforces the specified 1pp
+threshold, but on 131 items one item is 0.76pp and the measured minimum detectable effect is
+3.24pp. The gate reports this beside every verdict. The fix is a bigger gold set, not a looser
+gate.
+
+**There is no generator, so there are no generation metrics.** Faithfulness, context precision,
+citation precision and recall, answer-level hallucination rates and end-to-end latency do not
+exist yet. They are listed as absent above rather than shown as zeros.
+
+**There is no LLM judge and no Cohen's kappa.** No API keys are available (U-1), and the gold
+set's second labelling pass was performed by the same agent that wrote the items. That is
+self-agreement, not inter-rater reliability; a test asserts that no kappa is claimed anywhere.
+
+**No deployed demo and no CI badge.** This repository has no remote (no PAT), so the
+`eval-gate` workflow has never run. The badge is deliberately absent rather than linked to a
+workflow nobody has seen pass; the same commands are verified locally with raw output committed
+at `docs/setup/verify/m4-eval-gate.txt`.
+
+**The BM25 arm holds its term table in memory.** One query at startup, ~30k rows at this corpus
+size. Correct now, wrong at a million chunks, where the lexical arm should move to a real BM25
+index (ParadeDB `pg_search`, OpenSearch). The interface does not change when it does.
+
+**Citations are chunk IDs, not human-readable references.** `title` and `published_date` are
+NULL for the current corpus, so FR-14's "cite the document title and date" cannot be satisfied
+and citations resolve to `chunk_id` instead.
+
+**Latency figures are retrieval only, on 2 vCPU / 1.9 GiB.** The embedding model is loaded once
+per run and excluded. They are not end-to-end numbers and must not be read as a service SLO.
+
 ## Security posture
 
 Corpus documents are fetched from the public internet and are treated as **untrusted data, never

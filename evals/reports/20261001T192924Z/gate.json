@@ -1,0 +1,22 @@
+{
+  "schema": "docscout.eval.gate/1",
+  "checked_utc": "2026-10-01T20:25:22Z",
+  "passed": true,
+  "serving_config": "hybrid-rrf",
+  "cutoff": "5",
+  "threshold_pp": 1.0,
+  "baselines_used": [],
+  "comparison": {},
+  "noise_floor": {
+    "available": false,
+    "reason": "no baselines"
+  },
+  "findings": [
+    {
+      "kind": "note",
+      "severity": "warn",
+      "message": "no accepted baselines yet; nothing to compare against. Accept this run with `make eval-baseline` once you believe it.",
+      "detail": {}
+    }
+  ]
+}

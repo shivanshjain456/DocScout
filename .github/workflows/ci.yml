@@ -17,7 +17,9 @@ jobs:
       - run: uv sync --frozen
       - run: uv run ruff check .
       - run: uv run ruff format --check .
-      - run: uv run mypy app
+      # app AND tests: `mypy app` alone leaves the test suite -- where the fixtures and the
+      # scorer assertions live -- entirely unchecked.
+      - run: uv run mypy app tests
       - run: uv run pytest -q
 
   secrets:
@@ -31,8 +33,90 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  eval-smoke:   # activated once the gold set exists; stub for now
-    if: false
+  # The quality gate of EVAL_PROTOCOL E-12: ingest the committed corpus, run the retrieval
+  # eval over the gold set, and fail the build if the serving configuration regressed more
+  # than 1pp against the mean of the last three accepted baselines.
+  #
+  # This job is deterministic and needs no network beyond the package and model caches:
+  # the corpus payloads are tracked in git (see .gitignore for why), ingest re-hashes every
+  # file against the manifest, and no step contacts a regulator's website. An eval gate that
+  # re-fetched live documents would fail for reasons unrelated to the code, and a gate that
+  # fails for unrelated reasons gets switched off.
+  #
+  # NOT YET OBSERVED GREEN: this repository has no remote (no PAT -- SETUP_REPORT V10 is
+  # BLOCKED), so no run of this workflow exists. The same commands are verified locally and
+  # the raw output is committed at docs/setup/verify/m4-eval-gate.txt. The badge in README.md
+  # is deliberately absent until a real run can back it.
+  eval-gate:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        # Pinned to the exact pairing used locally: PostgreSQL 18.6 with pgvector 0.8.6 on
+        # Debian trixie. A bare `pg18` tag would let the extension version drift silently
+        # underneath the baselines, and HNSW behaviour is part of what is being measured.
+        image: pgvector/pgvector:0.8.6-pg18-trixie
+        env:
+          POSTGRES_USER: docscout
+          POSTGRES_PASSWORD: docscout_ci
+          POSTGRES_DB: docscout
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U docscout"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # The owner role runs migrations; the application role is least-privilege (no DELETE,
+      # no DDL) and is what ingest and retrieval use. Both are CI-local throwaways.
+      MIGRATION_DATABASE_URL: postgresql://docscout:docscout_ci@localhost:5432/docscout
+      DATABASE_URL: postgresql://docscout_app:docscout_app_ci@localhost:5432/docscout
+      HF_HOME: ${{ github.workspace }}/.hf_cache
     steps:
-      - run: echo "eval gate lands with the gold set (build phase)"
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+
+      # The embedding model is ~130 MB and identical across runs. Keyed on the model id so a
+      # change to ADR-0002 invalidates the cache instead of silently measuring the old model.
+      - name: cache embedding model
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.hf_cache
+          key: hf-bge-small-en-v1.5-v1
+
+      - name: create the application role and extensions
+        run: |
+          psql "$MIGRATION_DATABASE_URL" -v ON_ERROR_STOP=1 -f infra/initdb/01-extensions.sql
+          psql "$MIGRATION_DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE docscout_app LOGIN PASSWORD 'docscout_app_ci';
+          GRANT CONNECT ON DATABASE docscout TO docscout_app;
+          GRANT USAGE ON SCHEMA public TO docscout_app;
+          SQL
+
+      - run: uv run python scripts/migrate.py up
+      - run: uv run python -m app.ingest run
+
+      # FR-7: every stored chunk's span must still re-derive from its source document.
+      # Cheap, and it fails loudly if extraction drifted rather than letting the eval
+      # quietly measure a different corpus.
+      - run: uv run python -m app.ingest verify
+
+      # No database required -- the gold set validates against the chunker alone (E-7).
+      - run: uv run python -m app.evals.goldset lint
+
+      - name: run the retrieval eval
+        run: uv run python -m app.evals.runner
+
+      - name: regression gate
+        run: uv run python -m app.evals.gate
+
+      - name: publish the run
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report
+          path: evals/reports/

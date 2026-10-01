@@ -11,11 +11,27 @@
 # pre-commit inspection; the deliverable would otherwise have been excluded without any error.
 /corpus/*
 # The manifest is the corpus's provenance anchor: identity, hashes and fetch timestamps for every
-# document, and the thing that makes the raw bytes re-derivable (CORPUS_SPEC.md C-6, C-18, and the
-# reproducibility fields in EVAL_PROTOCOL.md E-14). Track the manifest; ignore the bytes it names.
+# document (CORPUS_SPEC.md C-6, C-18, EVAL_PROTOCOL.md E-14).
+#
+# REVERSAL (2026-10-02): the payloads are now tracked too. The original rule tracked the manifest
+# and ignored the bytes it names, on the theory that the manifest makes them re-derivable. It does
+# not, for two measured reasons:
+#
+#   1. The corpus contains WITHDRAWN circulars. Gold item g-038 asks which circular on CCTV
+#      coverage of currency chests was withdrawn and when -- a regulator removing a document is
+#      the normal case here, not an edge case. Once it is gone, the manifest's sha256 can prove
+#      the bytes changed but cannot bring them back, and every baseline measured against them
+#      becomes unreproducible.
+#   2. Artifact 1 requires that every published number carry its exact reproduction command.
+#      `make eval` is only a reproduction command if `make ingest` can run offline, and ingest
+#      reads the raw bytes (app/ingest/source.py re-hashes local_path against the manifest). Its
+#      own error message said "re-fetch before ingesting", which is advice that expires.
+#
+# 7.8 MB of public-domain Indian regulatory PDFs, largest file 979 KB, is a trivial price for a
+# corpus that a reviewer can clone and reproduce. The manifest still governs: ingest refuses any
+# file whose hash disagrees with it, so tracking the bytes adds a second check rather than
+# replacing one.
 !/corpus/raw/
-/corpus/raw/*
-!/corpus/raw/manifest.json
 # Eval run outputs are untracked by default -- a repo should not accumulate every
 # exploratory run. The PINNED baseline is the exception and is force-added: EVAL_PROTOCOL
 # E-13 says a metric does not exist unless its raw output does, so the run the README

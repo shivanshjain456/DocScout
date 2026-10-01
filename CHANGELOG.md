@@ -6,6 +6,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 ## [Unreleased]
 
 ### Added
+- **`app/evals/gate.py` and `make eval-gate`: the E-12 regression gate.** Fails the build
+  when the serving configuration's recall, MRR or nDCG@5 drops more than 1pp against the mean
+  of the last three accepted baselines (`evals/baselines/`, promoted explicitly with
+  `make eval-baseline`). Drilled against a real 1.90pp degradation: exit 1. Invariants run
+  first and fail hard — gold set mutated without a version bump, corpus manifest changed,
+  or fewer items scored than the baseline — because a gold set that quietly shrinks to its
+  easy items makes every metric improve. The gate publishes its own noise floor
+  (3.24pp here) beside each verdict instead of widening the 1pp rule.
+- **The corpus payloads are now tracked in git** (7.8 MB, 41 files). The manifest did not make
+  them re-derivable: the corpus contains *withdrawn* circulars — gold item g-038 is about one —
+  and `make eval` is only a reproduction command if `make ingest` runs offline. Verified by
+  truncating the database and re-ingesting from tracked bytes alone: 21 documents, 170 chunks.
+- **The `eval-gate` CI job**, pinned to `pgvector/pgvector:0.8.6-pg18-trixie` (the exact
+  PostgreSQL 18.6 / pgvector 0.8.6 pairing used locally). Committed **unverified**: this
+  repository has no remote, so the workflow has never run and no CI badge is claimed. The
+  same commands are verified locally at `docs/setup/verify/m4-eval-gate.txt`.
+- **A README `Limitations` section**, stating the leakage, the saturated corpus, the gate's
+  noise floor, the absent generator and judge, and the missing badge.
+- `tests/test_gate.py` (18 cases) and `tests/test_git_history.py` (7 cases).
 - **`app/retrieval/`: the retrieval layer — a dense arm, a BM25 arm and RRF over both.**
   BM25 is scored over the lexemes Postgres already stores in `chunks.tsv`, parsed by
   `unnest(tsvector)`, so the scorer and the GIN index can never disagree about stemming.

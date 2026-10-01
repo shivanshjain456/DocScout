@@ -1,0 +1,111 @@
+M4 EXIT CRITERION 4 — THE REGRESSION GATE: VERIFICATION LOG
+Generated 2026-10-01T20:30:45Z. Every block below is real command output.
+Host: 2 vCPU / 1.9 GiB; PostgreSQL 18.6, pgvector 0.8.6.
+
+== 1. THE CI SEQUENCE, RUN LOCALLY ===========================================
+The eval-gate job in .github/workflows/ci.yml runs exactly these commands. No run of
+the workflow itself exists: this repository has no remote (no PAT; SETUP_REPORT V10
+is BLOCKED), so the workflow is committed UNVERIFIED and no CI badge is claimed.
+
+$ uv run python scripts/migrate.py up
+      up to date
+$ uv run python -m app.ingest run
+      skipped_unchanged          https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI27401102026AA1...
+      skipped_unchanged          https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI27301102026D31...
+      skipped_unchanged          https://rbidocs.rbi.org.in/rdocs/notification/PDFs/272MC0110202666913...
+      skipped_unchanged          https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI2713C3AD0FCF88...
+      skipped_unchanged          https://rbidocs.rbi.org.in/rdocs/notification/PDFs/FEMA23R2509202677C...
+      skipped_unchanged          https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI27024092026B51...
+      skipped_unchanged          https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NT269D2CF6DE136874...
+      skipped_unchanged          https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NT26840D3650D40D24...
+      skipped_unchanged          https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NT267F885FEF645D54...
+      skipped_unchanged          https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NT2663B9D47D9B0A14...
+      skipped_unchanged          https://www.sebi.gov.in/sebi_data/attachdocs/aug-2026/1787224027885.pdf
+      skipped_unchanged          https://www.sebi.gov.in/sebi_data/attachdocs/aug-2026/1787569463244.pdf
+      skipped_unchanged          https://www.sebi.gov.in/sebi_data/attachdocs/aug-2026/1786447511614.pdf
+      skipped_unchanged          https://www.sebi.gov.in/sebi_data/attachdocs/aug-2026/1787285998826.pdf
+      skipped_unchanged          https://www.sebi.gov.in/sebi_data/attachdocs/aug-2026/1785760104221.pdf
+      skipped_unchanged          https://www.sebi.gov.in/sebi_data/attachdocs/aug-2026/1787914585756.pdf
+      skipped_unchanged          https://www.sebi.gov.in/sebi_data/attachdocs/aug-2026/1786705393789.pdf
+      skipped_unchanged          https://www.sebi.gov.in/sebi_data/attachdocs/aug-2026/1787568759364.pdf
+      skipped_unchanged          https://www.sebi.gov.in/sebi_data/attachdocs/aug-2026/1786705729757.pdf
+      skipped_unchanged          https://www.sebi.gov.in/sebi_data/attachdocs/aug-2026/1786537329546.pdf
+      skipped_unchanged          synthetic://canary-001
+      documents seen   21
+      chunks written   0
+      skipped_unchanged 21
+      duration         0.0s
+$ uv run python -m app.ingest verify      # FR-7: re-derive every chunk span
+    verifying stored chunks for 21 manifest documents...
+      versions checked 21, chunks checked 170
+      OK: every stored chunk's offsets re-extract to its stored text (FR-7)
+$ uv run python -m app.evals.goldset lint # E-7: no database required
+        stable              130 of 153
+      unanswerable share    14.4%
+      documents covered     21
+      citations per item    min 1 / max 3 / total 150
+$ uv run python -m app.evals.runner
+      dense-only   recall@5 0.947  hit@5 0.962  MRR 0.762  nDCG 0.793  p95 35 ms
+      bm25-only    recall@5 0.969  hit@5 0.977  MRR 0.838  nDCG 0.855  p95 1 ms
+      hybrid-rrf   recall@5 0.966  hit@5 0.977  MRR 0.824  nDCG 0.844  p95 35 ms
+      report  /home/user/docscout/evals/reports/20261001T203117Z
+$ uv run python -m app.evals.gate
+      eval gate: PASS
+      serving config: hybrid-rrf @ k=5
+      baselines: 2026-10-01T19:29:25Z
+
+      metric       current  baseline     delta
+      recall        0.9656    0.9656    +0.00pp
+      mrr           0.8240    0.8240    +0.00pp
+      ndcg          0.8445    0.8445    +0.00pp
+
+
+      raw: evals/reports/20261001T203117Z/gate.json
+    exit code: 0
+
+== 2. FIRE DRILL: DOES THE GATE ACTUALLY FAIL? ================================
+A gate that has never failed is an untested gate. This substitutes the serving
+configuration's numbers with the MEASURED dense-only numbers from the same run --
+nothing invented -- which is what 'hybrid regressed to dense-level quality' looks
+like, a real 1.90pp drop in recall@5.
+
+$ uv run python -m app.evals.gate --results /tmp/degraded/results.json
+      eval gate: FAIL
+      serving config: hybrid-rrf @ k=5
+      baselines: 2026-10-01T19:29:25Z
+
+      metric       current  baseline     delta
+      recall        0.9466    0.9656    -1.90pp
+      mrr           0.7622    0.8240    -6.18pp
+      ndcg          0.7927    0.8445    -5.18pp
+
+      [FAIL] recall@5 fell 1.90pp against the baseline (0.9466 vs 0.9656); threshold is 1pp
+      [FAIL] mrr@5 fell 6.18pp against the baseline (0.7622 vs 0.8240); threshold is 1pp
+      [FAIL] ndcg@5 fell 5.18pp against the baseline (0.7927 vs 0.8445); threshold is 1pp
+      [WARN] the 1pp threshold is below this gold set's noise floor (minimum detectable effect 3.24pp over 131 paired items). A verdict near the threshold is not evidence of a real change; grow the gold set.
+
+      raw: /tmp/degraded/gate.json
+    exit code: 1   <-- non-zero fails the build
+
+Note the WARN. The gate enforces the 1pp rule the brief specifies AND reports that
+a 1.90pp move is inside this gold set's 3.24pp noise floor. Both are true; hiding
+either would be dishonest. The fix is a larger gold set, not a looser threshold.
+
+== 3. INVARIANTS: THE FALSE-GREEN THE GATE ALSO BLOCKS ========================
+Metric thresholds alone cannot catch a gold set that quietly shrinks to its easy
+items -- every metric IMPROVES. These are checked before any comparison:
+    - gold set contents changed without a version bump   -> FAIL
+    - corpus manifest digest changed                     -> FAIL (not comparable)
+    - fewer items scored than the baseline               -> FAIL (items vanished)
+    - chunk count drifted with an unchanged manifest     -> WARN (partial ingest)
+Each is covered by a test in tests/test_gate.py; the vanishing-items case asserts a
+FAIL even though recall, MRR and nDCG all rise to 1.000.
+
+== 4. TESTS ==================================================================
+    tests/test_gate.py         :     tests/test_git_history.py  :
+== 5. WHAT THIS DOES NOT SHOW ================================================
+  - No green CI badge. The workflow has never run: no remote, no PAT (V10 BLOCKED).
+  - The baseline window holds ONE accepted baseline, not three. The mean of one is
+    that one; the window fills as runs are accepted over time.
+  - The gate protects retrieval only. Faithfulness, citation precision and judge
+    agreement have no generator and no keys (U-1) and are not gated.

@@ -229,7 +229,7 @@ NOT met. M4 is therefore not complete, and is not recorded as complete.
 | 1 | Baseline run with E-14 pinning fields | **DONE** — `evals/reports/20261001T192924Z/`, committed |
 | 2 | recall@k, MRR, nDCG with their artifact | **DONE** for retrieval; citation precision/recall need a generator, so they are absent, not estimated |
 | 3 | Lexical and rerank ablations | **PARTIAL** — dense/BM25/hybrid A/B done (ADR-0006); rerank deferred with a reason, not forgotten (recall@10 ≈ 0.98 leaves a reranker nothing to recover on a 170-chunk corpus) |
-| 4 | `eval-smoke` enforcing the >1pp gate | **NOT DONE** — and the gate needs rethinking first: 1pp is 1.3 items on a 131-item gold set |
+| 4 | `eval-smoke` enforcing the >1pp gate | **DONE, with one honest caveat** — `make eval-gate` enforces the rule and fails the build (exit 1, drilled against a real 1.90pp degradation); the CI job is written and pinned but has never run, because there is no remote (V10 BLOCKED), so no badge is claimed. The gate reports that 1pp sits below the gold set's 3.24pp noise floor rather than silently widening the threshold. Evidence: `docs/setup/verify/m4-eval-gate.txt` |
 | 5 | U-1 decided | **NOT DONE** — no API keys; the formal re-scope is still owed in writing |
 
 **What the baseline actually showed, recorded because it is inconvenient.** The ablation did not
@@ -240,8 +240,13 @@ executed on this evidence in either direction, and acting on it would have delet
 on the strength of a one-item difference. Hybrid is kept, the reasoning is in ADR-0006, and the
 decisive experiment is **U-18**.
 
-**Remaining work:** close U-1 in writing; redesign the CI gate so it is not operating at
-single-item resolution; grow the corpus and the gold set; U-18; then the reranker ablation.
+**Remaining work:** close U-1 in writing; grow the corpus and the gold set so the gate stops
+operating at single-item resolution; U-18; then the reranker ablation.
+
+**Also landed with the gate (2026-10-02):** the corpus payloads are now tracked in git. The
+manifest alone did not make them re-derivable — the corpus contains withdrawn circulars, and
+`make eval` is only a reproduction command if `make ingest` can run offline. 7.8 MB; the
+manifest still governs, since ingest rejects any file whose hash disagrees with it.
 
 **Work:** implement `app/retrieval/` (lexical arm, dense arm, RRF fusion, cross-encoder rerank) and
 `app/evals/` layer-1 deterministic scorers; run the three required ablations
