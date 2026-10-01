@@ -79,11 +79,15 @@ Commit authorship is recorded as a repository-local identity (`DocScout Agent
 exercised on every bootstrap, so lockfile rot surfaces immediately rather than at the next CI run
 that never happens (U-6).
 
-**Harder / accepted costs.** The Phase 0 commit SHAs are gone, so `docs/setup/SETUP_REPORT.md` and
-`CHANGELOG.md` reference commit identifiers that no longer resolve. We keep those references and
-annotate them rather than rewriting history we cannot verify. `bootstrap.sh` is now a maintenance
-surface: a pin drifts whenever upstream removes a release artefact, and the script will fail loudly
-rather than silently install something else. That is the intended trade.
+**Harder / accepted costs.** The Phase 0 commit SHAs are gone. A `git grep` over the restored tree
+confirms the blast radius is small: no tracked document cites `695e0f4` or `c88f59b` except this
+ADR and the two passages in `SPEC.md` §2.3 and `docs/MILESTONES.md` M0 that exist precisely to
+record the loss. `docs/setup/SETUP_REPORT.md` and `CHANGELOG.md` turn out not to reference commit
+identifiers at all, so nothing there needed annotating. What is genuinely lost is the *shape* of
+the Phase 0 history — the ability to see which change introduced which file — and that is not
+recoverable. `bootstrap.sh` is now a maintenance surface: a pin drifts whenever upstream removes a
+release artefact, and the script will fail loudly rather than silently install something else. That
+is the intended trade.
 
 **To monitor.** The pinned-version block in `bootstrap.sh` must stay in sync with SETUP_REPORT; the
 two are currently consistent by hand, not by test. A future `verify_setup.sh` assertion should
