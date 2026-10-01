@@ -1,0 +1,164 @@
+{
+  "schema": "docscout.experiment.u10-rrf/1",
+  "run_utc": "2026-10-01T20:40:28Z",
+  "question": "U-10: what RRF constant should hybrid retrieval use?",
+  "incumbent": 60,
+  "items_scored": 131,
+  "witness_item": "g-038",
+  "results": [
+    {
+      "rrf_k": 1,
+      "recall@1": 0.6946564885496184,
+      "recall@5": 0.9770992366412213,
+      "recall@10": 0.9923664122137404,
+      "mrr": 0.8297709923664123,
+      "ndcg@5": 0.8534511716779941,
+      "p95_ms": 37.79,
+      "vs_incumbent": {
+        "n": 131,
+        "mean_a": 0.9771,
+        "mean_b": 0.9656,
+        "difference": 0.0115,
+        "ci_low": 0.0,
+        "ci_high": 0.0305,
+        "excludes_zero": false,
+        "difference_in_items": 1.5
+      },
+      "g-038_recall@5": 1.0,
+      "g-038_recall@10": 1.0,
+      "g-038_first_relevant_rank": 2
+    },
+    {
+      "rrf_k": 5,
+      "recall@1": 0.6946564885496184,
+      "recall@5": 0.9770992366412213,
+      "recall@10": 0.9923664122137404,
+      "mrr": 0.8262086513994911,
+      "ndcg@5": 0.850588525113808,
+      "p95_ms": 37.43,
+      "vs_incumbent": {
+        "n": 131,
+        "mean_a": 0.9771,
+        "mean_b": 0.9656,
+        "difference": 0.0115,
+        "ci_low": 0.0,
+        "ci_high": 0.0305,
+        "excludes_zero": false,
+        "difference_in_items": 1.5
+      },
+      "g-038_recall@5": 1.0,
+      "g-038_recall@10": 1.0,
+      "g-038_first_relevant_rank": 5
+    },
+    {
+      "rrf_k": 10,
+      "recall@1": 0.6946564885496184,
+      "recall@5": 0.9656488549618321,
+      "recall@10": 0.9923664122137404,
+      "mrr": 0.8246819338422392,
+      "ndcg@5": 0.8448253169185768,
+      "p95_ms": 39.2,
+      "vs_incumbent": {
+        "n": 131,
+        "mean_a": 0.9656,
+        "mean_b": 0.9656,
+        "difference": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0,
+        "excludes_zero": false,
+        "difference_in_items": 0.0
+      },
+      "g-038_recall@5": 0.0,
+      "g-038_recall@10": 1.0,
+      "g-038_first_relevant_rank": 6
+    },
+    {
+      "rrf_k": 20,
+      "recall@1": 0.6946564885496184,
+      "recall@5": 0.9656488549618321,
+      "recall@10": 0.9923664122137404,
+      "mrr": 0.823791348600509,
+      "ndcg@5": 0.8444907844694253,
+      "p95_ms": 38.16,
+      "vs_incumbent": {
+        "n": 131,
+        "mean_a": 0.9656,
+        "mean_b": 0.9656,
+        "difference": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0,
+        "excludes_zero": false,
+        "difference_in_items": 0.0
+      },
+      "g-038_recall@5": 0.0,
+      "g-038_recall@10": 0.0,
+      "g-038_first_relevant_rank": null
+    },
+    {
+      "rrf_k": 30,
+      "recall@1": 0.6946564885496184,
+      "recall@5": 0.9656488549618321,
+      "recall@10": 0.9923664122137404,
+      "mrr": 0.8238761662425784,
+      "ndcg@5": 0.8444907844694253,
+      "p95_ms": 37.03,
+      "vs_incumbent": {
+        "n": 131,
+        "mean_a": 0.9656,
+        "mean_b": 0.9656,
+        "difference": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0,
+        "excludes_zero": false,
+        "difference_in_items": 0.0
+      },
+      "g-038_recall@5": 0.0,
+      "g-038_recall@10": 0.0,
+      "g-038_first_relevant_rank": null
+    },
+    {
+      "rrf_k": 60,
+      "recall@1": 0.6946564885496184,
+      "recall@5": 0.9656488549618321,
+      "recall@10": 0.9923664122137404,
+      "mrr": 0.8239821882951653,
+      "ndcg@5": 0.8444907844694253,
+      "p95_ms": 39.0,
+      "vs_incumbent": {
+        "n": 131,
+        "mean_a": 0.9656,
+        "mean_b": 0.9656,
+        "difference": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0,
+        "excludes_zero": false,
+        "difference_in_items": 0.0
+      },
+      "g-038_recall@5": 0.0,
+      "g-038_recall@10": 0.0,
+      "g-038_first_relevant_rank": null
+    },
+    {
+      "rrf_k": 100,
+      "recall@1": 0.6946564885496184,
+      "recall@5": 0.9656488549618321,
+      "recall@10": 0.9923664122137404,
+      "mrr": 0.8239821882951653,
+      "ndcg@5": 0.8444907844694253,
+      "p95_ms": 37.18,
+      "vs_incumbent": {
+        "n": 131,
+        "mean_a": 0.9656,
+        "mean_b": 0.9656,
+        "difference": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0,
+        "excludes_zero": false,
+        "difference_in_items": 0.0
+      },
+      "g-038_recall@5": 0.0,
+      "g-038_recall@10": 0.0,
+      "g-038_first_relevant_rank": null
+    }
+  ]
+}

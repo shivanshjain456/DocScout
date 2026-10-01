@@ -6,6 +6,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 ## [Unreleased]
 
 ### Added
+- **ADR-0007 and the first verification story: a retrieval miss the harness caught.** Gold
+  item g-038 scored zero recall at every cutoff while BM25 ranked the correct chunk **first**
+  — RRF at k=60 fused lexical-rank-1 and dense-rank-41 into rank 14, outside the served depth.
+  Rank-only fusion cannot express certainty: at k=60, rank 1 is worth only 1.66x rank 41, so
+  broad agreement beats one arm's conviction. Fixed by reserving a seat for each arm's own top
+  hit (`RetrievalConfig.anchor_arm_top1`, enabled on the new `app.retrieval.SERVING_CONFIG`),
+  **not** by tuning the constant: a sweep over the full gold set showed `rrf_k=5` gains 1.15pp
+  recall@5, which is 1.5 items with a CI spanning zero. Per-item over 131 items: **0 worse, 1
+  better**. Recall@10 **0.9924 → 1.0000**, MRR 0.8240 → 0.8247. Four regression tests, two of
+  which were verified to fail with the fix removed, and one deliberately inverted so the
+  guarantee cannot become cargo cult. Story:
+  `docs/verification/0001-g038-fusion-miss.md`.
+- `scripts/experiments/u10_rrf_constant_sweep.py`: the RRF constant sweep behind ADR-0007,
+  with raw output under `evals/experiments/`. Partially closes U-10 — the constant stays at
+  the published default with measurements behind it; candidate depth and rerank depth remain
+  open.
 - **`app/evals/gate.py` and `make eval-gate`: the E-12 regression gate.** Fails the build
   when the serving configuration's recall, MRR or nDCG@5 drops more than 1pp against the mean
   of the last three accepted baselines (`evals/baselines/`, promoted explicitly with

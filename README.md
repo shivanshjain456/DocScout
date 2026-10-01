@@ -18,12 +18,12 @@ configuration with the best headline number, and the ADR explains why it is stil
 
 | Metric | Value | Reproduce | Raw output |
 |---|---|---|---|
-| Recall@1 (quote groups) | 0.695 | `make eval` | [`results.json`](evals/reports/20261001T192924Z/results.json) |
-| Recall@5 | 0.966 | `make eval` | [`results.json`](evals/reports/20261001T192924Z/results.json) |
-| Recall@10 | 0.992 | `make eval` | [`results.json`](evals/reports/20261001T192924Z/results.json) |
-| MRR | 0.824 | `make eval` | [`results.json`](evals/reports/20261001T192924Z/results.json) |
-| nDCG@5 | 0.845 | `make eval` | [`results.json`](evals/reports/20261001T192924Z/results.json) |
-| Retrieval p95 latency | 40 ms | `make eval` | [`report.md`](evals/reports/20261001T192924Z/report.md) |
+| Recall@1 (quote groups) | 0.695 | `make eval` | [`results.json`](evals/reports/20261001T204628Z/results.json) |
+| Recall@5 | 0.966 | `make eval` | [`results.json`](evals/reports/20261001T204628Z/results.json) |
+| Recall@10 | 1.000 | `make eval` | [`results.json`](evals/reports/20261001T204628Z/results.json) |
+| MRR | 0.825 | `make eval` | [`results.json`](evals/reports/20261001T204628Z/results.json) |
+| nDCG@5 | 0.845 | `make eval` | [`results.json`](evals/reports/20261001T204628Z/results.json) |
+| Retrieval p95 latency | 42 ms | `make eval` | [`report.md`](evals/reports/20261001T204628Z/report.md) |
 
 Hardware for the latency figure: 2 vCPU / 1.94 GiB, PostgreSQL 18.6 (Debian 18.6-1.pgdg13+2).
 Retrieval only — the embedding model is loaded once per run, not per query.
@@ -33,7 +33,7 @@ Retrieval only — the embedding model is loaded once per run, not per query.
 | config | recall@5 | MRR | p95 | verdict |
 |---|---|---|---|---|
 | `bm25-only` | 0.970 | 0.838 | 1 ms | best headline, **not chosen** — see below |
-| `hybrid-rrf` | 0.966 | 0.824 | 40 ms | **serving** |
+| `hybrid-rrf` | 0.966 | 0.825 | 42 ms | **serving** |
 | `dense-only` | 0.947 | 0.762 | 38 ms | weakest on every retrieval metric |
 
 Every pairwise difference's 95% bootstrap CI includes zero: `bm25-only` leads `hybrid-rrf` by
@@ -41,7 +41,28 @@ Every pairwise difference's 95% bootstrap CI includes zero: `bm25-only` leads `h
 report says so rather than crowning a winner. Worse, the gold set's questions were written from
 the evidence quotes, so they share 73.3% of their terms with the chunk they point at (9.4% for a
 random chunk) — a 7.8x handicap in BM25's favour. In the least-contaminated band BM25 is the
-*worst* of the three. Full working: [`report.md`](evals/reports/20261001T192924Z/report.md).
+*worst* of the three. Full working: [`report.md`](evals/reports/20261001T204628Z/report.md).
+
+### Regression gate
+
+`make eval-gate` fails the build when the serving configuration's recall, MRR or nDCG@5 drops
+more than 1pp against the mean of the last three accepted baselines, and fails hard on
+invariants that make a comparison meaningless at all — a gold set mutated without a version
+bump, a changed corpus, or items that quietly vanished. Drilled against a real 1.90pp
+degradation: exit 1. Raw output: [`docs/setup/verify/m4-eval-gate.txt`](docs/setup/verify/m4-eval-gate.txt).
+
+The gate publishes its own noise floor beside each verdict. On a 131-item gold set one item is
+0.76pp and the minimum detectable effect is 3.24pp, so 1pp sits inside the noise. The threshold
+is enforced as specified rather than quietly widened.
+
+### Verification story
+
+[A retrieval miss the harness caught](docs/verification/0001-g038-fusion-miss.md): BM25 ranked
+a chunk **first**, RRF fused it to rank 14, and the item scored zero recall at every cutoff.
+Diagnosed to rank-only fusion discarding an arm's certainty, fixed with a bounded guarantee
+([ADR-0007](docs/decisions/0007-arm-anchored-fusion.md)) chosen over constant-tuning on measured
+evidence, and pinned by a regression test that fails when the fix is removed.
+Recall@10 0.9924 → **1.0000**; 0 items worse, 1 better.
 
 ### Not yet measured
 
@@ -127,9 +148,12 @@ for a random chunk. That is a 7.8x advantage handed to BM25 before retrieval sta
 are reported stratified by that overlap so the effect is visible rather than averaged away.
 Tracked as U-18; closing it needs paraphrased query variants.
 
-**The corpus is 21 documents and 170 chunks.** Recall@10 is ~0.98 for every configuration, so
-the benchmark is close to saturated and has little power to separate architectures. Numbers
-here will fall when the corpus grows, and that is expected rather than a regression.
+**The corpus is 21 documents and 170 chunks, and the benchmark is saturated at depth 10.**
+Recall@10 is 1.000 for the serving configuration and ~0.99 for every other one. That is a
+ceiling effect of a tiny corpus, not a solved retrieval problem: it means recall@10 has no
+power left to discriminate between architectures, and the gate's useful signal is now recall@5
+and MRR. These numbers will fall when the corpus grows, and that is expected rather than a
+regression.
 
 **The regression gate runs below its own noise floor.** The gate enforces the specified 1pp
 threshold, but on 131 items one item is 0.76pp and the measured minimum detectable effect is

@@ -311,6 +311,14 @@ chunker (U-8, closed) and the corpus, not on the RRF constant or the candidate a
 U-10 gates the first **baseline run** and the §8.1 ablations, not the item set. The gold set is
 pinned at v1.0.0 with U-10 open.
 
+**U-10, partially closed (2026-10-02).** The RRF constant was swept over the full gold set
+(`scripts/experiments/u10_rrf_constant_sweep.py`, raw output under `evals/experiments/`). It
+stays at the published default of 60: the best alternative, k=5, gains 1.15pp recall@5, which
+is 1.5 items on 131, with a bootstrap CI spanning zero. What changed instead is structural —
+each arm's own top hit is now guaranteed a seat in the returned k (ADR-0007), after a real
+miss in which BM25 ranked the answer first and fusion buried it at 14. Candidate depth and
+rerank depth remain open.
+
 **E-12 is implemented (2026-10-02).** `app/evals/gate.py`, `make eval-gate`. It enforces the
 1pp rule against the mean of the last three accepted baselines in `evals/baselines/`, over the
 serving configuration's recall, MRR and nDCG at k=5 — any one of them failing fails the build,

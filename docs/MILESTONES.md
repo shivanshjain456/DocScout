@@ -228,7 +228,7 @@ NOT met. M4 is therefore not complete, and is not recorded as complete.
 |---|---|---|
 | 1 | Baseline run with E-14 pinning fields | **DONE** — `evals/reports/20261001T192924Z/`, committed |
 | 2 | recall@k, MRR, nDCG with their artifact | **DONE** for retrieval; citation precision/recall need a generator, so they are absent, not estimated |
-| 3 | Lexical and rerank ablations | **PARTIAL** — dense/BM25/hybrid A/B done (ADR-0006); rerank deferred with a reason, not forgotten (recall@10 ≈ 0.98 leaves a reranker nothing to recover on a 170-chunk corpus) |
+| 3 | Lexical and rerank ablations | **PARTIAL, extended** — dense/BM25/hybrid A/B (ADR-0006) plus a full RRF-constant sweep (ADR-0007, U-10 partially closed); rerank still deferred with a reason, and ADR-0007 records why a reranker could not have fixed g-038 at all — dense/BM25/hybrid A/B done (ADR-0006); rerank deferred with a reason, not forgotten (recall@10 ≈ 0.98 leaves a reranker nothing to recover on a 170-chunk corpus) |
 | 4 | `eval-smoke` enforcing the >1pp gate | **DONE, with one honest caveat** — `make eval-gate` enforces the rule and fails the build (exit 1, drilled against a real 1.90pp degradation); the CI job is written and pinned but has never run, because there is no remote (V10 BLOCKED), so no badge is claimed. The gate reports that 1pp sits below the gold set's 3.24pp noise floor rather than silently widening the threshold. Evidence: `docs/setup/verify/m4-eval-gate.txt` |
 | 5 | U-1 decided | **NOT DONE** — no API keys; the formal re-scope is still owed in writing |
 
