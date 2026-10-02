@@ -15,11 +15,24 @@ What gets blanked, from the Phase 0 corpus survey (ADR-0003):
   mis-mapped font encodings.
 * `U+FFFD` replacement characters — decode failures.
 * Page furniture, which repeats on every page and dilutes BM25 term statistics.
+* **Invisible and private-use characters** (added 2026-10-02). Unicode categories Cf
+  (format), Co (private use) and Cs (surrogate) carry no readable text but survive PDF
+  extraction, embed into the vector, consume tokens and render as garbage in a citation.
+  OWASP's LLM09 (Vector and Embedding Weaknesses) names exactly this: strip formatting and
+  detect hidden content so it does not survive ingestion. Measured on this corpus before
+  the pass existed: four occurrences of U+F0E0, a Wingdings breadcrumb arrow in SEBI
+  circulars rendered through a symbol font, two of them inside chunks the gold set cites.
+
+  This is category-based rather than a range list because the category *is* the rule:
+  enumerating ranges invites exactly the gap that let U+F0E0 through. Cc (control) is
+  deliberately NOT included -- newline and tab are legitimate structure.
 """
 
 from __future__ import annotations
 
 import re
+import unicodedata
+from collections import Counter
 
 #: Unicode ranges blanked by `clean_preserving_offsets`, as a single character class so
 #: the substitution is one pass and provably one-character-for-one-character.
@@ -42,6 +55,44 @@ NOISE_PATTERN = re.compile(
 PAGE_FURNITURE_PATTERN = re.compile(r"(?i)\bPage\s+\d+\s+of\s+\d+\b|\bपृ.{0,3}ठ\s*सं\.?\s*\d+")
 
 
+#: Unicode general categories blanked by `blank_invisible`.
+#:
+#: Cf  format characters -- zero-width space/joiner, bidirectional overrides, soft hyphen,
+#:     byte-order mark. Invisible by definition, and the bidi overrides (U+202A-202E) are
+#:     the classic way to make rendered text disagree with its codepoints.
+#: Co  private use -- meaning is font-specific, so the codepoint carries no portable text.
+#: Cs  surrogates -- cannot appear in well-formed decoded text; blanked defensively rather
+#:     than left to crash an encoder deep in the pipeline.
+INVISIBLE_CATEGORIES = frozenset({"Cf", "Co", "Cs"})
+
+
+def find_invisible(text: str) -> dict[str, int]:
+    """Count invisible/private-use codepoints, keyed by `U+XXXX NAME`.
+
+    Separate from the blanking pass so ingestion can *report* what it removed. Silently
+    deleting content is how a corpus quietly stops matching its source; the run report
+    naming the document and the codepoint is what makes the removal auditable.
+    """
+    counts: Counter[str] = Counter()
+    for ch in text:
+        if unicodedata.category(ch) in INVISIBLE_CATEGORIES:
+            counts[f"U+{ord(ch):04X} {unicodedata.name(ch, '<unnamed>')}"] += 1
+    return dict(counts)
+
+
+def blank_invisible(text: str) -> str:
+    """Replace every invisible/private-use character with a single space.
+
+    One character out for one character in, by construction: the comprehension cannot
+    change the length, which is the property `clean_preserving_offsets` depends on and
+    re-checks. The fast path returns the original object when there is nothing to do, so
+    the common case costs one scan and no allocation.
+    """
+    if not any(unicodedata.category(ch) in INVISIBLE_CATEGORIES for ch in text):
+        return text
+    return "".join(" " if unicodedata.category(ch) in INVISIBLE_CATEGORIES else ch for ch in text)
+
+
 def _blank(match: re.Match[str]) -> str:
     """Replace a match with exactly as many spaces as it consumed."""
     return " " * (match.end() - match.start())
@@ -55,7 +106,8 @@ def clean_preserving_offsets(text: str) -> str:
     is worth a cheap check on every call because the symptom otherwise shows up far away,
     as citations that quote the wrong span.
     """
-    cleaned = NOISE_PATTERN.sub(" ", text)
+    cleaned = blank_invisible(text)
+    cleaned = NOISE_PATTERN.sub(" ", cleaned)
     cleaned = PAGE_FURNITURE_PATTERN.sub(_blank, cleaned)
     if len(cleaned) != len(text):
         raise RuntimeError(

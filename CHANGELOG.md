@@ -6,6 +6,28 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 ## [Unreleased]
 
 ### Added
+- **`docs/AUDIT-2026-10-02.md`** — a production-readiness audit against researched recruiter
+  and senior-engineer expectations (10 cited sources, accessed 2026-10-02, with the
+  disagreements between them resolved explicitly), and a prioritised 27-item gap checklist.
+  Each item carries the expectation, verified current-state evidence, the exact gap,
+  hiring-signal impact, priority, dependencies, acceptance criteria and a verification
+  method.
+
+### Fixed
+- **Invisible and private-use characters survived ingestion into embeddings and citations**
+  (OWASP LLM09). A character-level scan of all 170 stored chunks found four occurrences of
+  **U+F0E0** — the Wingdings breadcrumb arrow in SEBI circulars, "under the link *Legal →
+  Circulars*" — embedded into the vector, tokenised, served in API responses, and present
+  in **two chunks the gold set cites**. `clean.py` enumerated Unicode *ranges* and so could
+  only ever catch what someone had thought of; it now blanks by **category** (Cf format,
+  Co private-use, Cs surrogate), which is what the rule actually is. Cc is excluded on
+  purpose — newline and tab are structure.
+  The substitution stays one-space-per-character, so ADR-0003's offset contract holds.
+  Verified across a full rebuild: **170/170 chunk ids unchanged, all offsets identical,
+  72/72 gold citations resolvable, FR-7 passing, eval gate PASS** (recall and nDCG
+  unchanged, MRR +0.03pp). `find_invisible()` reports what was removed per document, so the
+  removal is auditable rather than silent. 9 new tests; the end-to-end one reads the live
+  database and failed against it before the fix.
 - **U-1 is closed: the calibrated-judge claim is formally withdrawn** (`EVAL_PROTOCOL.md`
   §4.2, outcome (b)). M4's exit criterion 5 said carrying this past M4 was not permitted; it
   had been carried past M4 and M5. Two independent reasons, either sufficient: no paid API

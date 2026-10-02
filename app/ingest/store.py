@@ -22,7 +22,7 @@ The three rules this module implements, and where each is really enforced:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 from uuid import UUID
@@ -58,6 +58,10 @@ class PreparedDocument:
     chunks: list[Chunk]
     embeddings: np.ndarray
     embedding_model: str
+    #: Invisible / private-use codepoints blanked during cleaning, keyed by "U+XXXX NAME".
+    #: Carried here only so the ingest report can surface it; nothing is written to the
+    #: database, because the blanked text itself is the stored record.
+    invisible_removed: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

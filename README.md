@@ -309,6 +309,22 @@ and citations resolve to `chunk_id` instead.
 **Latency figures are retrieval only, on 2 vCPU / 1.9 GiB.** The embedding model is loaded once
 per run and excluded. They are not end-to-end numbers and must not be read as a service SLO.
 
+### Rebuilding derived data
+
+Ingestion skips any document whose source `sha256` is unchanged, which is what makes
+re-running it cheap (21 documents skipped in 0.013 s). The consequence: a change to
+**cleaning, chunking or the embedding model** is not picked up by `make ingest`, because
+the source bytes did not move. Those changes require a deliberate rebuild:
+
+```bash
+psql "$MIGRATION_DATABASE_URL" -c "TRUNCATE chunks, document_versions, documents CASCADE;"
+make ingest && python -m app.ingest verify && make eval && make eval-gate
+```
+
+Chunk ids are derived from content offsets (ADR-0005), so a length-preserving cleaning
+change leaves every id — and every pinned gold citation — intact. The gate is what proves
+the rebuild did not move the numbers.
+
 ## Security posture
 
 Corpus documents are fetched from the public internet and are treated as **untrusted data, never

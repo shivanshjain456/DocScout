@@ -35,7 +35,7 @@ from app.ingest.chunk import (
     chunk_document,
     uncovered_characters,
 )
-from app.ingest.clean import clean_preserving_offsets
+from app.ingest.clean import clean_preserving_offsets, find_invisible
 from app.ingest.embed import Embedder
 from app.ingest.errors import ExtractionError, ShortExtractionError
 from app.ingest.extract import assert_extraction_long_enough, extract
@@ -69,6 +69,10 @@ class DocumentResult:
     token_mean: float | None = None
     token_max: int | None = None
     uncovered_chars: int | None = None
+    #: Invisible / private-use codepoints blanked during cleaning, keyed by "U+XXXX NAME".
+    #: Recorded per document so the removal is auditable: a corpus that silently stops
+    #: matching its source is the failure this field exists to make visible (OWASP LLM09).
+    invisible_removed: dict[str, int] = field(default_factory=dict)
     elapsed_ms: int = 0
     detail: str = ""
 
@@ -142,6 +146,7 @@ class ChunkedDocument:
     pages: int | None
     extractor: str
     chunks: list[Chunk]
+    invisible_removed: dict[str, int] = field(default_factory=dict)
 
 
 def chunk_source_document(
@@ -152,6 +157,9 @@ def chunk_source_document(
     if not extraction.text.strip():
         raise ExtractionError(f"{document.url}: {extraction.extractor} produced no text")
 
+    # Counted on the raw extraction, before blanking, because afterwards there is nothing
+    # left to count.
+    invisible_removed = find_invisible(extraction.text)
     text = clean_preserving_offsets(extraction.text)
     clean_chars = assert_extraction_long_enough(text, url=document.url)
 
@@ -165,6 +173,7 @@ def chunk_source_document(
         pages=extraction.pages,
         extractor=extraction.extractor,
         chunks=chunks,
+        invisible_removed=invisible_removed,
     )
 
 
@@ -185,6 +194,7 @@ def prepare_document(document: SourceDocument, embedder: Embedder) -> PreparedDo
         # count FR-3's floor is tested against.
         char_count=len(cut.text),
         clean_chars=cut.clean_chars,
+        invisible_removed=cut.invisible_removed,
         pages=cut.pages,
         extractor=cut.extractor,
         chunks=cut.chunks,
@@ -216,6 +226,7 @@ def _result_from_outcome(
         token_mean=round(sum(tokens) / len(tokens), 1),
         token_max=max(tokens),
         uncovered_chars=uncovered_characters(prepared.text, prepared.chunks),
+        invisible_removed=prepared.invisible_removed,
         elapsed_ms=elapsed_ms,
         detail=outcome.detail,
     )

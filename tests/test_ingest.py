@@ -563,3 +563,96 @@ def test_report_path_display_survives_a_relative_report_dir(tmp_path: Path) -> N
     assert display_path(Path("docs/corpus/evidence/run")) == "docs/corpus/evidence/run"
     assert display_path(REPO_ROOT / "corpus" / "reports") == "corpus/reports"
     assert display_path(tmp_path / "elsewhere") == str(tmp_path / "elsewhere")
+
+
+# --- invisible / private-use character sanitisation (OWASP LLM09) ------------------------
+# Measured on this corpus before the pass existed: four occurrences of U+F0E0, a Wingdings
+# breadcrumb arrow in SEBI circulars ("under the link 'Legal <arrow> Circulars'"), two of
+# them inside chunks the gold set cites. They were embedded, tokenised and served.
+class TestInvisibleCharacters:
+    def test_private_use_character_is_blanked(self) -> None:
+        from app.ingest.clean import blank_invisible
+
+        assert blank_invisible("Legal \uf0e0 Circulars") == "Legal   Circulars"
+
+    @pytest.mark.parametrize(
+        ("codepoint", "name"),
+        [
+            ("\u200b", "zero width space"),
+            ("\u200d", "zero width joiner"),
+            ("\ufeff", "byte order mark"),
+            ("\u00ad", "soft hyphen"),
+            ("\u202e", "right-to-left override"),
+            ("\u2066", "left-to-right isolate"),
+            ("\u2060", "word joiner"),
+            ("\ue000", "private use area start"),
+        ],
+    )
+    def test_each_invisible_class_is_blanked(self, codepoint: str, name: str) -> None:
+        from app.ingest.clean import blank_invisible
+
+        assert blank_invisible(f"a{codepoint}b") == "a b", name
+
+    def test_legitimate_whitespace_and_text_survive(self) -> None:
+        """Cc is deliberately excluded: newline and tab are structure, not noise."""
+        from app.ingest.clean import blank_invisible
+
+        text = "line one\n\tindented\r\nend \u00a0nbsp"
+        assert blank_invisible(text) == text
+
+    def test_blanking_is_length_preserving(self) -> None:
+        """The property every chunk offset, chunk_id and pinned citation depends on."""
+        from app.ingest.clean import blank_invisible
+
+        text = "a\uf0e0b\u200bc\u202ed\ufeffe"
+        assert len(blank_invisible(text)) == len(text)
+
+    def test_clean_preserving_offsets_still_checks_its_invariant(self) -> None:
+        from app.ingest.clean import clean_preserving_offsets
+
+        text = "Legal \uf0e0 Circulars\u200b with \u0905 Devanagari and Page 2 of 9"
+        assert len(clean_preserving_offsets(text)) == len(text)
+
+    def test_text_with_nothing_to_blank_is_returned_unchanged(self) -> None:
+        """The fast path must not allocate or alter a clean document."""
+        from app.ingest.clean import blank_invisible
+
+        text = "An ordinary SEBI circular paragraph."
+        assert blank_invisible(text) is text
+
+    def test_find_invisible_names_what_it_found(self) -> None:
+        """Silent removal is how a corpus stops matching its source; this makes it auditable."""
+        from app.ingest.clean import find_invisible
+
+        found = find_invisible("Legal \uf0e0 x\u200b y\u200b")
+        assert found["U+200B ZERO WIDTH SPACE"] == 2
+        assert found["U+F0E0 <unnamed>"] == 1
+
+    def test_find_invisible_is_empty_for_clean_text(self) -> None:
+        from app.ingest.clean import find_invisible
+
+        assert find_invisible("ordinary text") == {}
+
+    def test_the_real_corpus_is_clean_after_ingestion(
+        self, ingest_db: psycopg.Connection[Any]
+    ) -> None:
+        """End-to-end: no stored chunk may contain an invisible or private-use codepoint.
+
+        This is the regression test for the defect itself. It reads what is actually in the
+        database rather than re-running the cleaner, so it fails if the pass is bypassed
+        anywhere in the ingest path, not only if `blank_invisible` regresses.
+        """
+        import unicodedata
+
+        from app.ingest.clean import INVISIBLE_CATEGORIES
+
+        rows = ingest_db.execute("SELECT chunk_id::text, text FROM chunks").fetchall()
+        if not rows:
+            pytest.skip("corpus not ingested; run `make ingest`")
+        offenders = [
+            (cid, f"U+{ord(ch):04X}")
+            for cid, text in rows
+            for ch in text
+            if unicodedata.category(ch) in INVISIBLE_CATEGORIES
+        ]
+        assert not offenders, f"invisible characters survived ingestion: {offenders[:10]}"

@@ -164,6 +164,34 @@ only `EVAL_PROTOCOL.md` numbers against a real gold set may be.
   thresholds; an extraction upgrade that restores document structure; or tables (U-11), which this
   sweep did not model at all and which fixed-width chunking will certainly shred.
 
+## Amendment, 2026-10-02 — invisible and private-use characters
+
+The offset-preserving cleaning contract this ADR established was sound; its blanking list
+was incomplete. It enumerated Unicode *ranges* (Devanagari, Latin Extended-B, spacing
+modifiers, U+FFFD) and therefore missed anything outside them.
+
+A character-level scan of all 170 stored chunks found **four occurrences of U+F0E0** — a
+Private Use Area codepoint, the Wingdings breadcrumb arrow SEBI circulars use in "available
+at www.sebi.gov.in under the link *Legal → Circulars*". It was embedded into the vector,
+tokenised, and returned in API responses; **two of the four chunks are cited by the gold
+set**. OWASP's LLM09 (Vector and Embedding Weaknesses) names exactly this class: strip
+formatting and detect hidden content so it does not survive ingestion.
+
+Cleaning now blanks Unicode categories **Cf** (format — zero-width, bidi overrides, soft
+hyphen, BOM), **Co** (private use) and **Cs** (surrogate), by *category* rather than by
+range, because the category is the rule and enumerating ranges is what let U+F0E0 through.
+Cc (control) is deliberately excluded: newline and tab are structure.
+
+The substitution is one space per character, so the contract holds. Verified empirically
+across a full rebuild: **170/170 chunk ids unchanged, all offsets identical, 72/72 gold
+citations still resolvable, FR-7 re-derivation passing, eval gate PASS** (recall and nDCG
+unchanged, MRR +0.03pp). `find_invisible()` records what was removed per document in the
+ingest report, because silent removal is how a corpus stops matching its source.
+
+**Operational note.** Ingestion skips a document whose source sha256 is unchanged, so a
+cleaning change is *not* picked up by re-running `make ingest`. Derived data must be
+rebuilt deliberately — see "Rebuilding derived data" in the README.
+
 ## Rejected alternatives
 
 ### A. No overlap
