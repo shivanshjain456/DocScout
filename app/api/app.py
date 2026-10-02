@@ -1,0 +1,336 @@
+"""The DocScout serving API.
+
+Scope, stated up front because the omission is deliberate: this serves **retrieval with
+citations**, not generated answers. There is no LLM in the request path and no API keys to
+call one (U-1). An endpoint that returned prose here would have to invent it, and inventing
+prose over regulatory text is the single failure this project is built to measure and
+avoid. What it returns instead is the evidence — ranked passages with resolvable chunk ids
+and character spans — which is exactly what the eval harness measures, so every number in
+the README describes this endpoint rather than a different code path.
+
+Three things are load-bearing in the design:
+
+* **Everything expensive loads once, at startup.** The embedding model takes ~13 s and the
+  BM25 term table needs a full scan of `chunks`. Doing either per request would make the
+  published p95 a measurement of initialisation. The lifespan handler pays both costs
+  before the first request is accepted.
+* **The database is reached through a pool.** FastAPI runs synchronous handlers in a worker
+  thread pool, so a single shared `psycopg` connection would be used concurrently by
+  several threads, which is not safe. One connection per request, returned on completion.
+* **Failure is closed and quiet.** Missing auth configuration stops startup. Unexpected
+  errors return a generic message with a correlation id; the detail goes to the log, not to
+  the caller, because this runs on a public URL.
+"""
+
+from __future__ import annotations
+
+import logging
+import time
+import uuid
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from fastapi import Depends, FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import HTMLResponse, JSONResponse
+from psycopg_pool import ConnectionPool
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from app.api import demo
+from app.api.cache import DEFAULT_RESULT_TTL_SECONDS, TTLCache
+from app.api.models import (
+    HealthResponse,
+    Passage,
+    Provenance,
+    SearchRequest,
+    SearchResponse,
+    Timings,
+)
+from app.api.security import RATE_LIMIT_REQUESTS, load_keys, require_api_key
+from app.config import database_url, sha256_file
+from app.ingest.chunk import CHUNK_OVERLAP, CHUNK_SIZE
+from app.ingest.embed import EMBEDDING_DIM, MODEL_ID, Embedder
+from app.retrieval import SERVING_CONFIG, RetrievalConfig, Retriever
+from app.retrieval.lexical import BM25Index
+from app.rowtypes import as_int
+
+logger = logging.getLogger("docscout.api")
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+# Bounded so memory is predictable on a 1.9 GiB host. 512 cached responses of at most 20
+# passages is a few MB; the embedding cache is 512 float32 vectors of 384 dims, under 1 MB.
+RESULT_CACHE_SIZE = 512
+EMBEDDING_CACHE_SIZE = 512
+
+
+@dataclass(frozen=True)
+class CachedResult:
+    """What the result cache stores: the parts of a response that do not vary per request.
+
+    Typed rather than a dict so the cache cannot drift out of step with the response model.
+    Timings are deliberately excluded -- they describe the request that is being served, and
+    replaying a previous request's latency would be a fabricated measurement.
+    """
+
+    passages: list[Passage]
+    provenance: Provenance
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Pay every fixed cost before the first request is served."""
+    app.state.api_keys = load_keys()  # raises, by design, if none are configured
+
+    app.state.pool = ConnectionPool(
+        database_url(),
+        min_size=1,
+        # Four is chosen against the hardware, not plucked: 2 vCPU means more than a
+        # handful of concurrent retrievals queue on CPU anyway, and each idle connection
+        # costs backend memory on a 1.9 GiB box.
+        max_size=4,
+        open=True,
+        timeout=10.0,
+    )
+
+    embedder = Embedder()
+    # Force the weights to load now. Encoding one throwaway string is the only honest way
+    # to do it: the model is lazy and would otherwise load inside the first request.
+    embedder.encode_query("warmup")
+    app.state.embedder = embedder
+
+    with app.state.pool.connection() as conn:
+        app.state.bm25 = BM25Index(conn)
+        row = conn.execute("SELECT count(*) FROM chunks").fetchone()
+        app.state.corpus_chunks = as_int(row[0]) if row else 0
+
+    app.state.result_cache = TTLCache[tuple[str, str, int], CachedResult](
+        maxsize=RESULT_CACHE_SIZE, ttl=DEFAULT_RESULT_TTL_SECONDS
+    )
+    app.state.embedding_cache = TTLCache[str, Any](maxsize=EMBEDDING_CACHE_SIZE, ttl=None)
+    app.state.manifest_digest = sha256_file(REPO_ROOT / "corpus" / "raw" / "manifest.json")
+
+    logger.info(
+        "api ready: %d chunks, model %s, %d api key(s)",
+        app.state.corpus_chunks,
+        MODEL_ID,
+        len(app.state.api_keys),
+    )
+    try:
+        yield
+    finally:
+        app.state.pool.close()
+
+
+app = FastAPI(
+    title="DocScout",
+    version="0.1.0",
+    summary="Citation-grounded retrieval over RBI and SEBI regulatory circulars.",
+    description=(
+        "Returns the evidence, not a generated answer. Every passage carries a stable "
+        "chunk id and character span so a citation can be checked against the source."
+    ),
+    lifespan=lifespan,
+    # The interactive docs are the cheapest possible demo surface and leak nothing: the
+    # schema is public, the data is public, and every data route is key-gated.
+    docs_url="/docs",
+    redoc_url=None,
+)
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+    """Uniform error bodies, with auth headers preserved."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers=getattr(exc, "headers", None),
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    """422 with the field problems, but without echoing the submitted values.
+
+    Pydantic's default body includes `input`, which would reflect caller data straight back
+    into a response and into any log that records it. The field and the rule are enough to
+    fix a request.
+    """
+    problems = [
+        {"field": ".".join(str(p) for p in err["loc"][1:]), "problem": err["msg"]}
+        for err in exc.errors()
+    ]
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        content={"detail": "invalid request", "problems": problems},
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Never leak internals to a public URL; log them with a correlation id instead."""
+    correlation = uuid.uuid4().hex[:12]
+    logger.exception("unhandled error [%s] on %s", correlation, request.url.path)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": f"internal error (reference {correlation})"},
+    )
+
+
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+def index() -> HTMLResponse:
+    """A self-contained demo page. No external assets, so it renders in a sandboxed frame."""
+    return HTMLResponse(demo.PAGE)
+
+
+@app.get("/healthz", response_model=HealthResponse, tags=["ops"])
+def healthz(request: Request) -> HealthResponse:
+    """Liveness and readiness in one place, deliberately unauthenticated.
+
+    A health check behind auth cannot be used by the thing that needs it most -- a load
+    balancer -- and this endpoint reveals only counts and configuration names.
+    """
+    state = request.app.state
+    database_ok = True
+    chunks = state.corpus_chunks
+    try:
+        with state.pool.connection() as conn:
+            row = conn.execute("SELECT count(*) FROM chunks").fetchone()
+            chunks = as_int(row[0]) if row else 0
+    except Exception:  # noqa: BLE001 - health must report, never raise
+        logger.warning("healthz: database probe failed", exc_info=True)
+        database_ok = False
+
+    return HealthResponse(
+        status="ok" if database_ok and chunks > 0 else "degraded",
+        database=database_ok,
+        corpus_chunks=chunks,
+        embedding_model=MODEL_ID,
+        model_loaded=state.embedder is not None,
+        cache={
+            **state.result_cache.stats.as_dict(),
+            "entries": len(state.result_cache),
+        },
+        rate_limit_per_minute=RATE_LIMIT_REQUESTS,
+        single_process=True,
+    )
+
+
+def _config_for(payload: SearchRequest) -> RetrievalConfig:
+    """Build the retrieval configuration, keeping the serving default authoritative."""
+    if payload.mode == "hybrid":
+        return RetrievalConfig(
+            name=SERVING_CONFIG.name,
+            mode="hybrid",
+            k_dense=SERVING_CONFIG.k_dense,
+            k_lexical=SERVING_CONFIG.k_lexical,
+            k_final=payload.k,
+            rrf_k=SERVING_CONFIG.rrf_k,
+            anchor_arm_top1=SERVING_CONFIG.anchor_arm_top1,
+        )
+    # Single-arm modes are the documented ADR-0006 ablation, reachable so the A/B can be
+    # reproduced against the running service.
+    return RetrievalConfig(
+        name=f"{payload.mode}-only",
+        mode=payload.mode,
+        k_dense=SERVING_CONFIG.k_dense,
+        k_lexical=SERVING_CONFIG.k_lexical,
+        k_final=payload.k,
+    )
+
+
+@app.post(
+    "/v1/search",
+    response_model=SearchResponse,
+    tags=["search"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "invalid request"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def search(
+    payload: SearchRequest,
+    request: Request,
+    fingerprint: str = Depends(require_api_key),
+) -> SearchResponse:
+    """Retrieve the passages that answer a question, with checkable citations."""
+    started = time.perf_counter()
+    state = request.app.state
+    cache_key = (payload.query, payload.mode, payload.k)
+
+    cached: CachedResult | None = state.result_cache.get(cache_key) if payload.use_cache else None
+    if cached is not None:
+        total_ms = (time.perf_counter() - started) * 1000.0
+        logger.info(
+            "search hit key=%s mode=%s k=%d %.1fms", fingerprint, payload.mode, payload.k, total_ms
+        )
+        return SearchResponse(
+            query=payload.query,
+            mode=payload.mode,
+            k=payload.k,
+            passages=cached.passages,
+            provenance=cached.provenance,
+            timings=Timings(total_ms=round(total_ms, 2), retrieval_ms=0.0, cache_hit=True),
+        )
+
+    config = _config_for(payload)
+    retrieval_started = time.perf_counter()
+    with state.pool.connection() as conn:
+        retriever = Retriever(conn, embedder=state.embedder, bm25=state.bm25)
+        hits = retriever.retrieve(payload.query, config)
+    retrieval_ms = (time.perf_counter() - retrieval_started) * 1000.0
+
+    result = CachedResult(
+        passages=[
+            Passage(
+                rank=hit.rank,
+                chunk_id=hit.chunk_id,
+                document_id=hit.document_id,
+                source=hit.source,
+                canonical_url=hit.canonical_url,
+                score=round(hit.score, 6),
+                arm_ranks=hit.arm_ranks,
+                char_start=hit.char_start,
+                char_end=hit.char_end,
+                text=hit.text,
+            )
+            for hit in hits
+        ],
+        provenance=Provenance(
+            embedding_model=MODEL_ID,
+            embedding_dim=EMBEDDING_DIM,
+            chunk_size=CHUNK_SIZE,
+            chunk_overlap=CHUNK_OVERLAP,
+            corpus_manifest_digest=state.manifest_digest,
+            corpus_chunks=state.corpus_chunks,
+            retrieval=config.as_dict(),
+        ),
+    )
+    if payload.use_cache:
+        state.result_cache.put(cache_key, result)
+
+    total_ms = (time.perf_counter() - started) * 1000.0
+    logger.info(
+        "search miss key=%s mode=%s k=%d %.1fms (retrieval %.1fms)",
+        fingerprint,
+        payload.mode,
+        payload.k,
+        total_ms,
+        retrieval_ms,
+    )
+    return SearchResponse(
+        query=payload.query,
+        mode=payload.mode,
+        k=payload.k,
+        passages=result.passages,
+        provenance=result.provenance,
+        timings=Timings(
+            total_ms=round(total_ms, 2), retrieval_ms=round(retrieval_ms, 2), cache_hit=False
+        ),
+    )

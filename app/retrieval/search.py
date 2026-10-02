@@ -22,6 +22,7 @@ from app.ingest.embed import Embedder
 from app.retrieval import dense, fusion
 from app.retrieval.lexical import BM25Index
 from app.retrieval.types import RetrievalConfig, Retrieved
+from app.rowtypes import as_int, as_str
 
 
 @dataclass
@@ -29,6 +30,9 @@ class _ChunkRow:
     document_id: str
     source: str
     text: str
+    canonical_url: str | None
+    char_start: int
+    char_end: int
 
 
 class Retriever:
@@ -39,10 +43,14 @@ class Retriever:
         conn: psycopg.Connection[tuple[object, ...]],
         *,
         embedder: Embedder | None = None,
+        bm25: BM25Index | None = None,
     ) -> None:
         self._conn = conn
         self._embedder = embedder if embedder is not None else Embedder()
-        self._bm25: BM25Index | None = None
+        # Injectable because building the term table costs a full scan of chunks. A server
+        # builds it once at startup and shares it across requests; rebuilding per request
+        # would make every query pay for the corpus.
+        self._bm25 = bm25
         self._meta: dict[str, _ChunkRow] = {}
 
     @property
@@ -57,14 +65,22 @@ class Retriever:
         if missing:
             rows = self._conn.execute(
                 """
-                SELECT c.chunk_id::text, c.document_id::text, d.source, c.text
+                SELECT c.chunk_id::text, c.document_id::text, d.source, c.text,
+                       d.canonical_url, c.char_start, c.char_end
                 FROM chunks AS c JOIN documents AS d ON d.document_id = c.document_id
                 WHERE c.chunk_id = ANY(%s::uuid[])
                 """,
                 (missing,),
             ).fetchall()
-            for chunk_id, document_id, source, text in rows:
-                self._meta[str(chunk_id)] = _ChunkRow(str(document_id), str(source), str(text))
+            for chunk_id, document_id, source, text, url, start, end in rows:
+                self._meta[as_str(chunk_id)] = _ChunkRow(
+                    document_id=as_str(document_id),
+                    source=as_str(source),
+                    text=as_str(text),
+                    canonical_url=None if url is None else as_str(url),
+                    char_start=as_int(start),
+                    char_end=as_int(end),
+                )
         return self._meta
 
     def retrieve(self, query: str, config: RetrievalConfig) -> list[Retrieved]:
@@ -111,6 +127,9 @@ class Retriever:
                     source=row.source if row else "",
                     text=row.text if row else "",
                     arm_ranks=dict(arm_ranks),
+                    canonical_url=row.canonical_url if row else None,
+                    char_start=row.char_start if row else 0,
+                    char_end=row.char_end if row else 0,
                 )
             )
         return results

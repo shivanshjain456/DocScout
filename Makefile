@@ -4,6 +4,7 @@ TS := $(shell date -u +%Y%m%dT%H%M%SZ)
 
 .PHONY: help setup dev test lint typecheck secret-scan eval load deploy destroy verify-setup down \
 	gold-lint gold-pin gold-review gold-stats eval-quick eval-gate eval-baseline \
+	serve bench \
         migrate migrate-status migrate-down ingest ingest-dry ingest-status ingest-verify
 
 help:  ## show this help
@@ -70,6 +71,12 @@ eval:  ## retrieval eval over the gold set -> evals/reports/<UTC-ts>/{results.js
 
 eval-quick:  ## same, but only the first 20 gold items (smoke test, not a baseline)
 	uv run python -m app.evals.runner --limit 20 --report-dir /tmp/docscout-eval-quick
+
+serve:  ## run the API on :8000 (loads the model once at startup)
+	uv run uvicorn app.api.app:app --host 0.0.0.0 --port 8000 --workers 1
+
+bench:  ## measure e2e latency, cache effect and cost per 1k against a running API
+	uv run python scripts/bench_api.py --n 200 --concurrency 4
 
 eval-gate:  ## fail if the newest run regressed >1pp vs the last three baselines (E-12)
 	uv run python -m app.evals.gate

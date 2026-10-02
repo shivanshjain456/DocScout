@@ -6,6 +6,40 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 ## [Unreleased]
 
 ### Added
+- **`app/api/`: the serving API — citation-grounded retrieval over HTTP.** `POST /v1/search`
+  returns ranked passages carrying a stable `chunk_id`, source document, canonical URL and
+  character span, so a citation can be checked against the original PDF. **No model
+  generates text in the request path**, so the endpoint cannot hallucinate: every character
+  of regulatory text in a response is a substring of a stored chunk, and a test re-reads
+  each returned chunk from the database to prove it. Reasoning and the reversal condition
+  are in **ADR-0008**.
+- API-key authentication (`X-API-Key`), constant-time comparison, comma-separated keys for
+  rotation, and a per-key sliding-window rate limit. Missing key configuration **stops
+  startup** rather than defaulting to open. Errors return a correlation id, never a
+  traceback or a connection string; the 422 handler strips Pydantic's `input` field so
+  caller data is not reflected back.
+- A self-contained demo page at `/` (no external asset of any kind — a test asserts it),
+  plus `/docs` and an unauthenticated `/healthz` reporting readiness, cache counters and
+  `single_process: true`.
+- **`scripts/bench_api.py` and `make bench`: measured cost and latency.** Over HTTP with
+  real gold-set questions on 2 vCPU / 1.9 GiB: cold p95 **51.43 ms**, warm p95 **3.16 ms**
+  — caching is worth **16.3x on p95** (48.3 ms saved) — 37.0 q/s at concurrency 4, and
+  **$0.000084 per 1,000 queries (~$0.08 per million)**. Raw output committed under
+  `evals/bench/`. With no model in the request path that is the entire query cost.
+- `make serve`. Bounded LRU+TTL caches with hit/miss counters (`app/api/cache.py`), and a
+  configurable rate limit (`DOCSCOUT_RATE_LIMIT_PER_MINUTE`) with no value that disables it.
+- `tests/test_api.py`: 35 cases weighted toward security — absent and wrong keys are
+  indistinguishable, a rejected payload is not echoed, an internal exception leaks nothing,
+  the demo page loads no third-party asset.
+
+### Fixed
+- **The Quickstart documented a setup that does not exist.** It instructed `docker compose
+  up -d` against a compose file this project deliberately does not have, named pgvector
+  0.8.2 where 0.8.6 is installed, and required Node 22 for a UI that was never built. It now
+  documents the two scripts that actually work, measured at ~2 minutes from a bare machine.
+- `SearchRequest.query` used `Field(strip_whitespace=True)`, which Pydantic v2 silently
+  ignores. Queries were never stripped, so `"  rate  "` and `"rate"` were different cache
+  keys and a repeat query reported a miss. Now `StringConstraints`.
 - **ADR-0007 and the first verification story: a retrieval miss the harness caught.** Gold
   item g-038 scored zero recall at every cutoff while BM25 ranked the correct chunk **first**
   — RRF at k=60 fused lexical-rank-1 and dense-rank-41 into rank 14, outside the served depth.

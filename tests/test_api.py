@@ -1,0 +1,357 @@
+"""Tests for the serving API.
+
+The API is the only part of DocScout exposed to the internet, so these tests weight
+security behaviour as heavily as functionality: what happens without a key, with a wrong
+key, with a hostile payload, and past the rate limit.
+
+Keys are injected through the environment rather than read from `.env`. `config.load_dotenv`
+uses `setdefault`, so a real environment variable always wins — which makes the suite
+hermetic and means it never depends on, or reveals, the operator's actual key.
+"""
+
+from __future__ import annotations
+
+import os
+from collections.abc import Iterator
+from typing import Any
+
+import psycopg
+import pytest
+from fastapi.testclient import TestClient
+
+from app.api import security
+from app.api.security import AuthConfigurationError, RateLimiter, load_keys
+
+# Composed from repeated characters on purpose. A realistic-looking random string here is
+# indistinguishable from a leaked credential to a secret scanner -- gitleaks flagged the
+# first version of this file at entropy 4.45 -- and the right response is to make the
+# fixture obviously fake rather than to add an allowlist entry that blunts the scanner for
+# every future file.
+PRIMARY_KEY = "unit-test-key-" + "a" * 24
+ROTATION_KEY = "unit-test-key-" + "b" * 24
+
+
+@pytest.fixture(scope="module")
+def client(app_conn: psycopg.Connection[Any]) -> Iterator[TestClient]:
+    """A live app, with the real database and the real embedding model.
+
+    Module-scoped because the lifespan loads the encoder (~13 s) and builds the BM25 term
+    table; paying that per test would make the suite unusable. Skips rather than fails when
+    the corpus is absent, matching the rest of the suite.
+    """
+    row = app_conn.execute("SELECT count(*) FROM chunks").fetchone()
+    if not row or int(row[0]) == 0:  # pragma: no cover - environment guard
+        pytest.skip("corpus not ingested; run `make ingest`")
+
+    os.environ["DOCSCOUT_API_KEY"] = f"{PRIMARY_KEY},{ROTATION_KEY}"
+    from app.api.app import app as fastapi_app
+
+    with TestClient(fastapi_app) as test_client:
+        yield test_client
+
+
+@pytest.fixture(autouse=True)
+def _fresh_rate_limiter() -> Iterator[None]:
+    """The limiter is process-global; without this one test's burst fails the next."""
+    security.rate_limiter.reset()
+    yield
+    security.rate_limiter.reset()
+
+
+def auth(key: str = PRIMARY_KEY) -> dict[str, str]:
+    return {"X-API-Key": key}
+
+
+# --- configuration fails closed ---------------------------------------------------------
+def test_missing_key_configuration_refuses_to_start(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Auth that disables itself when a variable is unset is a hole, not a default."""
+    monkeypatch.setenv("DOCSCOUT_API_KEY", "")
+    with pytest.raises(AuthConfigurationError, match="will not start"):
+        load_keys()
+
+
+def test_whitespace_only_key_configuration_is_still_empty(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DOCSCOUT_API_KEY", "  ,  , ")
+    with pytest.raises(AuthConfigurationError):
+        load_keys()
+
+
+# --- authentication ---------------------------------------------------------------------
+def test_search_requires_a_key(client: TestClient) -> None:
+    response = client.post("/v1/search", json={"query": "anything at all"})
+    assert response.status_code == 401
+    assert response.headers["WWW-Authenticate"] == "X-API-Key"
+
+
+def test_wrong_key_is_rejected(client: TestClient) -> None:
+    response = client.post(
+        "/v1/search", json={"query": "anything at all"}, headers=auth("not-the-key")
+    )
+    assert response.status_code == 401
+
+
+def test_rejection_does_not_reveal_whether_a_key_was_well_formed(client: TestClient) -> None:
+    """Same status for absent and wrong, so a prober learns nothing from the difference."""
+    absent = client.post("/v1/search", json={"query": "anything at all"})
+    wrong = client.post("/v1/search", json={"query": "anything at all"}, headers=auth("x" * 48))
+    assert absent.status_code == wrong.status_code == 401
+
+
+def test_a_rotation_key_is_accepted(client: TestClient) -> None:
+    """Comma-separated keys exist so one can be retired without downtime."""
+    response = client.post(
+        "/v1/search", json={"query": "capital adequacy requirements"}, headers=auth(ROTATION_KEY)
+    )
+    assert response.status_code == 200
+
+
+def test_key_is_never_echoed_in_a_response(client: TestClient) -> None:
+    response = client.post(
+        "/v1/search", json={"query": "capital adequacy requirements"}, headers=auth()
+    )
+    assert PRIMARY_KEY not in response.text
+
+
+# --- request validation -----------------------------------------------------------------
+@pytest.mark.parametrize(
+    ("payload", "field"),
+    [
+        ({"query": "a"}, "query"),
+        ({"query": "x" * 600}, "query"),
+        ({"query": "valid question", "k": 0}, "k"),
+        ({"query": "valid question", "k": 99}, "k"),
+        ({"query": "valid question", "mode": "magic"}, "mode"),
+        ({"query": "valid question", "unexpected": True}, "unexpected"),
+    ],
+)
+def test_invalid_requests_are_rejected_with_the_offending_field(
+    client: TestClient, payload: dict[str, Any], field: str
+) -> None:
+    response = client.post("/v1/search", json=payload, headers=auth())
+    assert response.status_code == 422
+    body = response.json()
+    assert body["detail"] == "invalid request"
+    assert any(p["field"] == field for p in body["problems"]), body
+
+
+def test_validation_errors_do_not_echo_the_submitted_value(client: TestClient) -> None:
+    """Pydantic's default error body includes `input`; reflecting caller data is a leak."""
+    sentinel = "zzz-sentinel-value-zzz"
+    response = client.post("/v1/search", json={"query": sentinel, "k": 999}, headers=auth())
+    assert response.status_code == 422
+    assert sentinel not in response.text
+
+
+# --- retrieval --------------------------------------------------------------------------
+def test_search_returns_checkable_citations(
+    client: TestClient, app_conn: psycopg.Connection[Any]
+) -> None:
+    """Every returned chunk id must resolve to a real row, with the span it claims."""
+    response = client.post(
+        "/v1/search",
+        json={"query": "What are the KYC requirements for foreign portfolio investors?", "k": 5},
+        headers=auth(),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["passages"]) == 5
+    assert [p["rank"] for p in body["passages"]] == [1, 2, 3, 4, 5]
+
+    for passage in body["passages"]:
+        row = app_conn.execute(
+            "SELECT char_start, char_end, text FROM chunks WHERE chunk_id = %s",
+            (passage["chunk_id"],),
+        ).fetchone()
+        assert row is not None, f"cited chunk {passage['chunk_id']} does not exist"
+        assert passage["char_start"] == row[0]
+        assert passage["char_end"] == row[1]
+        assert passage["text"] == row[2]
+
+
+def test_response_carries_the_provenance_needed_to_date_it(client: TestClient) -> None:
+    body = client.post("/v1/search", json={"query": "settlement cycle"}, headers=auth()).json()
+    provenance = body["provenance"]
+    assert provenance["embedding_model"] == "BAAI/bge-small-en-v1.5"
+    assert provenance["embedding_dim"] == 384
+    assert provenance["corpus_chunks"] > 0
+    assert len(provenance["corpus_manifest_digest"]) == 64
+    # The serving defaults of ADR-0006/0007 must be what actually ran.
+    assert provenance["retrieval"]["rrf_k"] == 60
+    assert provenance["retrieval"]["anchor_arm_top1"] is True
+
+
+def test_k_is_honoured(client: TestClient) -> None:
+    body = client.post(
+        "/v1/search", json={"query": "currency chest operations", "k": 2}, headers=auth()
+    ).json()
+    assert len(body["passages"]) == 2
+
+
+@pytest.mark.parametrize("mode", ["hybrid", "dense", "bm25"])
+def test_every_documented_mode_is_reachable(client: TestClient, mode: str) -> None:
+    """The ADR-0006 ablation must be reproducible against the running service."""
+    body = client.post(
+        "/v1/search", json={"query": "grievance redressal timeline", "mode": mode}, headers=auth()
+    ).json()
+    assert body["mode"] == mode
+    assert body["passages"]
+
+
+def test_results_are_deterministic(client: TestClient) -> None:
+    payload = {"query": "investment in InvIT and REIT units", "k": 5, "use_cache": False}
+    first = client.post("/v1/search", json=payload, headers=auth()).json()
+    second = client.post("/v1/search", json=payload, headers=auth()).json()
+    assert [p["chunk_id"] for p in first["passages"]] == [p["chunk_id"] for p in second["passages"]]
+
+
+# --- caching ----------------------------------------------------------------------------
+def test_cache_hit_is_reported_and_returns_identical_passages(client: TestClient) -> None:
+    payload = {"query": "a distinctive query for the cache test", "k": 3}
+    cold = client.post("/v1/search", json=payload, headers=auth()).json()
+    warm = client.post("/v1/search", json=payload, headers=auth()).json()
+    assert cold["timings"]["cache_hit"] is False
+    assert warm["timings"]["cache_hit"] is True
+    assert cold["passages"] == warm["passages"]
+
+
+def test_cache_can_be_bypassed_for_measurement(client: TestClient) -> None:
+    """Artifact 3 needs the cache's effect measured, which needs a way to turn it off."""
+    payload = {"query": "another distinctive query", "k": 3}
+    client.post("/v1/search", json=payload, headers=auth())
+    bypassed = client.post("/v1/search", json={**payload, "use_cache": False}, headers=auth())
+    assert bypassed.json()["timings"]["cache_hit"] is False
+
+
+def test_cache_key_separates_k_and_mode(client: TestClient) -> None:
+    """A cache keyed only on the query text would serve 3 passages to a request for 10."""
+    base = {"query": "shared text across cache keys"}
+    three = client.post("/v1/search", json={**base, "k": 3}, headers=auth()).json()
+    ten = client.post("/v1/search", json={**base, "k": 10}, headers=auth()).json()
+    assert len(three["passages"]) == 3
+    assert len(ten["passages"]) == 10
+
+
+# --- rate limiting ----------------------------------------------------------------------
+def test_requests_past_the_limit_are_refused_with_retry_after() -> None:
+    limiter = RateLimiter(limit=3, window=60.0)
+    assert [limiter.check("caller")[0] for _ in range(3)] == [True, True, True]
+    allowed, remaining, retry_after = limiter.check("caller")
+    assert allowed is False
+    assert remaining == 0
+    assert 0 < retry_after <= 60.0
+
+
+def test_the_window_slides() -> None:
+    """Old hits must age out, or a caller is locked out permanently after one burst."""
+    limiter = RateLimiter(limit=2, window=10.0)
+    assert limiter.check("caller", now=0.0)[0] is True
+    assert limiter.check("caller", now=1.0)[0] is True
+    assert limiter.check("caller", now=2.0)[0] is False
+    assert limiter.check("caller", now=11.5)[0] is True
+
+
+def test_callers_are_limited_independently() -> None:
+    limiter = RateLimiter(limit=1, window=60.0)
+    assert limiter.check("alice")[0] is True
+    assert limiter.check("alice")[0] is False
+    assert limiter.check("bob")[0] is True
+
+
+def test_the_endpoint_enforces_the_limit(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(security, "rate_limiter", RateLimiter(limit=2, window=60.0))
+    payload = {"query": "rate limited query text"}
+    codes = [client.post("/v1/search", json=payload, headers=auth()).status_code for _ in range(4)]
+    assert codes[:2] == [200, 200]
+    assert codes[2:] == [429, 429]
+
+
+# --- ops surface ------------------------------------------------------------------------
+def test_healthz_is_unauthenticated_and_reports_readiness(client: TestClient) -> None:
+    body = client.get("/healthz").json()
+    assert body["status"] == "ok"
+    assert body["database"] is True
+    assert body["corpus_chunks"] > 0
+    assert body["model_loaded"] is True
+    # Stated so nobody reads these numbers as cluster-wide.
+    assert body["single_process"] is True
+
+
+def test_demo_page_loads_no_external_assets(client: TestClient) -> None:
+    """The page is served into a sandboxed frame with no network.
+
+    A CDN reference would degrade to an unstyled page during review, and a third-party
+    script on a page where someone pastes an API key is a bad habit regardless.
+    """
+    page = client.get("/").text
+    assert "<title>DocScout" in page
+    for marker in ("http://", "https://cdn", "//unpkg", "//cdnjs", "integrity="):
+        assert marker not in page, f"demo page references external asset: {marker}"
+
+
+def test_openapi_schema_documents_the_search_contract(client: TestClient) -> None:
+    schema = client.get("/openapi.json").json()
+    assert "/v1/search" in schema["paths"]
+    responses = schema["paths"]["/v1/search"]["post"]["responses"]
+    for code in ("401", "422", "429"):
+        assert code in responses
+
+
+def test_unhandled_errors_do_not_leak_internals(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A public URL must not return a stack trace or a connection string.
+
+    Its own client, because TestClient re-raises server exceptions by default and would
+    surface the error to the test instead of the handler's response. Production behaviour
+    is the `raise_server_exceptions=False` path.
+    """
+    from app.api import app as api_module
+
+    def boom(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("postgresql://secret:password@host/db")
+
+    monkeypatch.setattr(api_module, "Retriever", boom)
+    with TestClient(api_module.app, raise_server_exceptions=False) as strict_client:
+        response = strict_client.post(
+            "/v1/search",
+            json={"query": "trigger the failure path", "use_cache": False},
+            headers=auth(),
+        )
+        assert response.status_code == 500
+        assert "secret" not in response.text
+        assert "Traceback" not in response.text
+        assert "internal error (reference " in response.json()["detail"]
+
+
+# --- the benchmark's own arithmetic -----------------------------------------------------
+# These produce published numbers (README cost and latency table), so they are asserted
+# against hand-computed values rather than trusted because they look plausible.
+def test_nearest_rank_returns_an_observed_value() -> None:
+    from scripts.bench_api import nearest_rank
+
+    values = [float(v) for v in range(1, 101)]  # 1..100
+    # ceil(0.95 * 100) = 95 -> index 94 -> the 95th smallest, which is 95.
+    assert nearest_rank(values, 0.95) == 95.0
+    assert nearest_rank(values, 0.50) == 50.0
+    assert nearest_rank(values, 1.0) == 100.0
+    # Every result must be a value that was actually measured.
+    assert all(nearest_rank(values, q) in values for q in (0.1, 0.5, 0.9, 0.95, 0.99))
+
+
+def test_nearest_rank_handles_short_and_empty_samples() -> None:
+    from scripts.bench_api import nearest_rank
+
+    assert nearest_rank([], 0.95) == 0.0
+    assert nearest_rank([7.0], 0.95) == 7.0
+    assert nearest_rank([1.0, 2.0], 0.95) == 2.0
+
+
+def test_summarise_reports_the_sample_size_with_the_percentiles() -> None:
+    from scripts.bench_api import summarise
+
+    summary = summarise([10.0, 20.0, 30.0, 40.0])
+    assert summary["n"] == 4
+    assert summary["mean_ms"] == 25.0
+    assert summary["max_ms"] == 40.0

@@ -34,6 +34,13 @@ class Retrieved:
     # Kept because "why did hybrid beat dense here" is unanswerable without it, and that
     # question is the entire point of the ablation.
     arm_ranks: dict[str, int] = field(default_factory=dict)
+    # The span this chunk occupies in its source document, and the document's public URL.
+    # A citation that cannot be resolved back to specific bytes in a specific document is
+    # not a citation; ADR-0005 made chunk ids stable so this stays true across re-ingests.
+    # Defaulted so existing callers that only need ranking are unaffected.
+    canonical_url: str | None = None
+    char_start: int = 0
+    char_end: int = 0
 
 
 @dataclass(frozen=True)

@@ -64,18 +64,57 @@ Diagnosed to rank-only fusion discarding an arm's certainty, fixed with a bounde
 evidence, and pinned by a regression test that fails when the fix is removed.
 Recall@10 0.9924 → **1.0000**; 0 items worse, 1 better.
 
+### Live demo and serving
+
+```bash
+make serve      # http://localhost:8000  — demo UI, /docs, /healthz
+```
+
+`POST /v1/search` returns ranked passages with **resolvable citations** — every passage
+carries a stable `chunk_id`, its source document and its character span, so a caller can
+open the original PDF and find the bytes. **No model generates text anywhere in the request
+path**, so the endpoint cannot hallucinate: every character of regulatory text in a response
+is a substring of a stored chunk, and a test re-reads each one from the database to prove it
+([ADR-0008](docs/decisions/0008-serve-evidence-not-answers.md)).
+
+The endpoint is API-key gated (`X-API-Key`, constant-time compare, rotation supported) and
+rate limited per key. Missing key configuration stops startup rather than defaulting to open.
+
+### Cost and latency
+
+Measured over HTTP with real gold-set questions on 2 vCPU / 1.9 GiB, 200 requests per phase.
+Reproduce with `make serve` then `make bench`; raw output
+[`bench.json`](evals/bench/20261002T053217Z/bench.json).
+
+| phase | mean | p50 | p95 | p99 |
+|---|---|---|---|---|
+| cold (cache bypassed) | 39.07 ms | 37.94 ms | **48.11 ms** | 53.19 ms |
+| warm (cache hit) | 1.71 ms | 1.64 ms | **2.11 ms** | 2.68 ms |
+
+| measure | value | reproduce |
+|---|---|---|
+| Cache effect on p95 | **22.8x** (46.0 ms saved) | `make bench` |
+| Sustained throughput | 39.8 q/s at concurrency 4 | `make bench` |
+| Cost per 1,000 queries | **$0.000078** (= about $0.08 per million) | `make bench` |
+| LLM cost | $0.00 — no model in the request path | — |
+
+Cost assumes one AWS t4g.small (2 vCPU / 2 GiB), ap-south-1, Linux on-demand at $0.0112/hour serving continuously at the
+measured throughput. The price is a third-party listing, not an AWS quotation — see the
+script for the source and the caveat. With no model in the request path that figure is the
+*entire* query cost; any future generation step becomes the whole bill, which is why the
+retrieval tier is kept separately measurable.
+
 ### Not yet measured
 
 Listed as absent rather than shown as zeros or dashes that could be misread as results.
 
 | Metric | Status |
 |---|---|
-| Faithfulness | no generator yet |
-| Context precision | no generator yet |
-| Citation precision / recall | no generator yet |
+| Faithfulness | no generator — nothing generates text, so there is nothing to be faithful about ([ADR-0008](docs/decisions/0008-serve-evidence-not-answers.md)) |
+| Answer-level citation precision / recall | no generator; retrieval-side citation coverage is measured above as recall over quote groups |
 | LLM-judge agreement (Cohen's kappa) | blocked — no API keys (U-1); the gold set's labelling is self-agreement, not inter-rater |
-| End-to-end p95 | no API yet; the figure above is retrieval only |
-| Cost per 1,000 queries | no generator yet |
+| Reranker effect | the cross-encoder is verified (4.56 ms/pair) but not in the serving path; deferred with reasons in ADR-0006 and ADR-0007 |
+| Cost of generation | $0.00 measured, because no model is called. A future generation step becomes the entire bill |
 
 ## Architecture
 
@@ -92,14 +131,37 @@ Internet (RBI/SEBI)                  [untrusted data]
 
 ## Quickstart
 
+Two scripts from a bare machine to a queryable corpus. Measured end to end at **~2 minutes**,
+against the ten-minute budget.
+
 ```bash
-cp .env.example .env          # fill in: DB_PASSWORD, DB_APP_PASSWORD (openssl rand -hex 24)
-docker compose up -d          # Postgres 18 + pgvector 0.8.2, Redis 7
-uv sync --frozen              # Python 3.12 environment from the lockfile
-make verify-setup             # run the V1–V17 verification matrix
+cp .env.example .env                 # set DB_PASSWORD, DB_APP_PASSWORD, DOCSCOUT_API_KEY
+                                     #   (each: openssl rand -hex 24)
+bash scripts/bootstrap.sh            # ~20s  uv, Python 3.12, pre-commit, gitleaks, .venv, hooks
+bash scripts/dev_db_native.sh        # ~20s  PostgreSQL 18 + pgvector 0.8.6, roles, extensions
+make migrate && make ingest          # ~50s  2 migrations; 21 documents, 170 chunks
+make serve                           #       http://localhost:8000
 ```
 
-Requires: Docker, [uv](https://astral.sh/uv), Node 22 (for the UI), k6 (for load tests).
+The corpus payloads are committed, so `make ingest` runs offline and reproduces the exact
+bytes every published number was measured on — see `.gitignore` for why that reversal was
+necessary.
+
+There is no `docker compose up`. This project runs Postgres natively via
+`scripts/dev_db_native.sh`, which executes the same `infra/initdb/` files a compose mount
+would; the reasoning is in the `build(dev)` commit that introduced it. Docker is not
+required and the script installs PostgreSQL and pgvector itself if they are absent.
+
+Verify the install:
+
+```bash
+make verify-setup    # the V1–V17 verification matrix
+make test            # 196 tests
+make eval            # the retrieval baseline -> evals/reports/<UTC-ts>/
+make eval-gate       # fails the build on a >1pp regression
+```
+
+Requires: `uv`, `sudo` for the two apt packages the database script installs. Nothing else.
 
 ## Repo map
 
@@ -159,6 +221,22 @@ regression.
 threshold, but on 131 items one item is 0.76pp and the measured minimum detectable effect is
 3.24pp. The gate reports this beside every verdict. The fix is a bigger gold set, not a looser
 gate.
+
+**The API is not deployed to a public cloud URL.** It runs locally with `make serve`, and
+in review it is reachable through a sandbox preview. No cloud resources have been created
+for this project, by design. The 30–90 second demo video the brief asks for also does not
+exist.
+
+**The serving process is single-worker, and its cache and rate limiter live in memory.**
+Neither survives a restart and neither coordinates across processes. `/healthz` reports
+`single_process: true` so these counters are never mistaken for cluster-wide figures. A
+multi-worker deployment needs Redis — `REDIS_URL` is already in `.env.example` — and the
+in-process versions should be replaced rather than scaled.
+
+**The cost figure is compute only, and its price is a third-party listing.** $0.08 per
+million queries covers one t4g.small serving retrieval; it is not an AWS quotation and does
+not include storage, egress or the LLM that does not exist yet. Re-check the price before
+anyone acts on it.
 
 **There is no generator, so there are no generation metrics.** Faithfulness, context precision,
 citation precision and recall, answer-level hallucination rates and end-to-end latency do not

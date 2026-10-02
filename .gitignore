@@ -37,6 +37,9 @@
 # E-13 says a metric does not exist unless its raw output does, so the run the README
 # quotes has to be in the repository, not merely on the machine that produced it.
 evals/reports/*
+evals/experiments/*
+evals/bench/*
+!evals/bench/20261002T054058Z/
 !evals/reports/20261001T192924Z/
 !evals/reports/20261001T204628Z/
 # Ingest run reports. The working output of `make ingest` is untracked like every other

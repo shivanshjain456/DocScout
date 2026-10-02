@@ -16,7 +16,6 @@ the report rather than leaving a reader to assume the gaps are zeros.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import math
 import platform
@@ -30,7 +29,7 @@ from typing import Any
 
 import psycopg
 
-from app.config import database_url
+from app.config import database_url, sha256_file
 from app.evals import scorers, stats
 from app.evals.goldset import (
     DEFAULT_GOLDSET,
@@ -66,10 +65,6 @@ BASELINE_CONFIGS: tuple[RetrievalConfig, ...] = (
 )
 
 
-def _sha256_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else "absent"
-
-
 def _host_context() -> dict[str, Any]:
     """Hardware the numbers were measured on. E-16 makes this mandatory beside latency."""
     mem_kb = 0
@@ -100,9 +95,9 @@ def _provenance(goldset_path: Path, conn: psycopg.Connection[tuple[object, ...]]
     server = conn.execute("SHOW server_version").fetchone()
     return {
         "goldset_version": metadata.get("goldset_version", "unknown"),
-        "goldset_sha256": _sha256_file(goldset_path),
+        "goldset_sha256": sha256_file(goldset_path),
         "goldset_items": metadata.get("item_count"),
-        "corpus_manifest_digest": _sha256_file(REPO_ROOT / "corpus" / "raw" / "manifest.json"),
+        "corpus_manifest_digest": sha256_file(REPO_ROOT / "corpus" / "raw" / "manifest.json"),
         "corpus_documents_in_db": as_int(counts[0]) if counts else None,
         "corpus_chunks_in_db": as_int(counts[1]) if counts else None,
         "chunker": {
@@ -121,7 +116,7 @@ def _provenance(goldset_path: Path, conn: psycopg.Connection[tuple[object, ...]]
         "reranker": None,
         "generator": None,
         "judge": None,
-        "uv_lock_sha256": _sha256_file(REPO_ROOT / "uv.lock"),
+        "uv_lock_sha256": sha256_file(REPO_ROOT / "uv.lock"),
         "postgres_version": as_str(server[0]) if server else None,
         "host": _host_context(),
     }

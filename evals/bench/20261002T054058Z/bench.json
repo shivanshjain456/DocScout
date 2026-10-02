@@ -1,0 +1,63 @@
+{
+  "schema": "docscout.bench.api/1",
+  "run_utc": "2026-10-02T05:40:58Z",
+  "base_url": "http://127.0.0.1:8000",
+  "requests_per_phase": 200,
+  "concurrency": 4,
+  "host": {
+    "platform": "Linux-6.1.158+-x86_64-with-glibc2.41",
+    "cpu_count": 2,
+    "note": "single uvicorn worker; cache and rate limiter are in-process"
+  },
+  "server": {
+    "corpus_chunks": 170,
+    "embedding_model": "BAAI/bge-small-en-v1.5",
+    "rate_limit_per_minute": 2000
+  },
+  "cold_cache_bypassed": {
+    "n": 200,
+    "mean_ms": 39.07,
+    "p50_ms": 37.94,
+    "p95_ms": 48.11,
+    "p99_ms": 53.19,
+    "max_ms": 60.44,
+    "cache_hits": 0,
+    "statuses": {
+      "200": 200
+    }
+  },
+  "warm_cache_enabled": {
+    "n": 200,
+    "mean_ms": 1.71,
+    "p50_ms": 1.64,
+    "p95_ms": 2.11,
+    "p99_ms": 2.68,
+    "max_ms": 7.95,
+    "cache_hits": 200,
+    "statuses": {
+      "200": 200
+    }
+  },
+  "cache_effect": {
+    "p95_speedup_x": 22.8,
+    "mean_speedup_x": 22.8,
+    "p95_saved_ms": 46.0,
+    "server_hit_rate_pct": 89
+  },
+  "throughput": {
+    "concurrency": 4,
+    "queries_per_second": 39.82,
+    "wall_seconds": 5.02
+  },
+  "cost": {
+    "instance": "AWS t4g.small (2 vCPU / 2 GiB), ap-south-1, Linux on-demand",
+    "usd_per_hour": 0.0112,
+    "price_source": "third-party aggregators (cloudprice.net, instance-pricing.com, devzero.io), 2026-10",
+    "model": "one instance serving continuously at the measured concurrent throughput",
+    "usd_per_1000_queries_uncached": 7.8e-05,
+    "usd_per_1000_queries_all_cache_hits": 5e-06,
+    "llm_cost_usd": 0.0,
+    "llm_note": "no model is called in the request path; this is compute only",
+    "usd_per_million_queries_uncached": 0.0781
+  }
+}

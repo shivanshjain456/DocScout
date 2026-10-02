@@ -1,18 +1,20 @@
 {
   "schema": "docscout.eval.gate/1",
-  "checked_utc": "2026-10-01T20:46:31Z",
+  "checked_utc": "2026-10-02T05:41:35Z",
   "passed": true,
   "serving_config": "hybrid-rrf",
   "cutoff": "5",
   "threshold_pp": 1.0,
   "baselines_used": [
-    "2026-10-01T19:29:25Z"
+    "2026-10-01T19:29:25Z",
+    "2026-10-01T20:46:29Z"
   ],
   "comparison": {
     "recall": {
       "current": 0.9656,
       "baseline_mean": 0.9656,
       "baseline_values": [
+        0.9656,
         0.9656
       ],
       "delta": 0.0,
@@ -21,18 +23,20 @@
     },
     "mrr": {
       "current": 0.8247,
-      "baseline_mean": 0.824,
+      "baseline_mean": 0.8243,
       "baseline_values": [
-        0.824
+        0.824,
+        0.8247
       ],
-      "delta": 0.0007,
-      "delta_pp": 0.07,
+      "delta": 0.0003,
+      "delta_pp": 0.03,
       "threshold_pp": 1.0
     },
     "ndcg": {
       "current": 0.8445,
       "baseline_mean": 0.8445,
       "baseline_values": [
+        0.8445,
         0.8445
       ],
       "delta": 0.0,

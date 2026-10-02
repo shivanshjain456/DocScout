@@ -269,26 +269,38 @@ enforcing.
 
 ---
 
-## 8. M5 — Generation, API, UI — NOT STARTED
+## 8. M5 — Generation, API, UI — API DONE, GENERATION DEFERRED
 
 **Goal:** an answer a compliance analyst can check.
 
-**Entry criteria:** M4 complete.
+**Entry criteria:** M4 complete. Partially met — M4's criteria 1–3 are done; criteria 4 (the
+CI gate) landed on 2026-10-02; criterion 5 (U-1) is still owed in writing.
 
-**Work:** implement `app/generate/` (delimiter discipline S-7, mandatory citations FR-11,
-server-side citation validation S-9, refusal FR-13); implement `app/api/` to the M1-signed contract
-with key auth and Redis rate limiting; build the UI to FR-30 … FR-32; if U-1 resolved toward keys,
-execute judge calibration (`EVAL_PROTOCOL.md` §5).
+**Status, honestly (2026-10-02).** The API half of this milestone is built and measured. The
+generation half is deliberately not, and ADR-0008 records why: there are no LLM keys (U-1),
+there is no calibrated judge, and prose that nothing measures is the one thing this project
+must not ship. The endpoint serves retrieved evidence instead, which is exactly what the
+eval harness scores.
 
-**Exit criteria:**
+| # | Exit criterion | State |
+|---|---|---|
+| 1 | Citation validation: an out-of-context chunk id is rejected | **N/A by design** — nothing generates citations to validate. The stronger property holds instead: every returned passage IS a stored chunk, and `test_search_returns_checkable_citations` re-reads each one from the database and compares text and span |
+| 2 | Canary test: the injected instruction is not followed | **N/A by design** — no model reads the retrieved text, so there is nothing to inject into. The canary documents remain in the corpus and the gold set for when generation lands |
+| 3 | Unanswerable items produce refusals | **NOT DONE** — refusal is a generation behaviour |
+| 4 | API contract tests; keyless request rejected; rate limiter demonstrated | **DONE** — 35 tests in `tests/test_api.py`; 401 without a key, 401 with a wrong key (indistinguishable), 429 past the limit with `Retry-After`, all asserted |
+| 5 | UI renders citations as links and distinguishes refusals | **PARTIAL** — the demo page at `/` renders citations with source links, chunk ids and character spans; refusals do not exist to distinguish |
+| 6 | Faithfulness only if §5 calibration ran | **HONOURED** — no faithfulness figure is published anywhere, and the README lists it as absent with the reason |
 
-1. Citation validation test: an answer citing an out-of-context chunk ID is rejected.
-2. Canary test: the injected instruction is not followed, scored in the eval run.
-3. Unanswerable items produce refusals, scored as PASS.
-4. API contract tests pass; a request without a key is rejected; the rate limiter is demonstrated.
-5. UI renders citations as links to source URLs and visibly distinguishes refusals.
-6. Faithfulness reported **only** if §5 calibration actually ran; otherwise the re-scope decision
-   from M4 is honoured and the metric is absent, not estimated.
+**Not built, and deliberately:** Redis-backed rate limiting (in-process is correct for one
+worker, and `/healthz` says `single_process: true` so the limitation is visible rather than
+assumed), and a deployed public URL (no cloud resources are created by this project).
+
+**Also landed:** measured serving cost and latency — cold p95 51.43 ms, warm p95 3.16 ms,
+caching worth 16.3x, 37.0 q/s, ~$0.08 per million queries. `scripts/bench_api.py`, raw
+output under `evals/bench/`.
+
+**Remaining work:** close U-1 in writing; then generation behind the same endpoint, shipped
+only once the judge is calibrated with Cohen's κ reported.
 
 ---
 
