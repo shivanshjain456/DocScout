@@ -142,7 +142,8 @@ Assembles the prompt, calls the model, validates the result.
   supplied context is a rejected answer, not a warning (FR-11). This check is deterministic and
   belongs here, not in the evaluation harness.
 - Refusal is a first-class output (FR-13), not an error path.
-- The generator model is **BLOCKED (U-1)**: every hosted role in `config/models.json` is
+- The generator model is **WITHDRAWN (U-1 closed 2026-10-02, outcome (b))**, not merely
+  blocked: every hosted role in `config/models.json` is
   `id: null`, `status: BLOCKED_NO_CREDENTIAL` (VERIFIED). The interface MUST therefore be written
   against a provider-agnostic port so the project is not blocked on that decision.
 
@@ -259,7 +260,8 @@ POST /v1/answer
                           102-126 ms/pair on real chunks; 30x p95 for +3 items)
        └─ app/generate
             ├─ wrap chunks in <document> delimiters
-            ├─ call generator (model BLOCKED, U-1)
+            ├─ call generator — NOT BUILT. U-1 closed as outcome (b): the service
+            │                 returns evidence, not prose (ADR-0008)
             └─ validate: ≥1 citation · every cited ID present in context
        └─ response: answer | refusal + citations + timings
 ```
@@ -277,9 +279,9 @@ server-side error, never a silently returned uncited answer.
 | Postgres + pgvector as the single store for lexical **and** dense retrieval | SPECIFIED, schema applied | One datastore, transactional consistency between text and vectors, no separate search cluster to operate; VERIFIED working at 18.4 / 0.8.2 | Yes — ADR-0004 applied the schema but did **not** argue the rejected alternatives (Elasticsearch, a dedicated vector DB); that ADR is still owed |
 | HNSW over IVFFlat | **DECIDED (ADR-0004)** | No training step and tolerates incremental inserts, which IVFFlat does not; chosen on structure, as the difference is unmeasurable at this corpus size | Closed by ADR-0004 |
 | Cross-encoder reranking on CPU | **BUILT, MEASURED, DISABLED (ADR-0009)** | 102–126 ms/pair on *real* chunks, not the 4.56 ms/pair measured on short synthetic text. Reranking the top 10 costs 30× the p95 for a +3-item recall@1 gain whose CI spans zero; top-20+ also drops recall@10 from 1.000 to 0.992 | Yes |
-| Local embedder `bge-small-en-v1.5` (384 d) | **DECIDED (ADR-0002)** | Measured on the real corpus against MiniLM-L6, bge-base (768 d), multilingual-e5 and a BM25 control: no significant quality difference, so chosen for zero truncation at 512 tokens, smallest index and $0 cost. A hosted embedder stays BLOCKED by U-1 (K-1) | Yes |
+| Local embedder `bge-small-en-v1.5` (384 d) | **DECIDED (ADR-0002)** | Measured on the real corpus against MiniLM-L6, bge-base (768 d), multilingual-e5 and a BM25 control: no significant quality difference, so chosen for zero truncation at 512 tokens, smallest index and $0 cost. A hosted embedder is ruled out by the U-1 re-scope (K-1) | Yes |
 | Redis for cache + rate limiting | SPECIFIED | VERIFIED running; `AGENTS.md` assigns rate limiting to `app/api/` | No |
-| Provider-agnostic generator port | SPECIFIED | Forced by U-1 — the model identity cannot be chosen yet | No |
+| Provider-agnostic generator port | SPECIFIED, NOT BUILT | U-1 closed as outcome (b) on 2026-10-02: no credentials, and ADR-0008 serves retrieved evidence rather than generated prose. The port stays specified so that adding a generator is a bounded change, not a redesign | No |
 | FastAPI | SPECIFIED | Pinned and locked (0.142.2); async-native, matches `ASYNC` ruff rules already enabled | No |
 | Python 3.12 only | VERIFIED | `requires-python = ">=3.12,<3.13"`; `torch` resolved from an explicit CPU index | No |
 

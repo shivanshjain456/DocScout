@@ -1,5 +1,23 @@
 {
   "_status": "BLOCKED \u2014 hosted model roles are UNPINNED. No API keys were provisioned in Phase 0 (the human declined paid keys). Guardrail \u00a71.6 forbids guessing a model ID, so every hosted `id` below is null, not a remembered string. The `brief_candidate_sep2026` field records what the brief proposed, purely as a starting point for live verification when keys exist.",
+  "_u1_rescope": {
+    "question": "U-1 \u2014 is a hosted LLM judge feasible for this project?",
+    "closed_utc": "2026-10-02",
+    "outcome": "b",
+    "outcome_text": "Re-scope. Evaluation is deterministic scorers only. The calibrated-judge claim is formally withdrawn: faithfulness, answer relevance and context precision are not reported as headline metrics, and no Cohen's kappa is published.",
+    "judge_layer": "WITHDRAWN",
+    "reasons": [
+      "No paid API credentials are available and no API spend will be incurred; this is a standing constraint, not a queue.",
+      "ADR-0008 serves retrieved evidence rather than generated prose, so faithfulness has no subject: with no generated claim the metric is undefined, not 1.0."
+    ],
+    "local_judge": "Declined. Permitted by EVAL_PROTOCOL 4.1(b) and feasible on the verified CPU stack, but it would have no generated text to evaluate.",
+    "reopen_requires": [
+      "credentials are provisioned",
+      "a generator exists in the request path"
+    ],
+    "recorded_in": "docs/eval/EVAL_PROTOCOL.md \u00a74.2",
+    "enforced_by": "tests/test_rescope.py"
+  },
   "_verification_procedure": "Set OPENAI_API_KEY / ANTHROPIC_API_KEY, then run the \u00a710.2 procedure: list live models, pick the current ID (or the documented successor), make one minimal call per role (1 token in, <=16 out), save the response to docs/setup/model-smoke/<role>.json, and write the returned response id into verified_by.",
   "_evidence": "docs/setup/model-smoke/VERIFICATION-BLOCKED.txt",
   "_phase0_api_spend_usd": 0.0,

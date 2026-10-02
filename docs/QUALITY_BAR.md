@@ -160,20 +160,29 @@ multi-feature commits. `make secret-scan` passes over full history before push.
 
 ---
 
-## 5. Product quality gates — SPECIFIED, not yet enforceable
+## 5. Product quality gates — RECONCILED 2026-10-02
 
-| ID | Gate | Threshold | Blocked by |
-|---|---|---|---|
-| Q-12 | Evaluation regression gate | Fail the build on **> 1 pp** regression on any threshold metric vs the mean of the last 3 baseline runs | Gold set (M3); CI job is `if: false` today |
-| Q-13 | Citation precision | **≥ 0.90** | Same |
-| Q-14 | Faithfulness | **≥ 0.85** | Judge availability — **BLOCKED (U-1)** |
-| Q-15 | Context precision | **≥ 0.70** | Same |
-| Q-16 | Canary resistance | Injected instruction not followed, every run | Gold set |
-| Q-17 | End-to-end latency | **p95 < 3 s** against the real service | Service existence; feasibility unmeasured (U-14) |
-| Q-18 | Gold set size and composition | **≥ 120** hand-built items, **≥ 10 %** unanswerable (refusal scored as PASS), **≥ 1** injection canary | Gold set (M3) |
+This table was written when nothing was built and every row said "blocked by". It has been
+reconciled against what is now measured. A gate is only listed as ENFORCED if a command fails
+the build when it is violated.
+
+| ID | Gate | Threshold | State | Evidence |
+|---|---|---|---|---|
+| Q-12 | Evaluation regression gate | Fail the build on **> 1 pp** regression vs the mean of the last 3 baselines | **ENFORCED** — `make eval-gate`, exit 1, drilled against a real 1.90 pp degradation. Also fails on invariant breaches (gold set mutated without a version bump, corpus changed, items vanished) | `app/evals/gate.py`, `docs/setup/verify/m4-eval-gate.txt` |
+| Q-13 | Citation precision | ≥ 0.90 | **WITHDRAWN (U-1, §4.2)** — an answer-level metric with no answers. Replaced by retrieval-side citation coverage: recall@5 0.966, recall@10 1.000 | `evals/reports/20261001T204628Z/` |
+| Q-14 | Faithfulness | ≥ 0.85 | **WITHDRAWN (U-1, §4.2)** — no generator, so the metric has no subject. Replaced by a structural guarantee: every returned character is a substring of a stored chunk, asserted per response | ADR-0008, `tests/test_api.py` |
+| Q-15 | Context precision | ≥ 0.70 | **WITHDRAWN (U-1, §4.2)** — judge metric. Replaced by deterministic recall/MRR/nDCG over quote groups | `app/evals/scorers.py` |
+| Q-16 | Canary resistance | Injected instruction not followed, every run | **NOT APPLICABLE BY DESIGN** — no model reads retrieved text, so there is nothing to inject into. The 3 canary documents stay in the corpus and the gold set, and this gate reactivates the day a generator lands | ADR-0008 |
+| Q-17 | End-to-end latency | **p95 < 3 s** against the real service | **MEASURED, PASS** — 48.11 ms cold / 2.11 ms warm over HTTP, 1.6 % of budget. Closes the single-client half of U-14; a multi-client k6 profile is still absent | `evals/bench/20261002T054058Z/bench.json` |
+| Q-18 | Gold set size and composition | ≥ 120 items, ≥ 10 % unanswerable, ≥ 1 injection canary | **MET** — 153 items, 14.4 % unanswerable, 3 canaries | `evals/gold/v1/metadata.json`, `make gold-lint` |
+
+Three of these seven are withdrawn rather than met, and that is the honest outcome of U-1 rather
+than a failure to build something. What a withdrawal costs is written beside it: in every case
+the replacement is a *weaker but real* measurement, not a silent gap.
 
 Thresholds are quoted identically in `docs/eval/EVAL_PROTOCOL.md` §6. Changing one is an ADR, never
-a quiet edit, and never after seeing the result you want.
+a quiet edit, and never after seeing the result you want. **Withdrawing one is also never quiet:**
+`tests/test_rescope.py` fails the build if a withdrawn metric reappears as a published number.
 
 ---
 

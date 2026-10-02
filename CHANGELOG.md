@@ -6,6 +6,41 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 ## [Unreleased]
 
 ### Added
+- **U-1 is closed: the calibrated-judge claim is formally withdrawn** (`EVAL_PROTOCOL.md`
+  §4.2, outcome (b)). M4's exit criterion 5 said carrying this past M4 was not permitted; it
+  had been carried past M4 and M5. Two independent reasons, either sufficient: no paid API
+  credentials are available and none will be acquired, and — the stronger one — ADR-0008
+  serves retrieved evidence rather than generated prose, so faithfulness has **no subject**.
+  With no generated claim the honest value is *undefined*, not 1.0. The optional local judge
+  the protocol permits was declined for the same reason: it would have nothing to evaluate.
+- **`tests/test_rescope.py` (52 cases) enforces the withdrawal mechanically.** A decision
+  recorded only in prose decays, and the pressure to publish a faithfulness number is real —
+  it is the metric a reader expects and it would take one line to invent. The build now fails
+  if a withdrawn metric appears as a published value in the README, SPEC, QUALITY_BAR,
+  MILESTONES, ARCHITECTURE, EVAL_PROTOCOL, any ADR or any verification story; if a judge or
+  generator role is marked verified or CI-approved without calibration evidence; or if a
+  committed eval report claims a judge ran. Twelve of those cases test the detector itself
+  against text that must trip it and text that must not, because a scanner that matches
+  nothing passes forever and protects nothing.
+- `config/models.json` carries a `_u1_rescope` block, so the decision is discoverable from the
+  configuration and not only from the protocol.
+
+### Changed
+- **`QUALITY_BAR.md` §5 reconciled against measured reality.** The table still said "SPECIFIED,
+  not yet enforceable" and described blockers that had since cleared. Now: Q-12 **ENFORCED**
+  (`make eval-gate`, drilled to exit 1), Q-17 **MEASURED and PASSING** (48.11 ms p95 against a
+  3 s budget — 1.6 % of it), Q-18 **MET** (153 items, 14.4 % unanswerable, 3 canaries),
+  Q-13/Q-14/Q-15 **WITHDRAWN** with the replacement measurement named beside each, and Q-16
+  **NOT APPLICABLE BY DESIGN** — no model reads retrieved text, so there is nothing to inject
+  into, and the gate reactivates the day a generator lands.
+- **`SPEC.md` FR-28 amended.** It required CI to fail on a >1 pp regression in faithfulness,
+  context precision and citation precision — all three now withdrawn — and recorded the CI job
+  as `if: false`, which stopped being true when the gate landed. The requirement's intent is
+  unchanged; the gate now protects the deterministic metrics that exist: recall@5, MRR and
+  nDCG@5.
+- README, `ARCHITECTURE.md`, `MILESTONES.md` and the verification story now say **withdrawn**
+  rather than **blocked**. The distinction is the whole point: blocked implies a queue.
+- **M4 is complete.** All five exit criteria are met or formally resolved.
 - **`app/retrieval/rerank.py` and ADR-0009: the cross-encoder rerank stage — built, measured,
   and shipped disabled.** `ARCHITECTURE.md` had specified this stage since M1 and it did not
   exist; it now does, with explicit `max_length`, deterministic tie-breaking toward the

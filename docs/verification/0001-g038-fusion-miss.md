@@ -152,4 +152,5 @@ guarantee surviving as cargo cult.
 - **The dense arm's top hit is anchored too.** It displaced nothing useful here, but on a
   corpus where the dense arm is noisy that is a real cost, and it needs re-measuring.
 - **No generator was involved.** This is a retrieval miss, not a hallucination. The equivalent
-  story for faithfulness needs a generator and a judge, both blocked on API keys (U-1).
+  story for faithfulness needs a generator and a judge. U-1 closed as outcome (b) on
+  2026-10-02: both are withdrawn rather than pending (`EVAL_PROTOCOL.md` §4.2).

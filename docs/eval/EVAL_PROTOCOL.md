@@ -149,14 +149,15 @@ evaluation** and the project's quality claims must be scoped to exactly what it 
 
 ---
 
-## 4. Scoring layer 2 — LLM judge — BLOCKED (U-1)
+## 4. Scoring layer 2 — LLM judge — WITHDRAWN (U-1 closed, outcome (b))
 
 Reserved for genuinely open-ended quality: **faithfulness** (claims entailed by the retrieved
 context), **answer relevance**, **completeness**.
 
-**Current state — VERIFIED.** Every hosted model role in `config/models.json` carries `id: null`,
-`verified_at: null`, `status: BLOCKED_NO_CREDENTIAL`; Phase 0 API spend was **$0.00**; V11 of the
-verification matrix is BLOCKED. The judge layer **cannot run at all today**.
+**Current state — VERIFIED.** Every hosted model role in `config/models.json` carries `id: null`
+and `verified_at: null`; Phase 0 API spend was **$0.00**; V11 of the verification matrix is
+BLOCKED. The judge layer cannot run today and, under the decision recorded in §4.1, is not
+pending either — the claim has been withdrawn rather than deferred.
 
 **E-8 — SPECIFIED.** Judge prompts are versioned files. Editing a prompt creates a new judge version
 and **invalidates prior calibration**.
@@ -183,9 +184,58 @@ U-1 has two honest outcomes, and the project must pick one:
 Choosing (b) silently while still publishing a faithfulness number is the specific failure mode this
 section exists to block.
 
+### 4.2 U-1 CLOSED — 2026-10-02 — outcome (b), re-scope
+
+**The project formally drops the calibrated-judge claim.** Faithfulness, answer relevance and
+completeness are **withdrawn as headline metrics** — not blocked, not pending, not "coming in a
+later milestone". Withdrawn.
+
+Two independent reasons, either sufficient on its own:
+
+1. **No keys, and none are coming.** The operator has stated that no paid API keys are available
+   and no API spend will be incurred. That is a standing constraint on the project, not a queue
+   it is waiting in, and M4's exit criterion 5 forbids carrying the question further.
+2. **There is nothing to judge.** ADR-0008 decided that the service returns retrieved evidence,
+   not generated prose. Faithfulness is a property of a *generated claim* relative to its
+   context. With no generated claim, the metric has no subject: a judge pointed at this system
+   would be scoring passages that are, by construction, verbatim substrings of stored chunks.
+   Even with unlimited credentials, the honest faithfulness number for a system that generates
+   nothing is not 1.0 — it is *undefined*, and publishing either would be a fabrication.
+
+**The optional local judge permitted by (b) is also declined**, for reason 2. A local NLI or
+cross-encoder judge is feasible on the verified CPU stack and would cost nothing, but it would
+have no generated text to evaluate. Building one now would produce a metric with no subject, and
+the temptation to then report it is exactly the failure this section exists to block.
+
+**What replaces the judge layer**, and what the project may therefore claim:
+
+| withdrawn | replaced by |
+|---|---|
+| Faithfulness ≥ 0.85 (Q-14) | The structural guarantee that the service cannot hallucinate: every character of regulatory text in a response is a substring of a stored chunk, asserted per-response by `tests/test_api.py::test_search_returns_checkable_citations`, which re-reads each returned chunk from the database and compares text and span |
+| Context precision ≥ 0.70 (Q-15) | Deterministic retrieval metrics over quote groups — recall@k, MRR, nDCG — scored before any judge, per §3 |
+| Answer-level citation precision ≥ 0.90 (Q-13) | Retrieval-side citation coverage: recall@5 = 0.966, recall@10 = 1.000 on the committed baseline |
+| Judge agreement, Cohen's κ (§5) | Nothing. No agreement figure is published, and §5 remains unexecuted and is reported as such |
+
+**Reopening condition — both must hold, not either.** (i) credentials are provisioned, and (ii) a
+generator exists in the request path. Until both are true, §5 calibration cannot begin, because
+calibration scores a judge against human labels *on generated answers*. If a **local** generator
+is added without credentials, §5 still applies in full before any faithfulness number is
+published, and a local judge may never be described as "calibrated" unless §5 was actually
+executed — §4.1(b) already says so and that sentence survives this decision unchanged.
+
+**Enforcement.** This is not left to discipline. `tests/test_rescope.py` fails the build if a
+faithfulness or κ figure appears in the published documents, if any judge or generator role in
+`config/models.json` is marked CI-approved or verified without calibration evidence, or if an
+eval report claims a judge ran.
+
 ---
 
-## 5. Judge calibration — mandatory and blocking — SPECIFIED
+## 5. Judge calibration — mandatory and blocking — SPECIFIED, NOT EXECUTED
+
+> **Status (2026-10-02):** never executed, and not scheduled. U-1 closed as outcome (b) in §4.2,
+> so there is no judge to calibrate and no generated answers to calibrate it on. The procedure
+> below is retained in full because it is the precondition for ever publishing a faithfulness
+> number, and deleting it would make that number easier to publish, not harder.
 
 1. A human double-labels **60–100 items**, sampled across `difficulty` and `answer_type`.
 2. Score the strong judge against human labels: report **Cohen's κ and raw agreement %, per metric**.

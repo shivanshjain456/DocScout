@@ -139,7 +139,7 @@ Listed as absent rather than shown as zeros or dashes that could be misread as r
 |---|---|
 | Faithfulness | no generator — nothing generates text, so there is nothing to be faithful about ([ADR-0008](docs/decisions/0008-serve-evidence-not-answers.md)) |
 | Answer-level citation precision / recall | no generator; retrieval-side citation coverage is measured above as recall over quote groups |
-| LLM-judge agreement (Cohen's kappa) | blocked — no API keys (U-1); the gold set's labelling is self-agreement, not inter-rater |
+| LLM-judge agreement (Cohen's kappa) | **withdrawn, not pending** — U-1 closed as outcome (b) on 2026-10-02 (`EVAL_PROTOCOL.md` §4.2). No keys, and with no generator a judge would have nothing to evaluate. Enforced by `tests/test_rescope.py` |
 | Cost of generation | $0.00 measured, because no model is called. A future generation step becomes the entire bill |
 
 ## Architecture
@@ -283,9 +283,15 @@ would do on a corpus where retrieval actually struggles. Re-run
 citation precision and recall, answer-level hallucination rates and end-to-end latency do not
 exist yet. They are listed as absent above rather than shown as zeros.
 
-**There is no LLM judge and no Cohen's kappa.** No API keys are available (U-1), and the gold
-set's second labelling pass was performed by the same agent that wrote the items. That is
-self-agreement, not inter-rater reliability; a test asserts that no kappa is claimed anywhere.
+**The LLM judge is withdrawn, not pending.** U-1 closed on 2026-10-02 as outcome (b)
+(`EVAL_PROTOCOL.md` §4.2): faithfulness, answer relevance and context precision are formally
+dropped as headline metrics, and no Cohen's kappa is published. Two reasons, either sufficient —
+no paid API keys are available and none will be acquired; and with no generator in the request
+path, faithfulness has no subject, so the honest value is *undefined* rather than 1.0. The
+optional local judge that the protocol permits was declined for the same reason. The gold set's
+second labelling pass was performed by the same agent that wrote the items, which is
+self-agreement and not inter-rater reliability. `tests/test_rescope.py` fails the build if any of
+these metrics reappears as a published number.
 
 **No deployed demo and no CI badge.** This repository has no remote (no PAT), so the
 `eval-gate` workflow has never run. The badge is deliberately absent rather than linked to a

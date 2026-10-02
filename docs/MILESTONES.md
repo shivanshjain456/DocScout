@@ -232,7 +232,7 @@ NOT met. M4 is therefore not complete, and is not recorded as complete.
 | 2 | recall@k, MRR, nDCG with their artifact | **DONE** for retrieval; citation precision/recall need a generator, so they are absent, not estimated |
 | 3 | Lexical and rerank ablations | **DONE** — dense/BM25/hybrid A/B (ADR-0006), the RRF-constant sweep (ADR-0007) and now the rerank ablation (ADR-0009, four configurations over the full gold set with a paired bootstrap). The §8.1 instruction "if the lexical arm adds nothing, remove it" was applied to the reranker too: it adds three items for 30x the p95, so it ships disabled rather than removed, with the re-run condition recorded — dense/BM25/hybrid A/B (ADR-0006) plus a full RRF-constant sweep (ADR-0007, U-10 partially closed); rerank still deferred with a reason, and ADR-0007 records why a reranker could not have fixed g-038 at all — dense/BM25/hybrid A/B done (ADR-0006); rerank deferred with a reason, not forgotten (recall@10 ≈ 0.98 leaves a reranker nothing to recover on a 170-chunk corpus) |
 | 4 | `eval-smoke` enforcing the >1pp gate | **DONE, with one honest caveat** — `make eval-gate` enforces the rule and fails the build (exit 1, drilled against a real 1.90pp degradation); the CI job is written and pinned but has never run, because there is no remote (V10 BLOCKED), so no badge is claimed. The gate reports that 1pp sits below the gold set's 3.24pp noise floor rather than silently widening the threshold. Evidence: `docs/setup/verify/m4-eval-gate.txt` |
-| 5 | U-1 decided | **NOT DONE** — no API keys; the formal re-scope is still owed in writing |
+| 5 | U-1 decided | **DONE (2026-10-02)** — closed as outcome (b), re-scope. The calibrated-judge claim is formally withdrawn: faithfulness, answer relevance and context precision are not reported, and no Cohen's κ is published. Recorded in `EVAL_PROTOCOL.md` §4.2, reconciled into `QUALITY_BAR.md` §5, and enforced by `tests/test_rescope.py` |
 
 **What the baseline actually showed, recorded because it is inconvenient.** The ablation did not
 produce a winner. Every pairwise 95 % bootstrap CI includes zero, and the gold set leaks 73.3 % of
@@ -242,8 +242,9 @@ executed on this evidence in either direction, and acting on it would have delet
 on the strength of a one-item difference. Hybrid is kept, the reasoning is in ADR-0006, and the
 decisive experiment is **U-18**.
 
-**Remaining work:** close U-1 in writing; grow the corpus and the gold set so the gate stops
-operating at single-item resolution; U-18. The reranker ablation is done (ADR-0009).
+**Remaining work:** grow the corpus and the gold set so the gate stops operating at single-item
+resolution; U-18. U-1 is closed (outcome (b), `EVAL_PROTOCOL.md` §4.2) and the reranker ablation
+is done (ADR-0009). **M4 is now complete**: all five exit criteria are met or formally resolved.
 
 **Also landed with the gate (2026-10-02):** the corpus payloads are now tracked in git. The
 manifest alone did not make them re-derivable — the corpus contains withdrawn circulars, and
@@ -266,6 +267,9 @@ enforcing.
    formally re-scopes to deterministic plus local scoring and drops the calibrated-judge claim in
    writing (`EVAL_PROTOCOL.md` §4.1). Carrying U-1 past M4 is not permitted — it determines what
    M5 is allowed to claim.
+   **Resolved 2026-10-02: outcome (b).** The optional local judge was also declined, because with
+   no generator there is no generated text to evaluate — a judge pointed at this system would be
+   scoring passages that are verbatim substrings of stored chunks.
 
 **Closes:** U-10, U-1.
 
@@ -301,8 +305,11 @@ assumed), and a deployed public URL (no cloud resources are created by this proj
 caching worth 16.3x, 37.0 q/s, ~$0.08 per million queries. `scripts/bench_api.py`, raw
 output under `evals/bench/`.
 
-**Remaining work:** close U-1 in writing; then generation behind the same endpoint, shipped
-only once the judge is calibrated with Cohen's κ reported.
+**Remaining work:** generation, if it is ever added, goes behind the same endpoint rather than
+replacing it (ADR-0008). U-1 is closed as outcome (b): the judge layer is withdrawn, not pending,
+so there is no calibration queued. `EVAL_PROTOCOL.md` §4.2 states the two conditions that would
+reopen it — credentials **and** a generator — and §5 must run in full before any faithfulness
+figure is published.
 
 ---
 
