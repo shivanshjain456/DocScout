@@ -19,7 +19,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   `nvidia-*`/`cuda-*` packages a CPU build never installs, so every audited package is
   compared against what `uv sync` really installed and **phantom** findings are named and
   excluded from the gate rather than inflating it.
-  19 network-free tests cover the normalisation, the phantom rule, the suppression policy
+  The committed SBOM is **deterministic**: CycloneDX mints a fresh serial number,
+  timestamp and random `bom-ref` per component on every generation, which made the file
+  churn 684 lines between identical runs and would have left the CI staleness check
+  permanently red. The timestamp is dropped, the serial is a UUID5 over the component set,
+  and refs are re-keyed on each component's purl — so the file changes exactly when the
+  dependency set changes, and a dependency bump shows up as one line in review.
+  24 network-free tests cover the normalisation, the phantom rule, the suppression policy
   (every suppression needs a justification and a review date; there are none) and whether
   the committed artifacts still describe the current lockfile — verified to fail when the
   digest is altered.

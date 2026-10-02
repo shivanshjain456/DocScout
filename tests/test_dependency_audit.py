@@ -164,3 +164,58 @@ def test_removed_vulnerable_packages_are_absent() -> None:
     names = {normalise(c["name"]) for c in json.loads(SBOM.read_text())["components"]}
     assert "ragas" not in names
     assert "diskcache" not in names
+
+
+# --- the SBOM must be reviewable, which means deterministic -----------------------------
+def test_sbom_has_no_volatile_timestamp() -> None:
+    """CycloneDX stamps a generation time by default.
+
+    Committed, that makes the file change on every run even when no dependency moved: the
+    diff becomes useless for review and the CI staleness check can never pass.
+    """
+    sbom = json.loads(SBOM.read_text())
+    assert "timestamp" not in sbom.get("metadata", {})
+
+
+def test_sbom_serial_number_is_derived_from_the_component_set() -> None:
+    """A random serial per run defeats the point of committing the file."""
+    import uuid as uuid_module
+
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    from audit_dependencies import SBOM_NAMESPACE
+
+    sbom = json.loads(SBOM.read_text())
+    fingerprint = "\n".join(
+        sorted(f"{c.get('name')}=={c.get('version')}" for c in sbom["components"])
+    )
+    expected = f"urn:uuid:{uuid_module.uuid5(SBOM_NAMESPACE, fingerprint)}"
+    assert sbom["serialNumber"] == expected, (
+        "SBOM serial does not match its components; regenerate with `make audit-deps`"
+    )
+
+
+def test_sbom_refs_identify_packages_not_random_numbers() -> None:
+    """cyclonedx-python-lib emits refs like `BomRef.74974887.30280564`, which differ on
+    every run. A bom-ref is supposed to identify the component, so they are re-keyed on
+    the purl."""
+    sbom = json.loads(SBOM.read_text())
+    refs = [c["bom-ref"] for c in sbom["components"] if "bom-ref" in c]
+    assert refs, "no bom-refs present"
+    assert all(r.startswith("pkg:pypi/") for r in refs), [r for r in refs if "pkg:" not in r][:3]
+    assert len(set(refs)) == len(refs), "bom-refs are not unique"
+
+
+def test_sbom_dependency_graph_references_resolve() -> None:
+    """Rewriting refs must not leave the graph pointing at identifiers that no longer exist."""
+    sbom = json.loads(SBOM.read_text())
+    known = {c["bom-ref"] for c in sbom["components"] if "bom-ref" in c}
+    for node in sbom.get("dependencies", []):
+        for target in node.get("dependsOn", []):
+            assert target in known, f"dangling dependency reference: {target}"
+
+
+def test_sbom_components_are_sorted() -> None:
+    """Stable ordering is what makes a dependency change show up as one line in review."""
+    sbom = json.loads(SBOM.read_text())
+    pairs = [(c["name"], c["version"]) for c in sbom["components"]]
+    assert pairs == sorted(pairs)

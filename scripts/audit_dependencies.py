@@ -58,6 +58,7 @@ import json
 import re
 import subprocess
 import sys
+import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -70,6 +71,10 @@ from app.config import sha256_file  # noqa: E402 - needs REPO_ROOT on the path f
 OUTPUT_DIR = REPO_ROOT / "docs" / "security"
 AUDIT_JSON = OUTPUT_DIR / "dependency-audit.json"
 SBOM_PATH = OUTPUT_DIR / "sbom.cdx.json"
+
+#: Namespace for the content-derived SBOM serial number. A fixed UUID so the same
+#: dependency set always yields the same serial, on any machine.
+SBOM_NAMESPACE = uuid.UUID("6f1b1f3e-6f1a-5f2b-9c3d-0a1b2c3d4e5f")
 
 #: PEP 440 local version identifier, e.g. the "+cpu" in "torch==2.14.1+cpu".
 LOCAL_VERSION = re.compile(r"^([A-Za-z0-9._-]+==[^+\s;]+)\+[A-Za-z0-9.]+(.*)$")
@@ -254,8 +259,42 @@ def generate_sbom(requirements: list[str]) -> bool:
             print(f"  SBOM generation failed: {result.stderr.strip()[:300]}", file=sys.stderr)
             return False
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-        # Reformat so the committed file diffs line by line when a dependency changes.
-        SBOM_PATH.write_text(json.dumps(json.loads(result.stdout), indent=2) + "\n")
+        sbom = json.loads(result.stdout)
+        # CycloneDX mints a fresh serialNumber and timestamp on every generation. Committed
+        # as-is, the file changes on every run even when no dependency moved, which makes
+        # the diff useless for review and makes any "is this stale?" check in CI
+        # permanently red. Both are derived from the content instead: the timestamp is
+        # dropped and the serial number is a UUID5 over the component set, so the file
+        # changes exactly when the dependency set changes and the serial still uniquely
+        # identifies that set.
+        components = sbom.get("components", [])
+        # cyclonedx-python-lib assigns each component a random bom-ref
+        # ("BomRef.7497488720640278.30280564859331427"), so two runs over an identical
+        # dependency set produce 684 differing lines. Re-key them on the component's own
+        # purl -- which is what a bom-ref is supposed to identify -- and rewrite the
+        # references in the dependency graph to match.
+        ref_map = {
+            c["bom-ref"]: c.get("purl") or f"pkg:pypi/{c['name']}@{c['version']}"
+            for c in components
+            if "bom-ref" in c
+        }
+        for component in components:
+            if "bom-ref" in component:
+                component["bom-ref"] = ref_map[component["bom-ref"]]
+        for node in sbom.get("dependencies", []):
+            if "ref" in node:
+                node["ref"] = ref_map.get(node["ref"], node["ref"])
+            if "dependsOn" in node:
+                node["dependsOn"] = sorted(ref_map.get(r, r) for r in node["dependsOn"])
+        sbom["components"] = sorted(components, key=lambda c: (c["name"], c["version"]))
+        sbom["dependencies"] = sorted(
+            sbom.get("dependencies", []), key=lambda n: str(n.get("ref", ""))
+        )
+        components = sbom["components"]
+        fingerprint = "\n".join(sorted(f"{c.get('name')}=={c.get('version')}" for c in components))
+        sbom["serialNumber"] = f"urn:uuid:{uuid.uuid5(SBOM_NAMESPACE, fingerprint)}"
+        sbom.get("metadata", {}).pop("timestamp", None)
+        SBOM_PATH.write_text(json.dumps(sbom, indent=2, sort_keys=True) + "\n")
         return True
     finally:
         scratch.unlink(missing_ok=True)

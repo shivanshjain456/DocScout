@@ -47,8 +47,15 @@ jobs:
       - run: uv sync --frozen
       - name: audit locked dependencies and regenerate the SBOM
         run: uv run python scripts/audit_dependencies.py
-      - name: fail if the committed SBOM or audit is stale
-        run: git diff --exit-code -- docs/security/
+      # NOT `git diff --exit-code -- docs/security/`: the report records its own run_utc,
+      # so that comparison can never pass and would leave this job permanently red. The
+      # meaningful staleness check is whether the committed artifact describes the current
+      # lockfile, which `tests/test_dependency_audit.py` asserts against uv.lock's digest
+      # in the quality job. Here the exit status of the scan itself is the gate.
+      - name: confirm the committed SBOM still covers the locked set
+        run: |
+          git diff --exit-code -- docs/security/sbom.cdx.json \
+            || { echo "::error::SBOM is stale; run 'make audit-deps' and commit it"; exit 1; }
       - name: publish the SBOM
         if: always()
         uses: actions/upload-artifact@v4

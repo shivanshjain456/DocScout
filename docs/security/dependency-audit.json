@@ -1,6 +1,6 @@
 {
   "schema": "docscout.dependency-audit/1",
-  "run_utc": "2026-10-02T11:41:37Z",
+  "run_utc": "2026-10-02T11:49:17Z",
   "tool": "pip-audit",
   "source": "uv.lock (exported; PEP 440 local versions normalised)",
   "lockfile_sha256": "47bf85305a1bcbc1c0301f35b53670d41f0db40ebe995d94950899c51e76463d",
