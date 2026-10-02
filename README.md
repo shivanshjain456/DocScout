@@ -349,6 +349,46 @@ it is attacker-controlled text that ends up in every log line for the request. A
 redacted by a pipeline processor rather than by convention, so a forgetful call site cannot
 leak one; only the truncated fingerprint above is ever written.
 
+### Metrics
+
+`GET /metrics` serves Prometheus exposition for the default registry — RED (rate, errors,
+duration) plus the two signals that actually explain this service's latency:
+
+| metric | type | labels |
+|---|---|---|
+| `docscout_http_requests_total` | counter | `method`, `route`, `status` |
+| `docscout_http_request_duration_seconds` | histogram | `method`, `route` |
+| `docscout_http_requests_in_flight` | gauge | — |
+| `docscout_retrieval_duration_seconds` | histogram | `mode` |
+| `docscout_cache_events_total` | counter | `result` (hit/miss) |
+| `docscout_rate_limited_total` | counter | — |
+| `docscout_corpus_chunks` | gauge | — |
+
+```promql
+histogram_quantile(0.95, sum(rate(docscout_http_request_duration_seconds_bucket[5m])) by (le))
+sum(rate(docscout_cache_events_total{result="hit"}[5m]))
+  / sum(rate(docscout_cache_events_total[5m]))
+```
+
+Every label was enumerated before it was added, because cardinality is what kills a
+Prometheus deployment. `route` is the **matched route template**, never the raw path — two
+requests to `/wp-admin` and `/.env` produce one `route="unmatched"` series between them,
+not two. Nothing per-request is a label: query text, API keys and request ids are absent by
+construction and live in the structured log, which carries the request id for joining.
+
+Bucket boundaries come from measurements of this service, not a default ladder: dense below
+100 ms where the real distribution sits (cache hit p95 2.11 ms, cold p95 48.11 ms) with an
+exact boundary at **3 s**, the NFR-1 budget, so SLO compliance is a bucket ratio rather than
+an interpolation between two far-apart buckets.
+
+The endpoint is unauthenticated, as `/healthz` is, because a scraper often cannot present a
+credential. It exposes aggregate counters only, but request volume is still information: a
+real deployment should bind it to an internal interface or firewall the path. The default
+registry also means `process_*` and `python_*` collectors are included, which is correct
+for one worker and wrong for several — a multi-process deployment needs
+`PROMETHEUS_MULTIPROC_DIR`, consistent with the `single_process: true` that `/healthz`
+reports.
+
 ### Rebuilding derived data
 
 Ingestion skips any document whose source `sha256` is unchanged, which is what makes

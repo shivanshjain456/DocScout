@@ -35,11 +35,11 @@ from typing import Any
 import structlog
 from fastapi import Depends, FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from psycopg_pool import ConnectionPool
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api import demo
+from app.api import demo, metrics
 from app.api.cache import DEFAULT_RESULT_TTL_SECONDS, TTLCache
 from app.api.models import (
     HealthResponse,
@@ -115,6 +115,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.embedding_cache = TTLCache[str, Any](maxsize=EMBEDDING_CACHE_SIZE, ttl=None)
     app.state.manifest_digest = sha256_file(REPO_ROOT / "corpus" / "raw" / "manifest.json")
 
+    metrics.CORPUS_CHUNKS.set(app.state.corpus_chunks)
     logger.info(
         "api.ready",
         corpus_chunks=app.state.corpus_chunks,
@@ -164,19 +165,33 @@ async def correlate_and_log(request: Request, call_next: Any) -> Any:
     )
     request.state.request_id = request_id
     started = time.perf_counter()
+    metrics.IN_FLIGHT.inc()
     try:
-        response = await call_next(request)
-    except Exception:
-        # The 500 handler below renders the body; this records the timing and re-raises
-        # so that behaviour is unchanged.
-        logger.exception(
-            "http.request", status=500, duration_ms=round((time.perf_counter() - started) * 1000, 2)
+        try:
+            response = await call_next(request)
+        except Exception:
+            # The 500 handler below renders the body; this records the timing and the
+            # metric, then re-raises so that behaviour is unchanged.
+            elapsed = time.perf_counter() - started
+            # Routing has run by now, so the matched template is available even on failure.
+            route = metrics.route_label(request.scope)
+            metrics.REQUESTS.labels(request.method, route, "500").inc()
+            metrics.REQUEST_DURATION.labels(request.method, route).observe(elapsed)
+            logger.exception("http.request", status=500, duration_ms=round(elapsed * 1000, 2))
+            raise
+        elapsed = time.perf_counter() - started
+        route = metrics.route_label(request.scope)
+        metrics.REQUESTS.labels(request.method, route, str(response.status_code)).inc()
+        metrics.REQUEST_DURATION.labels(request.method, route).observe(elapsed)
+        if response.status_code == status.HTTP_429_TOO_MANY_REQUESTS:
+            metrics.RATE_LIMITED.inc()
+        response.headers["X-Request-ID"] = request_id
+        logger.info(
+            "http.request", status=response.status_code, duration_ms=round(elapsed * 1000, 2)
         )
-        raise
-    duration_ms = round((time.perf_counter() - started) * 1000, 2)
-    response.headers["X-Request-ID"] = request_id
-    logger.info("http.request", status=response.status_code, duration_ms=duration_ms)
-    return response
+        return response
+    finally:
+        metrics.IN_FLIGHT.dec()
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -226,6 +241,21 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 def index() -> HTMLResponse:
     """A self-contained demo page. No external assets, so it renders in a sandboxed frame."""
     return HTMLResponse(demo.PAGE)
+
+
+@app.get("/metrics", include_in_schema=False, tags=["ops"])
+def prometheus_metrics() -> Response:
+    """Prometheus exposition for the default registry.
+
+    Unauthenticated, for the same reason `/healthz` is: the thing that needs it most is a
+    scraper, and many cannot present a credential. It exposes aggregate counters only --
+    no query text, no key fingerprints, no request ids -- so the disclosure is request
+    volume and latency shape. On a public URL that is still information; a real deployment
+    should bind this to an internal interface or firewall the path, which is the standard
+    posture and is recorded in the README rather than left implicit.
+    """
+    body, content_type = metrics.render()
+    return Response(content=body, media_type=content_type)
 
 
 @app.get("/healthz", response_model=HealthResponse, tags=["ops"])
@@ -306,6 +336,7 @@ def search(
 
     cached: CachedResult | None = state.result_cache.get(cache_key) if payload.use_cache else None
     if cached is not None:
+        metrics.CACHE_EVENTS.labels("hit").inc()
         total_ms = (time.perf_counter() - started) * 1000.0
         logger.info(
             "search.cache_hit",
@@ -323,12 +354,19 @@ def search(
             timings=Timings(total_ms=round(total_ms, 2), retrieval_ms=0.0, cache_hit=True),
         )
 
+    # A bypassed cache is not a miss: counting it as one would make the hit ratio depend
+    # on how often the benchmark runs rather than on how well the cache works.
+    if payload.use_cache:
+        metrics.CACHE_EVENTS.labels("miss").inc()
+
     config = _config_for(payload)
     retrieval_started = time.perf_counter()
     with state.pool.connection() as conn:
         retriever = Retriever(conn, embedder=state.embedder, bm25=state.bm25)
         hits = retriever.retrieve(payload.query, config)
-    retrieval_ms = (time.perf_counter() - retrieval_started) * 1000.0
+    retrieval_seconds = time.perf_counter() - retrieval_started
+    metrics.RETRIEVAL_DURATION.labels(payload.mode).observe(retrieval_seconds)
+    retrieval_ms = retrieval_seconds * 1000.0
 
     result = CachedResult(
         passages=[

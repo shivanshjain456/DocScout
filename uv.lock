@@ -461,6 +461,7 @@ dependencies = [
     { name = "openai" },
     { name = "orjson" },
     { name = "pgvector" },
+    { name = "prometheus-client" },
     { name = "psycopg", extra = ["binary", "pool"] },
     { name = "pydantic" },
     { name = "pypdf" },
@@ -492,6 +493,7 @@ requires-dist = [
     { name = "openai", specifier = ">=2.0,<3.0" },
     { name = "orjson", specifier = ">=3.12.0" },
     { name = "pgvector", specifier = ">=0.5.0" },
+    { name = "prometheus-client", specifier = ">=0.23.0" },
     { name = "psycopg", extras = ["binary", "pool"], specifier = ">=3.3.6" },
     { name = "pydantic", specifier = ">=2.13.5" },
     { name = "pypdf", specifier = ">=6.19.0" },
@@ -1500,6 +1502,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e7/84/9ff5f1cd1b4f35d4d1728bc382f146f34902fcc47bcbf2605c49ed114f35/posthog-7.61.1.tar.gz", hash = "sha256:f80245a340149b991b26aa9c41399e53073d20365f0864a86c8b6b55daa16726", size = 695603, upload-time = "2026-09-30T19:04:14.17Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8d/c0/f1ca28c21211e4f1f05fd886efad94d8d00cd4f65037c46f9607537e53d2/posthog-7.61.1-py3-none-any.whl", hash = "sha256:fa391cbb333dc3571112eacdf69616470929410d915a6ccce32ae9b4322708cb", size = 812901, upload-time = "2026-09-30T19:04:12.186Z" },
+]
+
+[[package]]
+name = "prometheus-client"
+version = "0.26.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/52/73/f1334c29c2af4cd9dba6c7817e61b611bd0215e2eb5565c6064a4de18802/prometheus_client-0.26.0.tar.gz", hash = "sha256:04a91bcf94e2cf74a44a1a874d651a2e853ed354b6e822f3b7487751465d5c2b", size = 92910, upload-time = "2026-07-24T19:36:41.893Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/eb/a3/b69efbf4143b5b9859b977770bbbabcc2796b702fa69dc40271e45cd5a56/prometheus_client-0.26.0-py3-none-any.whl", hash = "sha256:fa93d06737aa02bacd05794768508bb97d2fbee28cb3bca04eaae92f0ca953d6", size = 64494, upload-time = "2026-07-24T19:36:40.854Z" },
 ]
 
 [[package]]

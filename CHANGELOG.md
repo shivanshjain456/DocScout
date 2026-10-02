@@ -6,6 +6,30 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 ## [Unreleased]
 
 ### Added
+- **`GET /metrics`: Prometheus instrumentation** (audit G4). RED — rate, errors, duration —
+  plus the two signals that explain this service's latency: cache hit ratio and per-mode
+  retrieval time, alongside in-flight requests, rate-limit rejections and the retrievable
+  chunk count.
+  Cardinality was designed, not discovered: `route` is the **matched route template**, so
+  two scanner probes to `/wp-admin` and `/.env` collapse into one `route="unmatched"`
+  series instead of creating one each; status codes are kept at full granularity because
+  the enumeration is small and known, and collapsing to `4xx` would hide a rate-limited
+  caller behind an unauthenticated one; nothing per-request is a label, so query text, API
+  keys and request ids stay in the structured log, which carries the request id for
+  joining. 114 series total on a live scrape.
+  Histogram buckets come from this service's own measurements rather than a default ladder
+  — dense below 100 ms where the distribution sits (cache hit p95 2.11 ms, cold p95
+  48.11 ms) with an exact boundary at the **3 s NFR-1 budget**, so SLO compliance is a
+  bucket ratio rather than an interpolation.
+  `prometheus-client` is declared in `pyproject.toml` and locked; `uv sync --frozen` still
+  resolves. 14 tests, including one asserting the scanner-probe collapse and one asserting
+  no label value looks like per-request data.
+
+### Changed
+- The shared serving-API test fixtures (`client`, the key constants, `auth()`, the
+  rate-limiter reset) moved from `tests/test_api.py` into `tests/conftest.py`, now that two
+  suites drive the API. Importing a fixture across test modules shadows the parameter of
+  the same name in every test that uses it — ruff flagged it 14 times.
 - **`app/observability.py`: structured logging and request correlation** (audit G2 + G3).
   There was no logging configuration anywhere in the repository: six `logger.*` calls wrote
   to an unconfigured root logger, so every INFO record — including every access line — was

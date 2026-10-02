@@ -102,3 +102,58 @@ def ingest_db(app_conn: psycopg.Connection[Any]) -> Iterator[psycopg.Connection[
     register_vector(app_conn)
     with app_conn.transaction(force_rollback=True):
         yield app_conn
+
+
+# ---------------------------------------------------------------------------------------
+# Serving API fixtures
+#
+# Shared here rather than in one test module because two suites now drive the API --
+# tests/test_api.py and tests/test_metrics.py -- and importing a fixture across test
+# modules shadows the parameter of the same name in every test that uses it.
+# ---------------------------------------------------------------------------------------
+
+# Composed from repeated characters on purpose. A realistic-looking random string here is
+# indistinguishable from a leaked credential to a secret scanner -- gitleaks flagged an
+# earlier version at entropy 4.45 -- and the right response is to make the fixture
+# obviously fake rather than to blunt the scanner with an allowlist entry.
+PRIMARY_KEY = "unit-test-key-" + "a" * 24
+ROTATION_KEY = "unit-test-key-" + "b" * 24
+
+
+def auth(key: str = PRIMARY_KEY) -> dict[str, str]:
+    return {"X-API-Key": key}
+
+
+@pytest.fixture(scope="module")
+def client(app_conn: psycopg.Connection[Any]) -> Iterator[Any]:
+    """A live app, with the real database and the real embedding model.
+
+    Module-scoped because the lifespan loads the encoder (~13 s) and builds the BM25 term
+    table; paying that per test would make the suite unusable. Skips rather than fails when
+    the corpus is absent, matching the rest of the suite.
+
+    Keys are injected through the environment: `config.load_dotenv` uses `setdefault`, so a
+    real environment variable always wins, which keeps the suite hermetic and means it
+    never depends on, or reveals, the operator's actual key.
+    """
+    from fastapi.testclient import TestClient
+
+    row = app_conn.execute("SELECT count(*) FROM chunks").fetchone()
+    if not row or int(row[0]) == 0:  # pragma: no cover - environment guard
+        pytest.skip("corpus not ingested; run `make ingest`")
+
+    os.environ["DOCSCOUT_API_KEY"] = f"{PRIMARY_KEY},{ROTATION_KEY}"
+    from app.api.app import app as fastapi_app
+
+    with TestClient(fastapi_app) as test_client:
+        yield test_client
+
+
+@pytest.fixture(autouse=True)
+def _fresh_rate_limiter() -> Iterator[None]:
+    """The limiter is process-global; without this one test's burst fails the next."""
+    from app.api import security
+
+    security.rate_limiter.reset()
+    yield
+    security.rate_limiter.reset()
