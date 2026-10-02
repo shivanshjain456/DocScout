@@ -19,6 +19,7 @@ from dataclasses import dataclass
 import psycopg
 
 from app.ingest.embed import Embedder
+from app.retrieval import confidence as confidence_module
 from app.retrieval import dense, fusion
 from app.retrieval.lexical import BM25Index
 from app.retrieval.rerank import Candidate, CrossEncoderReranker
@@ -133,6 +134,19 @@ class Retriever:
                     char_end=as_int(end),
                 )
         return self._meta
+
+    def assess_confidence(
+        self, query: str, results: list[Retrieved]
+    ) -> confidence_module.Confidence:
+        """How much of the question the returned passages actually cover.
+
+        Separate from `retrieve` rather than folded into it: the eval harness sweeps the
+        threshold over the whole gold set and needs the raw coverage, and a caller that
+        does not want the extra BM25 lookups should not pay for them.
+        """
+        terms = self.bm25.query_terms(self._conn, query)
+        passage_terms = [self.bm25.lexemes_of(hit.chunk_id) for hit in results]
+        return confidence_module.assess(terms, passage_terms)
 
     def retrieve(self, query: str, config: RetrievalConfig) -> list[Retrieved]:
         arms: dict[str, list[str]] = {}

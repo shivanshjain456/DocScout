@@ -74,6 +74,20 @@ class Provenance(BaseModel):
     retrieval: dict[str, object]
 
 
+class Confidence(BaseModel):
+    """Whether the retrieved evidence actually covers the question.
+
+    Reported, never acted on. The signal is real but weak -- it catches roughly a quarter
+    of unanswerable questions and mislabels about 3% of answerable ones -- so withholding
+    results on it would trade a known failure for a worse one. The caller decides.
+    """
+
+    evidence_coverage: float
+    missing_terms: list[str]
+    low_evidence: bool
+    passages_considered: int
+
+
 class Timings(BaseModel):
     """Server-side milliseconds. Honest about what is and is not included."""
 
@@ -87,6 +101,7 @@ class SearchResponse(BaseModel):
     mode: str
     k: int
     passages: list[Passage]
+    confidence: Confidence
     provenance: Provenance
     timings: Timings
 

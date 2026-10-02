@@ -6,6 +6,33 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 ## [Unreleased]
 
 ### Added
+- **Abstention: measuring when the corpus cannot answer** (audit G11). 22 of 153 gold
+  items (14.4%) are deliberately unanswerable and were excluded from every metric; they
+  are now scored in every `make eval` run, with refusal rate, false rejection rate,
+  refusal precision and selective accuracy — the metrics the abstention literature uses.
+  **The obvious signal does not work.** Measured by how well each separates answerable
+  from unanswerable (AUC, 0.5 = chance): the serving configuration's own `rrf_top` scores
+  **0.467 — worse than chance**, because RRF ranks rather than scores and its top value is
+  nearly constant whether or not anything relevant was found. `dense_margin` 0.461,
+  `bm25_top` 0.655. A confidence gate built on any of them would have looked plausible and
+  done nothing.
+  **Evidence coverage** — the fraction of the question's analyzed terms present in the top
+  five passages — reaches **AUC 0.730**, and names the missing word: *"What **penalty**
+  applies…"* → `penalti`; *"the **minimum** acceptable score"* → `minimum`. It works
+  because an unanswerable question here is unanswerable through one term the corpus never
+  uses while the rest retrieves its topic perfectly.
+  Threshold **0.65** chosen from the published sweep — the last point where a flag is right
+  more often than wrong. At it: abstention recall 0.273, false rejection rate 0.030,
+  refusal precision 0.600, selective accuracy 0.869.
+  `/v1/search` returns `confidence` **alongside** the passages and never withholds them: a
+  signal wrong 40% of the times it fires must not refuse on a caller's behalf, and
+  over-refusal is a documented failure mode. Evidence, rejected signals and limitations in
+  `docs/verification/0002-abstention-signal.md`. 20 tests.
+
+### Fixed
+- Two comments asserted that abstention is "a generation property", which was true when
+  nothing measured it and is now misleading: answer-level abstention is generative,
+  retrieval-side evidence coverage is not and is measured.
 - **Dependency vulnerability scanning and an SBOM** (`make audit-deps`, audit G9, OWASP
   LLM04). `pip-audit` over the exported `uv.lock`, plus a CycloneDX SBOM, with a dedicated
   `supply-chain` CI job that also fails if the committed artifacts are stale.

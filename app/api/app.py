@@ -42,6 +42,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api import demo, metrics
 from app.api.cache import DEFAULT_RESULT_TTL_SECONDS, TTLCache
 from app.api.models import (
+    Confidence,
     HealthResponse,
     Passage,
     Provenance,
@@ -78,6 +79,7 @@ class CachedResult:
     """
 
     passages: list[Passage]
+    confidence: Confidence
     provenance: Provenance
 
 
@@ -350,6 +352,7 @@ def search(
             mode=payload.mode,
             k=payload.k,
             passages=cached.passages,
+            confidence=cached.confidence,
             provenance=cached.provenance,
             timings=Timings(total_ms=round(total_ms, 2), retrieval_ms=0.0, cache_hit=True),
         )
@@ -364,6 +367,7 @@ def search(
     with state.pool.connection() as conn:
         retriever = Retriever(conn, embedder=state.embedder, bm25=state.bm25)
         hits = retriever.retrieve(payload.query, config)
+        assessed = retriever.assess_confidence(payload.query, hits)
     retrieval_seconds = time.perf_counter() - retrieval_started
     metrics.RETRIEVAL_DURATION.labels(payload.mode).observe(retrieval_seconds)
     retrieval_ms = retrieval_seconds * 1000.0
@@ -384,6 +388,7 @@ def search(
             )
             for hit in hits
         ],
+        confidence=Confidence(**assessed.as_dict()),  # type: ignore[arg-type]
         provenance=Provenance(
             embedding_model=MODEL_ID,
             embedding_dim=EMBEDDING_DIM,
@@ -412,6 +417,7 @@ def search(
         mode=payload.mode,
         k=payload.k,
         passages=result.passages,
+        confidence=result.confidence,
         provenance=result.provenance,
         timings=Timings(
             total_ms=round(total_ms, 2), retrieval_ms=round(retrieval_ms, 2), cache_hit=False

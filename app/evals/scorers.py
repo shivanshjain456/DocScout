@@ -20,7 +20,8 @@ a retriever 0.5 for returning the one perfectly correct chunk, which is not a me
 of anything.
 
 Unanswerable items have no groups and are excluded from every retrieval metric here, with
-the count reported. They measure abstention, which is a generation property; silently
+the count reported. Answer-level abstention is a generation property; retrieval-side
+evidence coverage over these same items is measured separately in `abstention.py`. Silently
 averaging them in as zeros -- or as ones -- would move the headline number by the share of
 unanswerable items (14.4% of this gold set) for reasons unrelated to retrieval.
 """

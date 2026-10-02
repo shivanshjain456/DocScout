@@ -331,3 +331,39 @@ def test_error_responses_also_carry_the_request_id(client: TestClient) -> None:
     response = client.post("/v1/search", json={"query": "no key supplied"})
     assert response.status_code == 401
     assert "X-Request-ID" in response.headers
+
+
+# --- confidence signal ------------------------------------------------------------------
+def test_search_reports_evidence_coverage(client: TestClient) -> None:
+    body = client.post(
+        "/v1/search",
+        json={"query": "What are the KYC requirements for foreign portfolio investors?"},
+        headers=auth(),
+    ).json()
+    confidence = body["confidence"]
+    assert 0.0 <= confidence["evidence_coverage"] <= 1.0
+    assert confidence["low_evidence"] is False
+    assert confidence["passages_considered"] > 0
+
+
+def test_a_question_the_corpus_cannot_answer_is_flagged_but_still_answered(
+    client: TestClient,
+) -> None:
+    """The flag is advisory. Withholding passages on a signal this weak (AUC 0.730) would
+    trade a known failure mode for a worse one, so the caller is warned and still served."""
+    body = client.post(
+        "/v1/search",
+        json={"query": "What is the minimum acceptable ITRI score an MII must maintain?"},
+        headers=auth(),
+    ).json()
+    assert body["confidence"]["low_evidence"] is True
+    assert body["confidence"]["missing_terms"]
+    assert body["passages"], "a low-evidence flag must not withhold the evidence"
+
+
+def test_confidence_survives_the_cache(client: TestClient) -> None:
+    payload = {"query": "a distinctive query used only by the confidence cache test"}
+    cold = client.post("/v1/search", json=payload, headers=auth()).json()
+    warm = client.post("/v1/search", json=payload, headers=auth()).json()
+    assert warm["timings"]["cache_hit"] is True
+    assert warm["confidence"] == cold["confidence"]

@@ -30,7 +30,7 @@ from typing import Any
 import psycopg
 
 from app.config import database_url, sha256_file
-from app.evals import scorers, stats
+from app.evals import abstention, scorers, stats
 from app.evals.goldset import (
     DEFAULT_GOLDSET,
     build_corpus_index,
@@ -41,6 +41,7 @@ from app.evals.goldset import (
 from app.ingest.chunk import CHUNK_OVERLAP, CHUNK_SIZE, MAX_TOKENS
 from app.ingest.embed import EMBEDDING_DIM, MODEL_ID, QUERY_PREFIX, Embedder
 from app.retrieval import SERVING_CONFIG, RetrievalConfig, Retriever
+from app.retrieval.confidence import LOW_EVIDENCE_THRESHOLD
 from app.rowtypes import as_int, as_str
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -308,11 +309,67 @@ def _comparisons(runs: list[ConfigRun]) -> list[dict[str, Any]]:
     return out
 
 
+#: Thresholds swept for the abstention curve. Dense around the shipped operating point so
+#: the cost of moving it is visible rather than extrapolated.
+ABSTENTION_THRESHOLDS = (0.40, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.90)
+
+
+def _score_abstention(
+    answerable: list[dict[str, Any]],
+    unanswerable: list[dict[str, Any]],
+    embedder: Embedder,
+) -> dict[str, Any]:
+    """Measure evidence coverage on both halves of the gold set and sweep the threshold.
+
+    Uses the serving configuration, because a signal measured on a configuration nobody
+    runs says nothing about the system anybody uses.
+    """
+    coverage: dict[str, list[float]] = {"answerable": [], "unanswerable": []}
+    per_item: list[dict[str, Any]] = []
+    with psycopg.connect(database_url()) as conn:
+        retriever = Retriever(conn, embedder=embedder)
+        for label, group in (("answerable", answerable), ("unanswerable", unanswerable)):
+            for item in group:
+                question = str(item["question"])
+                hits = retriever.retrieve(question, SERVING_CONFIG)
+                assessed = retriever.assess_confidence(question, hits)
+                coverage[label].append(assessed.evidence_coverage)
+                per_item.append(
+                    {
+                        "item_id": str(item["item_id"]),
+                        "answerable": label == "answerable",
+                        "evidence_coverage": round(assessed.evidence_coverage, 4),
+                        "low_evidence": assessed.low_evidence,
+                        "missing_terms": assessed.missing_terms[:8],
+                    }
+                )
+
+    shipped = abstention.score_at_threshold(
+        coverage["answerable"], coverage["unanswerable"], LOW_EVIDENCE_THRESHOLD
+    )
+    return {
+        "signal": "evidence_coverage",
+        "shipped_threshold": LOW_EVIDENCE_THRESHOLD,
+        "separation_auc": round(
+            abstention.separation_auc(coverage["answerable"], coverage["unanswerable"]), 4
+        ),
+        "at_shipped_threshold": shipped.as_dict(),
+        "sweep": [
+            s.as_dict()
+            for s in abstention.sweep(
+                coverage["answerable"], coverage["unanswerable"], ABSTENTION_THRESHOLDS
+            )
+        ],
+        "items": per_item,
+    }
+
+
 def write_report(
     runs: list[ConfigRun],
     provenance: dict[str, Any],
     excluded_unanswerable: int,
     out_dir: Path,
+    abstention_report: dict[str, Any] | None = None,
 ) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -330,6 +387,7 @@ def write_report(
         "cutoffs": list(CUTOFFS),
         "items_scored": items_scored,
         "items_excluded_unanswerable": excluded_unanswerable,
+        "abstention": abstention_report,
         "comparisons": comparisons,
         "by_lexical_overlap_recall": bands,
         "configs": [
@@ -370,7 +428,7 @@ def write_report(
     lines.append(
         f"Scored on {items_scored} answerable gold items; "
         f"{excluded_unanswerable} unanswerable items excluded from retrieval metrics "
-        "(they measure abstention, which is a generation property).\n"
+        "(they carry no citations to cover; they are scored for abstention instead).\n"
     )
 
     for k in CUTOFFS:
@@ -456,6 +514,34 @@ def write_report(
         lines.append(f"| {label} | {row} | {first['n']} |")
     lines.append("")
 
+    if abstention_report:
+        lines.append("## Abstention\n")
+        shipped = abstention_report["at_shipped_threshold"]
+        lines.append(
+            f"Signal: evidence coverage, separation AUC **{abstention_report['separation_auc']}** "
+            f"(0.5 is chance). At the shipped threshold "
+            f"{abstention_report['shipped_threshold']}:\n"
+        )
+        lines.append("| metric | value |")
+        lines.append("|---|---|")
+        for key in (
+            "abstention_recall",
+            "false_rejection_rate",
+            "refusal_precision",
+            "selective_accuracy",
+            "refusal_rate",
+        ):
+            lines.append(f"| {key.replace('_', ' ')} | {shipped[key]:.3f} |")
+        lines.append("")
+        lines.append("| threshold | caught unanswerable | wrongly flagged | precision |")
+        lines.append("|---|---|---|---|")
+        for row in abstention_report["sweep"]:
+            lines.append(
+                f"| {row['threshold']:.2f} | {row['correct_refusals']}/{row['unanswerable']} "
+                f"| {row['false_refusals']}/{row['answerable']} | {row['refusal_precision']:.2f} |"
+            )
+        lines.append("")
+
     lines.append("## Reproduce\n")
     lines.append("```bash\nmake eval\n```\n")
     lines.append(
@@ -477,8 +563,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--report-dir", type=Path, default=None)
     args = parser.parse_args(argv)
 
-    items = [i for i in load_goldset(args.goldset) if not is_unanswerable(i)]
-    excluded = len(load_goldset(args.goldset)) - len(items)
+    all_items = load_goldset(args.goldset)
+    items = [i for i in all_items if not is_unanswerable(i)]
+    # No longer merely "excluded": these are scored for abstention below. They stay out of
+    # the retrieval metrics because an item with no citations has no citation coverage to
+    # measure, which is a different claim from having nothing to contribute.
+    unanswerable_items = [i for i in all_items if is_unanswerable(i)]
+    excluded = len(unanswerable_items)
     if args.limit:
         items = items[: args.limit]
 
@@ -507,9 +598,12 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  running {config.name}…", flush=True)
             runs.append(run_config(retriever, config, items, groups_by_item, overlap_by_item))
 
+    print("  scoring abstention over the unanswerable items…", flush=True)
+    abstention_report = _score_abstention(items, unanswerable_items, embedder)
+
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     out_dir = args.report_dir or (REPORTS_DIR / stamp)
-    results_path = write_report(runs, provenance, excluded, out_dir)
+    results_path = write_report(runs, provenance, excluded, out_dir, abstention_report)
 
     print()
     for run in runs:

@@ -299,6 +299,12 @@ would do on a corpus where retrieval actually struggles. Re-run
 citation precision and recall, answer-level hallucination rates and end-to-end latency do not
 exist yet. They are listed as absent above rather than shown as zeros.
 
+**Abstention catches about a quarter of unanswerable questions.** Three in four still
+return confident-looking passages with no flag. The threshold is also calibrated on the
+same 153 items it is evaluated on — there is no held-out split, because the gold set is
+the only labelled data that exists — so the AUC is optimistic and the operating point may
+not transfer to a larger corpus.
+
 **The LLM judge is withdrawn, not pending.** U-1 closed on 2026-10-02 as outcome (b)
 (`EVAL_PROTOCOL.md` §4.2): faithfulness, answer relevance and context precision are formally
 dropped as headline metrics, and no Cohen's kappa is published. Two reasons, either sufficient —
@@ -348,6 +354,38 @@ An inbound `X-Request-ID` is honoured only if it is short and free of control ch
 it is attacker-controlled text that ends up in every log line for the request. API keys are
 redacted by a pipeline processor rather than by convention, so a forgetful call site cannot
 leak one; only the truncated fingerprint above is ever written.
+
+### Knowing when the corpus cannot answer
+
+14.4% of the gold set (22 of 153 items) is deliberately unanswerable, and until now every
+one of them was excluded from every metric. They are now scored, and the result is in
+every `make eval` report.
+
+The obvious approach does not work here. Ranked by how well each signal separates
+answerable from unanswerable questions (AUC; 0.5 is chance):
+
+| signal | AUC |
+|---|---|
+| `rrf_top` — the serving configuration's own score | **0.467** (worse than chance) |
+| `dense_margin` | 0.461 |
+| `bm25_top` | 0.655 |
+| **evidence coverage** — query terms found in the top 5 passages | **0.730** |
+
+RRF scores by rank, so its top score is nearly constant whether or not anything relevant
+was found; a confidence gate built on it would look plausible and do nothing. Evidence
+coverage works because an unanswerable question here is usually unanswerable because of
+one word the corpus never uses — and it can name that word:
+
+> *"What **penalty** applies to an MII that fails to operationalise…"* → missing `penalti`
+> *"What is the **minimum** acceptable ITRI score an MII must **maintain**?"* → missing `minimum`
+
+At the shipped threshold (0.65): **abstention recall 0.273, false rejection rate 0.030,
+refusal precision 0.600, selective accuracy 0.869**.
+
+`/v1/search` returns this **alongside** the passages — it never withholds them. A signal
+that is wrong 40% of the times it fires has no business refusing on a caller's behalf, and
+over-refusal is a documented failure mode. Full sweep, rejected signals and limitations:
+[`docs/verification/0002-abstention-signal.md`](docs/verification/0002-abstention-signal.md).
 
 ### Supply chain
 
