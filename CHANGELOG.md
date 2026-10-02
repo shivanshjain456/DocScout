@@ -37,6 +37,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   method.
 
 ### Fixed
+- **`docker-compose.yml` pinned a pgvector version no published number was measured on.**
+  It specified `pgvector/pgvector:0.8.2-pg18` while `scripts/dev_db_native.sh` and the CI
+  job both provision **0.8.6** — so a reviewer following the compose path got a different
+  extension version than every baseline in this repository. The README compounded it by
+  stating "There is no `docker compose up`" about a file tracked at the repo root.
+  Compose is now pinned to `0.8.6-pg18-trixie`, identical to CI, and documented as the
+  supported alternative to the native script. `tests/test_config_coherence.py` (7 tests)
+  fails the build if the three provisioning paths ever disagree again, if the tag stops
+  being fully qualified, or if compose declares a service nothing in `app/` connects to.
+  The unused Redis service is removed: `REDIS_URL` remains in `.env.example` for a future
+  multi-worker deployment, but starting a container nothing talks to is scaffolding
+  presented as architecture. Audit item G7.
 - **Superseded document versions were still retrievable and would be served as current.**
   The schema has modelled `is_current` since migration 0001, `store.py` demotes the
   previous version correctly on supersession, and FR-4 keeps the old rows because the

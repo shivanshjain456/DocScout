@@ -1,6 +1,15 @@
 services:
   db:
-    image: pgvector/pgvector:0.8.2-pg18   # pinned per brief §4; 0.8.6-pg18 exists upstream (see SETUP_REPORT Known issues)
+    # Pinned to the exact pairing every published number was measured on: PostgreSQL 18.6
+    # with pgvector 0.8.6 on Debian trixie. This must stay identical to
+    # scripts/dev_db_native.sh and the eval-gate job in .github/workflows/ci.yml --
+    # tests/test_config_coherence.py fails the build if the three drift apart.
+    #
+    # It previously pinned 0.8.2-pg18 while both other paths installed 0.8.6, so a reviewer
+    # following this file got a different extension version than the baselines were measured
+    # on. A bare `pg18` tag is wrong for the same reason in slower motion: it lets the
+    # extension version move underneath the baselines without any file in this repo changing.
+    image: pgvector/pgvector:0.8.6-pg18-trixie
     container_name: docscout_db
     environment:
       POSTGRES_DB: docscout
@@ -9,10 +18,13 @@ services:
       DB_APP_PASSWORD: ${DB_APP_PASSWORD:?set in .env}
     ports: ["5432:5432"]
     volumes:
-      # DEVIATION FROM BRIEF §4: pg18 images store data in major-version subdirs and require the
-      # mount at /var/lib/postgresql (NOT /var/lib/postgresql/data). The brief's path makes the
-      # container exit(1) on boot. See docker-library/postgres#1259. Recorded in SETUP_REPORT.
+      # DEVIATION FROM BRIEF §4: pg18 images store data in major-version subdirs and require
+      # the mount at /var/lib/postgresql (NOT /var/lib/postgresql/data). The brief's path
+      # makes the container exit(1) on boot. See docker-library/postgres#1259. Recorded in
+      # SETUP_REPORT.
       - pgdata:/var/lib/postgresql
+      # The same initdb scripts scripts/dev_db_native.sh executes, so the two provisioning
+      # paths cannot diverge in what they create.
       - ./infra/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U docscout -d docscout"]
@@ -20,15 +32,11 @@ services:
       timeout: 3s
       retries: 10
 
-  redis:
-    image: redis:7-alpine
-    container_name: docscout_redis
-    ports: ["6379:6379"]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
 volumes:
   pgdata:
+
+# There is deliberately no Redis service. `REDIS_URL` appears in .env.example because a
+# multi-worker deployment would need it for the result cache and the rate limiter, but
+# nothing in app/ connects to it today -- both live in-process, and /healthz reports
+# `single_process: true` so that limitation is visible rather than assumed. Starting a
+# container nothing talks to is scaffolding presented as architecture.

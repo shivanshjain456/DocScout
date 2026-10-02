@@ -173,10 +173,19 @@ The corpus payloads are committed, so `make ingest` runs offline and reproduces 
 bytes every published number was measured on — see `.gitignore` for why that reversal was
 necessary.
 
-There is no `docker compose up`. This project runs Postgres natively via
-`scripts/dev_db_native.sh`, which executes the same `infra/initdb/` files a compose mount
-would; the reasoning is in the `build(dev)` commit that introduced it. Docker is not
-required and the script installs PostgreSQL and pgvector itself if they are absent.
+`scripts/dev_db_native.sh` is the default path and needs no Docker: it installs
+PostgreSQL 18 and pgvector itself if absent, and executes the same `infra/initdb/` files a
+compose mount would. `docker-compose.yml` is the supported alternative where a daemon is
+available:
+
+```bash
+docker compose up -d     # PostgreSQL 18.6 + pgvector 0.8.6, same initdb scripts
+```
+
+Both pin the **same** PostgreSQL 18.6 / pgvector 0.8.6 pairing the published numbers were
+measured on, as does the CI job. `tests/test_config_coherence.py` fails the build if the
+three ever disagree — they did until 2026-10-02, when compose pinned pgvector 0.8.2 while
+everything else installed 0.8.6.
 
 Verify the install:
 
