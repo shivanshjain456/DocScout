@@ -67,12 +67,19 @@ class BM25Index:
         # array_length over an empty/NULL positions array yields NULL, which happens for
         # lexemes stored without positions; coalesce to 1 so such a term still counts once
         # rather than vanishing from the index.
+        # Superseded versions are excluded here rather than filtered after scoring,
+        # because their terms would otherwise distort the corpus statistics BM25 depends
+        # on -- document frequency and average length -- and so change the score of every
+        # current chunk, not merely add wrong rows to the result.
         rows = conn.execute(
             """
             SELECT c.chunk_id::text,
                    u.lexeme,
                    COALESCE(array_length(u.positions, 1), 1) AS tf
-            FROM chunks AS c, unnest(c.tsv) AS u(lexeme, positions, weights)
+            FROM chunks AS c
+            JOIN document_versions AS v ON v.version_id = c.version_id,
+                 unnest(c.tsv) AS u(lexeme, positions, weights)
+            WHERE v.is_current
             """
         ).fetchall()
         for chunk_id, lexeme, tf in rows:

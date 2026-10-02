@@ -116,8 +116,10 @@ class Retriever:
                 """
                 SELECT c.chunk_id::text, c.document_id::text, d.source, c.text,
                        d.canonical_url, c.char_start, c.char_end
-                FROM chunks AS c JOIN documents AS d ON d.document_id = c.document_id
-                WHERE c.chunk_id = ANY(%s::uuid[])
+                FROM chunks AS c
+                JOIN documents AS d ON d.document_id = c.document_id
+                JOIN document_versions AS v ON v.version_id = c.version_id
+                WHERE c.chunk_id = ANY(%s::uuid[]) AND v.is_current
                 """,
                 (missing,),
             ).fetchall()

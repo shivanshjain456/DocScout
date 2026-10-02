@@ -272,6 +272,13 @@ content-derived chunk ids (0005), arm-anchored fusion (0007), and serving eviden
 generated answers (0008). None is filler; each has a Rejected Alternatives section with measured
 reasons.
 
+**Superseded document versions are retained but never retrieved.** RBI and SEBI amend and
+withdraw circulars routinely. Retrieval filters to the current version of each document;
+superseded rows stay in the database because FR-4 makes retention a guarantee and the
+application role holds no DELETE. The corpus currently has exactly one version per
+document, so this path is proven by tests rather than exercised by the live corpus — which
+is precisely how the defect stayed invisible until it was looked for.
+
 **Reranking is implemented but disabled, and that verdict is corpus-specific.** On 170 chunks
 retrieval already returns every piece of required evidence (recall@10 = 1.000), so a reranker
 can only reorder. It buys three items of recall@1 for 30x the latency, which is not a trade

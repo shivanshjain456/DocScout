@@ -37,6 +37,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   method.
 
 ### Fixed
+- **Superseded document versions were still retrievable and would be served as current.**
+  The schema has modelled `is_current` since migration 0001, `store.py` demotes the
+  previous version correctly on supersession, and FR-4 keeps the old rows because the
+  application role holds no DELETE — but **no retrieval path filtered on it**. Marking one
+  version superseded in a rolled-back transaction left **all ten of its chunks in the top
+  ten**. For a tool over circulars that are amended and withdrawn as a matter of routine,
+  serving superseded regulatory text as though in force is the worst failure available.
+  Latent only because every ingested document currently has exactly one version.
+  The dense arm, the BM25 arm and metadata hydration now all join `document_versions` and
+  filter on `is_current`. The lexical arm excludes at **index build** rather than after
+  scoring: superseded terms left in the table distort document frequency and average
+  document length, changing the score of every *current* chunk. Retention is unaffected and
+  a test asserts both halves. 6 tests; 5 of them fail against the unfiltered paths.
+  Eval gate PASS with metrics unchanged, as expected for a single-version corpus.
+  Amends ADR-0004. Audit item G23, re-prioritised from P2 after research identified data
+  staleness as the failure production RAG teams most often skip.
 - **Third-party INFO noise buried the signal.** Loading the encoder emitted ~30 `httpx`
   lines resolving files on the Hugging Face hub, around the one `api.ready` line that
   matters. Library loggers are quieted to WARNING; measured 30 → 0 at startup.

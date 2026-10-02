@@ -161,6 +161,38 @@ role the service runs as has neither DDL nor DELETE privilege.
   representation here, by design, pending that decision.
 - **U-11 (tables) is untouched.** `chunks.text` is flat text; nothing models a table cell.
 
+## Amendment, 2026-10-02 — `is_current` was modelled but never enforced in retrieval
+
+This ADR gave `document_versions` an `is_current` flag and a partial unique index
+guaranteeing one current version per document, and FR-4 made retention a guarantee: the
+application role holds no DELETE, so a superseded version's chunks necessarily remain in
+`chunks`. `store.py` demotes the previous version correctly on supersession.
+
+Nothing in the retrieval path honoured it. `dense.py`, `lexical.py` and the metadata
+hydration in `search.py` all selected from `chunks` with no join to `document_versions`,
+so the moment a circular was amended its superseded text stayed retrievable and would be
+served as though in force. Measured before the fix, by marking one version superseded in a
+rolled-back transaction: **all ten of its chunks remained in the top ten**.
+
+For a tool over RBI and SEBI circulars — documents that are amended and withdrawn as a
+matter of routine, and whose withdrawal the gold set already asks about — this is the worst
+failure mode available, and it was latent only because every ingested document currently
+has exactly one version.
+
+All three retrieval paths now join `document_versions` and filter on `is_current`. The
+lexical arm excludes at **index build** rather than after scoring, because superseded terms
+left in the table distort document frequency and average document length, which changes the
+score of every *current* chunk — a subtler fault than returning the wrong row.
+
+Retention is unaffected: the rows stay, they are simply not retrievable. A test asserts
+both halves.
+
+**Scaling note.** The dense filter is a post-filter on a column the HNSW index does not
+cover, so at corpus scale pgvector may over-fetch to fill k. At 170 chunks the planner
+chooses a sequential scan regardless. The remedy when that stops being true is
+`hnsw.iterative_scan = relaxed_order`, or denormalising `is_current` onto `chunks` so a
+partial index can carry it — not removing the predicate.
+
 ## Rejected alternatives
 
 ### A. Alembic / SQLAlchemy migrations
