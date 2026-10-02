@@ -85,3 +85,12 @@ test-results/
 
 # --- os ---
 .DS_Store
+
+# mutmut's sandbox: a mutated copy of the package, regenerated on every run.
+# coverage.py's data file: a diagnostic run artifact, not evidence worth keeping.
+/.coverage
+/htmlcov/
+
+/mutants/
+/.mutmut-cache
+/mutants.lock

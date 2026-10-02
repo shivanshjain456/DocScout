@@ -1,0 +1,103 @@
+{
+  "schema": "docscout.mutation/1",
+  "run_utc": "2026-10-02T10:17:19Z",
+  "tool": "mutmut",
+  "source_paths": [
+    "app/evals/scorers.py",
+    "app/evals/stats.py"
+  ],
+  "test_selection": [
+    "tests/test_scorers.py"
+  ],
+  "total": {
+    "mutants": 278,
+    "killed": 218,
+    "survived": 60,
+    "score_pct": 78.4
+  },
+  "modules": {
+    "scorers": {
+      "mutants": 153,
+      "killed": 140,
+      "survived": 13,
+      "score_pct": 91.5,
+      "survivors_by_function": {
+        "x_aggregate": 8,
+        "x_ndcg_at_k": 2,
+        "x_score_item": 3
+      }
+    },
+    "stats": {
+      "mutants": 125,
+      "killed": 78,
+      "survived": 47,
+      "score_pct": 62.4,
+      "survivors_by_function": {
+        "x_mcnemar_counts": 8,
+        "x_paired_bootstrap": 39
+      }
+    }
+  },
+  "survivors": [
+    "scorers.x_aggregate__mutmut_19",
+    "scorers.x_aggregate__mutmut_21",
+    "scorers.x_aggregate__mutmut_22",
+    "scorers.x_aggregate__mutmut_23",
+    "scorers.x_aggregate__mutmut_31",
+    "scorers.x_aggregate__mutmut_33",
+    "scorers.x_aggregate__mutmut_34",
+    "scorers.x_aggregate__mutmut_36",
+    "scorers.x_ndcg_at_k__mutmut_33",
+    "scorers.x_ndcg_at_k__mutmut_35",
+    "scorers.x_score_item__mutmut_18",
+    "scorers.x_score_item__mutmut_44",
+    "scorers.x_score_item__mutmut_52",
+    "stats.x_mcnemar_counts__mutmut_10",
+    "stats.x_mcnemar_counts__mutmut_12",
+    "stats.x_mcnemar_counts__mutmut_18",
+    "stats.x_mcnemar_counts__mutmut_21",
+    "stats.x_mcnemar_counts__mutmut_22",
+    "stats.x_mcnemar_counts__mutmut_24",
+    "stats.x_mcnemar_counts__mutmut_6",
+    "stats.x_mcnemar_counts__mutmut_9",
+    "stats.x_paired_bootstrap__mutmut_1",
+    "stats.x_paired_bootstrap__mutmut_10",
+    "stats.x_paired_bootstrap__mutmut_11",
+    "stats.x_paired_bootstrap__mutmut_12",
+    "stats.x_paired_bootstrap__mutmut_13",
+    "stats.x_paired_bootstrap__mutmut_14",
+    "stats.x_paired_bootstrap__mutmut_15",
+    "stats.x_paired_bootstrap__mutmut_16",
+    "stats.x_paired_bootstrap__mutmut_17",
+    "stats.x_paired_bootstrap__mutmut_18",
+    "stats.x_paired_bootstrap__mutmut_19",
+    "stats.x_paired_bootstrap__mutmut_2",
+    "stats.x_paired_bootstrap__mutmut_20",
+    "stats.x_paired_bootstrap__mutmut_21",
+    "stats.x_paired_bootstrap__mutmut_22",
+    "stats.x_paired_bootstrap__mutmut_23",
+    "stats.x_paired_bootstrap__mutmut_24",
+    "stats.x_paired_bootstrap__mutmut_25",
+    "stats.x_paired_bootstrap__mutmut_26",
+    "stats.x_paired_bootstrap__mutmut_27",
+    "stats.x_paired_bootstrap__mutmut_28",
+    "stats.x_paired_bootstrap__mutmut_29",
+    "stats.x_paired_bootstrap__mutmut_3",
+    "stats.x_paired_bootstrap__mutmut_30",
+    "stats.x_paired_bootstrap__mutmut_31",
+    "stats.x_paired_bootstrap__mutmut_32",
+    "stats.x_paired_bootstrap__mutmut_37",
+    "stats.x_paired_bootstrap__mutmut_40",
+    "stats.x_paired_bootstrap__mutmut_41",
+    "stats.x_paired_bootstrap__mutmut_53",
+    "stats.x_paired_bootstrap__mutmut_56",
+    "stats.x_paired_bootstrap__mutmut_61",
+    "stats.x_paired_bootstrap__mutmut_64",
+    "stats.x_paired_bootstrap__mutmut_70",
+    "stats.x_paired_bootstrap__mutmut_71",
+    "stats.x_paired_bootstrap__mutmut_74",
+    "stats.x_paired_bootstrap__mutmut_75",
+    "stats.x_paired_bootstrap__mutmut_8",
+    "stats.x_paired_bootstrap__mutmut_9"
+  ]
+}

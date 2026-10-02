@@ -349,6 +349,47 @@ it is attacker-controlled text that ends up in every log line for the request. A
 redacted by a pipeline processor rather than by convention, so a forgetful call site cannot
 leak one; only the truncated fingerprint above is ever written.
 
+### Test quality: mutation score, not coverage percentage
+
+The suite's own quality is measured with **mutation testing** rather than a coverage
+threshold. Coverage records that a line executed; a test that calls a function and asserts
+nothing still counts as covered. A mutation score cannot be earned that way — a mutant only
+dies if an assertion actually fails.
+
+Scoped to the two modules that produce every number this project publishes, because a
+silent error there corrupts the README, the baselines and the regression gate at once and
+nothing downstream would notice:
+
+```bash
+make mutation        # -> evals/mutation/latest.json
+```
+
+| module | line coverage | mutants | killed | survived | **mutation score** |
+|---|---|---|---|---|---|
+| `app/evals/scorers.py` | 99% | 153 | 140 | 13 | **91.5%** |
+| `app/evals/stats.py` | 96% | 125 | 78 | 47 | **62.4%** |
+| total | — | 278 | 218 | 60 | **78.4%** |
+
+The gap between the two columns is the point. At 99% line coverage `scorers.py` still let
+**25 deliberate behaviour changes pass unnoticed** on the first run; nine targeted tests
+took it to 91.5%. Each of those tests names the mutant it kills. Among them:
+
+* `score_item` passed `k=None` into `recall_at_k`, so `ranked[:None]` silently disabled the
+  cutoff. Every existing test happened to use a `k` large enough that truncation changed
+  nothing.
+* `mcnemar_counts` dropped `strict=True` from `zip`, so two configurations scored over
+  different numbers of items would be compared pairwise anyway and under-report discordance.
+* The empty `Aggregate` returned `None` for each metric in turn; only `.n` was asserted.
+
+**Honest limits.** 60 mutants survive. Two in `ndcg_at_k` are *equivalent mutants* —
+`ideal > 0` versus `ideal >= 0` on a branch an earlier guard makes unreachable — and cannot
+be killed by any test. Most of the remainder are inside `paired_bootstrap`'s resampling
+loop. That score is deliberately not driven to 100%: the research consensus is that a
+coverage *floor* is useful and a *target* is counterproductive, and the same applies here.
+Coverage is still measured, as a diagnostic rather than a gate:
+`pytest --cov=app --cov-branch` reports 71% overall and is what identified
+`app/evals/runner.py` as having no unit coverage (it is exercised end-to-end by `make eval`).
+
 ### Metrics
 
 `GET /metrics` serves Prometheus exposition for the default registry — RED (rate, errors,

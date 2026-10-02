@@ -6,6 +6,33 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 ## [Unreleased]
 
 ### Added
+- **Mutation testing of the measurement instruments** (`make mutation`, audit G10, rescoped).
+  `app/evals/scorers.py` and `app/evals/stats.py` produce every number this project
+  publishes, so a silent error there corrupts the README, the baselines and the regression
+  gate at once. Line coverage said they were at 99% and 96%; their first mutation score was
+  **83.7% and 56.8%** — 79 deliberate behaviour changes passed unnoticed.
+  Nine targeted tests, each naming the mutant it kills, took the total from **71.6% to
+  78.4%** (scorers 83.7% → 91.5%). The three that mattered most: `score_item` passed
+  `k=None` into `recall_at_k`, silently disabling the cutoff; `mcnemar_counts` lost
+  `strict=True` from `zip`, so mismatched-length inputs would be compared pairwise instead
+  of raising; and the empty `Aggregate` returned `None` for each metric in turn.
+  `scripts/mutation_report.py` writes `evals/mutation/latest.json` and fails loudly if the
+  sandbox is missing or disagrees with the results. `mutmut` is declared as a dev
+  dependency and locked.
+  **The item was rescoped on evidence.** It was filed as "measure and publish coverage with
+  a CI threshold". Research found the consensus against that: coverage measures execution
+  rather than validation, Microsoft Research finds its correlation with defects disappears
+  above 70–80%, and a *target* (as opposed to a floor) is counterproductive. Coverage is
+  therefore kept as a diagnostic — it is what identified `runner.py` as having no unit
+  coverage — and the gate-worthy signal is the mutation score.
+
+### Fixed
+- **An autouse fixture imported the API for every test in the repository**, including the
+  pure-arithmetic scorer tests, coupling modules that need no database to one that opens a
+  connection pool. Mutation testing surfaced it concretely: mutmut copies only the mutated
+  sources into its sandbox, so the unconditional import made every scorer test fail to
+  start. It now looks the module up in `sys.modules` and resets it only when it is loaded,
+  without suppressing an error to get there.
 - **`GET /metrics`: Prometheus instrumentation** (audit G4). RED — rate, errors, duration —
   plus the two signals that explain this service's latency: cache hit ratio and per-mode
   retrieval time, alongside in-flight requests, rate-limit rejections and the retrievable

@@ -4,6 +4,7 @@ TS := $(shell date -u +%Y%m%dT%H%M%SZ)
 
 .PHONY: help setup dev test lint typecheck secret-scan eval load deploy destroy verify-setup down \
 	gold-lint gold-pin gold-review gold-stats eval-quick eval-gate eval-baseline \
+	mutation mutation-clean \
 	serve bench \
         migrate migrate-status migrate-down ingest ingest-dry ingest-status ingest-verify
 
@@ -77,6 +78,13 @@ serve:  ## run the API on :8000 (loads the model once at startup)
 
 bench:  ## measure e2e latency, cache effect and cost per 1k against a running API
 	uv run python scripts/bench_api.py --n 200 --concurrency 4
+
+mutation:  ## mutation-test the measurement instruments -> evals/mutation/latest.json
+	uv run mutmut run --max-children 2
+	uv run python scripts/mutation_report.py
+
+mutation-clean:  ## remove mutmut's sandbox
+	rm -rf mutants .mutmut-cache mutants.lock
 
 eval-gate:  ## fail if the newest run regressed >1pp vs the last three baselines (E-12)
 	uv run python -m app.evals.gate

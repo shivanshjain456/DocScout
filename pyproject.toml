@@ -48,6 +48,9 @@ explicit = true
 torch = { index = "pytorch-cpu" }
 
 [tool.ruff]
+# mutmut writes a mutated copy of the package here. It is generated output, deliberately
+# contains broken code, and is removed by `make mutation-clean`.
+extend-exclude = ["mutants"]
 line-length = 100
 target-version = "py312"
 
@@ -80,3 +83,51 @@ addopts = "-q"
 markers = [
     "slow: loads a model or scores real corpus chunks (seconds, not milliseconds)",
 ]
+
+[dependency-groups]
+dev = [
+    "mutmut>=3.2",
+]
+
+[tool.mutmut]
+# Mutation testing is scoped to the two measurement instruments, not the whole codebase.
+#
+# Research consensus is that a coverage percentage is a weak quality signal -- it measures
+# execution, not validation -- while a mutation score cannot be gamed by a test that runs
+# code without asserting anything. That matters most where a silent error would be
+# invisible: scorers.py and stats.py produce every number this project publishes, so a
+# wrong comparison there corrupts the README, the baselines and the regression gate at
+# once, and no downstream test would notice.
+#
+# Mutation testing is compute-heavy, so it runs against the two fast, database-free suites
+# that exercise these modules rather than the whole suite.
+source_paths = ["app/evals/scorers.py", "app/evals/stats.py"]
+# Only the suites that exercise these two modules. mutmut copies the mutated package into
+# a `mutants/` tree, so collecting the whole suite fails on modules it did not copy -- and
+# running a database-backed suite against a pure-arithmetic mutant would cost minutes per
+# mutant for no extra signal.
+# tests_dir makes mutmut copy the suite into its sandbox so pytest runs *there*, against
+# the mutated sources. Without it the runner executes from the repository root, imports the
+# original unmutated module, and every mutant trivially "survives" -- a 0% score that looks
+# like a catastrophic result and is actually a misconfiguration.
+tests_dir = ["tests"]
+# The whole package is copied into the sandbox so the suite can be *collected* there: the
+# stats phase imports every test module, and the ones touching app.api or app.evals.gate
+# would fail on modules mutmut does not mutate. Safe because mutmut copies these files
+# before generating mutants, so the mutated scorers.py and stats.py overwrite the copies.
+also_copy = ["app", "evals/gold"]  # gold set: test_goldset.py loads it at collection time
+# Applied to every pytest invocation, including mutmut's stats phase, which runs the whole
+# suite rather than the selection below. These three suites assert against repository
+# files outside app/ -- shell scripts, compose and CI manifests, the docs tree -- which the
+# sandbox deliberately does not contain. They are unrelated to the mutated modules.
+pytest_add_cli_args = [
+    "--ignore=tests/test_git_history.py",
+    "--ignore=tests/test_config_coherence.py",
+    "--ignore=tests/test_rescope.py",
+    "--ignore=tests/test_goldset.py",
+    "--ignore=tests/test_ingest.py",
+]
+# tests/test_scorers.py exercises both target modules directly and imports nothing else
+# from the package. That matters because mutmut copies only the mutated sources: a suite
+# importing app.evals.gate or app.api cannot even be collected inside the sandbox.
+pytest_add_cli_args_test_selection = ["tests/test_scorers.py"]

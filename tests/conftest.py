@@ -13,6 +13,7 @@ tests instead of a wall of connection errors.
 from __future__ import annotations
 
 import os
+import sys
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -151,9 +152,24 @@ def client(app_conn: psycopg.Connection[Any]) -> Iterator[Any]:
 
 @pytest.fixture(autouse=True)
 def _fresh_rate_limiter() -> Iterator[None]:
-    """The limiter is process-global; without this one test's burst fails the next."""
-    from app.api import security
+    """Reset the process-global rate limiter between tests, if the API is even loaded.
 
-    security.rate_limiter.reset()
+    Autouse, because without it one suite's burst exhausts the window for the next. But it
+    must not *import* the API: this fixture runs for every test in the repository,
+    including the pure-arithmetic scorer tests, and importing `app.api` from them couples
+    a module that needs no database to one that opens a connection pool. Mutation testing
+    surfaced it concretely -- mutmut copies only the mutated sources into its sandbox, so
+    an unconditional import here made every scorer test fail to even start.
+
+    Looking the module up in `sys.modules` resets it exactly when it exists and does
+    nothing when it does not, without suppressing an error to get there.
+    """
+
+    def reset() -> None:
+        module = sys.modules.get("app.api.security")
+        if module is not None:
+            module.rate_limiter.reset()
+
+    reset()
     yield
-    security.rate_limiter.reset()
+    reset()
