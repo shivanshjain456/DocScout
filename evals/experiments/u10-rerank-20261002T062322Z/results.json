@@ -1,0 +1,101 @@
+{
+  "schema": "docscout.experiment.u10-rerank/1",
+  "run_utc": "2026-10-02T06:23:22Z",
+  "question": "Does cross-encoder reranking earn its latency on this corpus?",
+  "reranker_model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+  "reranker_load_seconds": 2.6,
+  "items_scored": 131,
+  "baseline": "no rerank (serving)",
+  "results": [
+    {
+      "variant": "no rerank (serving)",
+      "recall@1": 0.6946564885496184,
+      "recall@3": 0.9274809160305344,
+      "recall@5": 0.9656488549618321,
+      "recall@10": 1.0,
+      "mrr": 0.8247455470737913,
+      "ndcg@5": 0.8444907844694253,
+      "mean_ms": 35.0,
+      "p95_ms": 39.17,
+      "recall@1_vs_baseline": {
+        "n": 131,
+        "mean_a": 0.6947,
+        "mean_b": 0.6947,
+        "difference": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0,
+        "excludes_zero": false,
+        "difference_in_items": 0.0
+      }
+    },
+    {
+      "variant": "rerank top 10",
+      "recall@1": 0.7175572519083969,
+      "recall@3": 0.9236641221374046,
+      "recall@5": 0.9770992366412213,
+      "recall@10": 1.0,
+      "mrr": 0.8495547073791349,
+      "ndcg@5": 0.8666691788863969,
+      "mean_ms": 768.3,
+      "p95_ms": 1184.81,
+      "recall@1_vs_baseline": {
+        "n": 131,
+        "mean_a": 0.7176,
+        "mean_b": 0.6947,
+        "difference": 0.0229,
+        "ci_low": -0.0496,
+        "ci_high": 0.0992,
+        "excludes_zero": false,
+        "difference_in_items": 3.0
+      },
+      "latency_multiplier": 30.2,
+      "measured_ms_per_pair_on_real_chunks": 73.33
+    },
+    {
+      "variant": "rerank top 20",
+      "recall@1": 0.7175572519083969,
+      "recall@3": 0.9236641221374046,
+      "recall@5": 0.9770992366412213,
+      "recall@10": 0.9923664122137404,
+      "mrr": 0.8482824427480916,
+      "ndcg@5": 0.8666691788863969,
+      "mean_ms": 1681.7,
+      "p95_ms": 2455.41,
+      "recall@1_vs_baseline": {
+        "n": 131,
+        "mean_a": 0.7176,
+        "mean_b": 0.6947,
+        "difference": 0.0229,
+        "ci_low": -0.0496,
+        "ci_high": 0.0992,
+        "excludes_zero": false,
+        "difference_in_items": 3.0
+      },
+      "latency_multiplier": 62.7,
+      "measured_ms_per_pair_on_real_chunks": 82.34
+    },
+    {
+      "variant": "rerank top 50",
+      "recall@1": 0.7175572519083969,
+      "recall@3": 0.9236641221374046,
+      "recall@5": 0.9770992366412213,
+      "recall@10": 0.9923664122137404,
+      "mrr": 0.8482824427480916,
+      "ndcg@5": 0.8666691788863969,
+      "mean_ms": 4821.9,
+      "p95_ms": 6276.05,
+      "recall@1_vs_baseline": {
+        "n": 131,
+        "mean_a": 0.7176,
+        "mean_b": 0.6947,
+        "difference": 0.0229,
+        "ci_low": -0.0496,
+        "ci_high": 0.0992,
+        "excludes_zero": false,
+        "difference_in_items": 3.0
+      },
+      "latency_multiplier": 160.2,
+      "measured_ms_per_pair_on_real_chunks": 95.74
+    }
+  ]
+}

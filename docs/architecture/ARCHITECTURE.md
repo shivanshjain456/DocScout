@@ -110,13 +110,21 @@ Three stages, in order:
 2. **Dense arm** — pgvector KNN over an **HNSW** index using cosine distance. VERIFIED available:
    pgvector 0.8.2 with `vector_cosine_ops`; the `hnsw.iterative_scan` GUC exists and is `off` by
    default (`docs/setup/verify/step2-services-hnsw.txt`).
-3. **Fusion** — Reciprocal Rank Fusion over the two ranked lists, then **cross-encoder rerank** of
-   the top candidates. VERIFIED cost: `ms-marco-MiniLM-L-6-v2` at **4.56 ms/pair** on the 2 vCPU
-   floor — reranking 50 candidates is therefore ≈ 230 ms of CPU, which is a real line item in the
-   p95 < 3 s budget (NFR-1, U-14).
+3. **Fusion** — Reciprocal Rank Fusion over the two ranked lists (`k=60`), then each arm's own
+   top hit is guaranteed a seat in the returned `k` (**ADR-0007**). Cross-encoder reranking is
+   **implemented and available but DISABLED in the serving configuration** (**ADR-0009**).
 
-RRF constant, per-arm depth, and rerank depth are **UNRESOLVED (U-10)** and MUST be configuration,
-not literals, so a sweep can produce the ADR that closes U-10.
+   **Cost correction (2026-10-02).** This section previously recorded "VERIFIED cost:
+   `ms-marco-MiniLM-L-6-v2` at **4.56 ms/pair** … reranking 50 candidates is therefore ≈ 230 ms".
+   That figure was measured on short synthetic sentences and understates the real cost by about
+   twenty times. Re-measured on this corpus: **5.54 ms/pair on short text, 102–126 ms/pair on real
+   chunks** (946 characters / 267 tokens mean), because transformer cost scales with sequence
+   length. Reranking 50 candidates is therefore ≈ **6.3 s**, not 230 ms — it breaks the p95 < 3 s
+   budget rather than fitting inside it. ADR-0009 has the measurements and the decision.
+
+RRF constant and rerank depth are now **CLOSED** by ADR-0007 and ADR-0009, both with full sweeps
+over the gold set. Per-arm candidate depth (`k_dense`, `k_lexical` = 50) remains **UNRESOLVED
+(U-10)**. All of them are configuration, not literals.
 
 **Why hybrid rather than dense-only:** regulatory questions carry exact tokens — circular numbers,
 section references, defined terms — that dense retrieval alone retrieves unreliably, while purely
@@ -247,7 +255,8 @@ POST /v1/answer
        └─ app/retrieval
             ├─ lexical: tsvector @@ query          ──┐
             ├─ dense:   embedding <=> query_vector ──┤→ RRF fuse → top-N
-            └─ rerank:  cross-encoder (CPU, 4.56 ms/pair measured)
+            └─ rerank:  cross-encoder — BUILT, MEASURED, OFF (ADR-0009:
+                          102-126 ms/pair on real chunks; 30x p95 for +3 items)
        └─ app/generate
             ├─ wrap chunks in <document> delimiters
             ├─ call generator (model BLOCKED, U-1)
@@ -267,7 +276,7 @@ server-side error, never a silently returned uncited answer.
 |---|---|---|---|
 | Postgres + pgvector as the single store for lexical **and** dense retrieval | SPECIFIED, schema applied | One datastore, transactional consistency between text and vectors, no separate search cluster to operate; VERIFIED working at 18.4 / 0.8.2 | Yes — ADR-0004 applied the schema but did **not** argue the rejected alternatives (Elasticsearch, a dedicated vector DB); that ADR is still owed |
 | HNSW over IVFFlat | **DECIDED (ADR-0004)** | No training step and tolerates incremental inserts, which IVFFlat does not; chosen on structure, as the difference is unmeasurable at this corpus size | Closed by ADR-0004 |
-| Cross-encoder reranking on CPU | SPECIFIED | Measured 4.56 ms/pair, 88 MB — affordable at the 2 vCPU floor | No |
+| Cross-encoder reranking on CPU | **BUILT, MEASURED, DISABLED (ADR-0009)** | 102–126 ms/pair on *real* chunks, not the 4.56 ms/pair measured on short synthetic text. Reranking the top 10 costs 30× the p95 for a +3-item recall@1 gain whose CI spans zero; top-20+ also drops recall@10 from 1.000 to 0.992 | Yes |
 | Local embedder `bge-small-en-v1.5` (384 d) | **DECIDED (ADR-0002)** | Measured on the real corpus against MiniLM-L6, bge-base (768 d), multilingual-e5 and a BM25 control: no significant quality difference, so chosen for zero truncation at 512 tokens, smallest index and $0 cost. A hosted embedder stays BLOCKED by U-1 (K-1) | Yes |
 | Redis for cache + rate limiting | SPECIFIED | VERIFIED running; `AGENTS.md` assigns rate limiting to `app/api/` | No |
 | Provider-agnostic generator port | SPECIFIED | Forced by U-1 — the model identity cannot be chosen yet | No |

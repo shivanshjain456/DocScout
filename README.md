@@ -104,6 +104,33 @@ script for the source and the caveat. With no model in the request path that fig
 *entire* query cost; any future generation step becomes the whole bill, which is why the
 retrieval tier is kept separately measurable.
 
+### Effect of reranking
+
+A cross-encoder rerank stage is **built, tested and measured — and switched off**
+([ADR-0009](docs/decisions/0009-cross-encoder-reranking.md)). Reproduce with
+`uv run python -m scripts.experiments.u10_rerank_ablation`; raw output
+[`results.json`](evals/experiments/u10-rerank-20261002T062322Z/results.json).
+
+| config | recall@1 | recall@5 | recall@10 | MRR | p95 | CI excludes 0 |
+|---|---|---|---|---|---|---|
+| **no rerank (serving)** | 0.695 | 0.966 | **1.000** | 0.825 | **39 ms** | — |
+| rerank top 10 | 0.718 | 0.977 | 1.000 | 0.850 | 1185 ms | **no** |
+| rerank top 20 | 0.718 | 0.977 | 0.992 | 0.848 | 2455 ms | no |
+| rerank top 50 | 0.718 | 0.977 | 0.992 | 0.848 | 6276 ms | no |
+
+Reranking buys **+2.3pp recall@1 — three items out of 131 — for 30× to 160× the p95**, and the
+bootstrap CI spans zero. Beyond the serving depth it is actively harmful: at top-20 and top-50
+recall@10 falls from 1.000 to 0.992, because the cross-encoder promotes deep candidates over
+evidence fusion had already placed correctly. It stays off.
+
+**A documented cost figure was wrong by ~20×, and building this found it.** `ARCHITECTURE.md`
+recorded the reranker at a *verified* 4.56 ms/pair. That was measured on short synthetic
+sentences. On real corpus chunks (946 chars / 267 tokens mean) the same model on the same
+hardware costs **102–126 ms/pair** — so Phase 0's ">50 ms/pair ⇒ downgrade" gate actually
+**failed by 2×** rather than passing with a wide margin. Every affected document is corrected,
+and `EVAL_PROTOCOL.md` E-16 now requires model costs to be quoted from real corpus chunks —
+a rule the project already applied to the embedder and had not carried across.
+
 ### Not yet measured
 
 Listed as absent rather than shown as zeros or dashes that could be misread as results.
@@ -113,7 +140,6 @@ Listed as absent rather than shown as zeros or dashes that could be misread as r
 | Faithfulness | no generator — nothing generates text, so there is nothing to be faithful about ([ADR-0008](docs/decisions/0008-serve-evidence-not-answers.md)) |
 | Answer-level citation precision / recall | no generator; retrieval-side citation coverage is measured above as recall over quote groups |
 | LLM-judge agreement (Cohen's kappa) | blocked — no API keys (U-1); the gold set's labelling is self-agreement, not inter-rater |
-| Reranker effect | the cross-encoder is verified (4.56 ms/pair) but not in the serving path; deferred with reasons in ADR-0006 and ADR-0007 |
 | Cost of generation | $0.00 measured, because no model is called. A future generation step becomes the entire bill |
 
 ## Architecture
@@ -237,6 +263,21 @@ in-process versions should be replaced rather than scaled.
 million queries covers one t4g.small serving retrieval; it is not an AWS quotation and does
 not include storage, egress or the LLM that does not exist yet. Re-check the price before
 anyone acts on it.
+
+**There are nine ADRs, one more than the eight the brief suggests as an upper bound.** Every
+topic it names has one — pgvector over the alternatives (0004), hybrid over dense-only (0006),
+the embedding arm (0002), chunk size (0003), the reranker and why-not-HyDE (0009) — plus three
+that earned their place by being decisions the project actually had to make and defend:
+content-derived chunk ids (0005), arm-anchored fusion (0007), and serving evidence rather than
+generated answers (0008). None is filler; each has a Rejected Alternatives section with measured
+reasons.
+
+**Reranking is implemented but disabled, and that verdict is corpus-specific.** On 170 chunks
+retrieval already returns every piece of required evidence (recall@10 = 1.000), so a reranker
+can only reorder. It buys three items of recall@1 for 30x the latency, which is not a trade
+worth making — but the benchmark is saturated and has little power to detect what a reranker
+would do on a corpus where retrieval actually struggles. Re-run
+`scripts/experiments/u10_rerank_ablation.py` when the corpus grows.
 
 **There is no generator, so there are no generation metrics.** Faithfulness, context precision,
 citation precision and recall, answer-level hallucination rates and end-to-end latency do not

@@ -248,10 +248,22 @@ remaining fields recorded inside the report, a past run still cannot be reconstr
 **E-15 — SPECIFIED.** A report that is cited anywhere durable (README, ADR, release notes) MUST be
 copied out of the gitignored directory into a tracked location, or the citation is dangling.
 
-**E-16 — SPECIFIED.** Hardware context is mandatory on any latency-bearing number. The Phase 0
-baseline hardware is 2 vCPU / 1.9 GiB RAM (K-15); measured reranker cost is 4.56 ms/pair, and
-embedding throughput is 112.4 sentences/s on generic sentences but **6.9 chunks/s on real
-1,000-char corpus chunks** — quote the latter for any corpus-scale estimate (ADR-0002).
+**E-16 — SPECIFIED, and strengthened on 2026-10-02.** Hardware context is mandatory on any
+latency-bearing number, and so is **input realism**. The Phase 0 baseline hardware is 2 vCPU /
+1.9 GiB RAM (K-15).
+
+This clause already carried the rule for the embedder — 112.4 sentences/s on generic sentences
+but **6.9 chunks/s on real 1,000-char corpus chunks**, quote the latter (ADR-0002). The same
+trap was then walked into with the reranker, because the rule was written as a fact about one
+model rather than as a rule about measurement. It is now general:
+
+> A model's cost MUST be quoted from a measurement on **real corpus chunks**. A figure taken on
+> short synthetic text is not a conservative estimate of it; transformer cost scales with
+> sequence length, so it can understate by an order of magnitude.
+
+Measured costs, both on real chunks: embedder **6.9 chunks/s**; cross-encoder reranker
+**102–126 ms/pair**, *not* the 4.56 ms/pair recorded in Phase 0 from short sentences — a ~20×
+understatement that passed a >50 ms/pair gate it should have failed. See ADR-0009.
 
 ---
 

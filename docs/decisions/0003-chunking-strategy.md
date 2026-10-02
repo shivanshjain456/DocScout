@@ -143,8 +143,15 @@ only `EVAL_PROTOCOL.md` numbers against a real gold set may be.
 - **Citation tightness is 0.204** — about 80% of a cited chunk is not the answer. This is a
   reviewer-effort proxy, *not* the same thing as `QUALITY_BAR.md`'s citation precision ≥ 0.90,
   which asks whether the citation supports the claim. It does mean a compliance reader is handed
-  roughly five times the text they need, and the verified cross-encoder reranker (4.56 ms/pair)
-  is the intended mitigation.
+  roughly five times the text they need, and the cross-encoder reranker was named as the
+  intended mitigation.
+
+  **Superseded in part by ADR-0009 (2026-10-02).** The 4.56 ms/pair this bullet relied on was
+  measured on short synthetic text; on real chunks the reranker costs 102–126 ms/pair, and
+  measured end to end it buys three items of recall@1 for 30× the p95. It is built and tested
+  but disabled, so the "intended mitigation" for over-long context is currently *not* in the
+  serving path. The chunk geometry decision itself is unaffected — it was never justified by
+  the reranker — but this mitigation should not be cited as available.
 - **Corpus sizing gets a conversion factor**: this configuration yields one chunk per ~820
   characters of source text, so `CORPUS_SPEC.md` C-5's illustrative 10,000 chunks corresponds to
   roughly 8.2M characters — about 59× the current 139k-character sample — and ~24 minutes of

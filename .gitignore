@@ -38,6 +38,7 @@
 # quotes has to be in the repository, not merely on the machine that produced it.
 evals/reports/*
 evals/experiments/*
+!evals/experiments/u10-rerank-20261002T062322Z/
 evals/bench/*
 !evals/bench/20261002T054058Z/
 !evals/reports/20261001T192924Z/

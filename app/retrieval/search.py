@@ -21,6 +21,7 @@ import psycopg
 from app.ingest.embed import Embedder
 from app.retrieval import dense, fusion
 from app.retrieval.lexical import BM25Index
+from app.retrieval.rerank import Candidate, CrossEncoderReranker
 from app.retrieval.types import RetrievalConfig, Retrieved
 from app.rowtypes import as_int, as_str
 
@@ -44,6 +45,7 @@ class Retriever:
         *,
         embedder: Embedder | None = None,
         bm25: BM25Index | None = None,
+        reranker: CrossEncoderReranker | None = None,
     ) -> None:
         self._conn = conn
         self._embedder = embedder if embedder is not None else Embedder()
@@ -51,6 +53,9 @@ class Retriever:
         # builds it once at startup and shares it across requests; rebuilding per request
         # would make every query pay for the corpus.
         self._bm25 = bm25
+        # Injectable and lazily constructed for the same reason as the BM25 index: the
+        # cross-encoder weights take ~11 s to load and must be shared, not per request.
+        self._reranker = reranker
         self._meta: dict[str, _ChunkRow] = {}
 
     @property
@@ -58,6 +63,50 @@ class Retriever:
         if self._bm25 is None:
             self._bm25 = BM25Index(self._conn)
         return self._bm25
+
+    @property
+    def reranker(self) -> CrossEncoderReranker:
+        if self._reranker is None:
+            self._reranker = CrossEncoderReranker()
+        return self._reranker
+
+    def _rerank(
+        self,
+        query: str,
+        fused: list[tuple[str, float, dict[str, int]]],
+        arms: dict[str, list[str]],
+        config: RetrievalConfig,
+    ) -> list[tuple[str, float, dict[str, int]]]:
+        """Reorder the head of the fused list with the cross-encoder.
+
+        The pool is the top `rerank_top_n` fused candidates UNION each arm's own rank-1
+        chunk. Including the arm leaders matters for two reasons: ADR-0007 guarantees them
+        a seat in the result, and if one were anchored in from outside the pool it would
+        carry an RRF score while everything around it carried a cross-encoder score --
+        two incomparable units in one `score` column.
+        """
+        pool_ids = [chunk_id for chunk_id, _, _ in fused[: config.rerank_top_n]]
+        seen = set(pool_ids)
+        for arm_ids in arms.values():
+            if arm_ids and arm_ids[0] not in seen:
+                seen.add(arm_ids[0])
+                pool_ids.append(arm_ids[0])
+
+        meta = self._metadata(pool_ids)
+        candidates = [
+            Candidate(chunk_id=chunk_id, text=meta[chunk_id].text if chunk_id in meta else "")
+            for chunk_id in pool_ids
+        ]
+        ranks = {chunk_id: arm_ranks for chunk_id, _, arm_ranks in fused}
+        ordered = [
+            (pool_ids[index], score, ranks.get(pool_ids[index], {}))
+            for index, score in self.reranker.order(query, candidates)
+        ]
+        # The untouched tail keeps its RRF score. It is unreachable whenever
+        # rerank_top_n >= k_final, which __post_init__ enforces, and is kept so the list
+        # stays a complete ranking rather than a truncated one.
+        tail = [entry for entry in fused if entry[0] not in seen]
+        return ordered + tail
 
     def _metadata(self, chunk_ids: list[str]) -> dict[str, _ChunkRow]:
         """Fetch display metadata for ids not already cached."""
@@ -110,6 +159,9 @@ class Retriever:
             # Single-arm runs keep the raw score, not a fused one. Reporting an RRF score
             # for a configuration that never fused anything would be a fabricated number.
             fused = [(cid, raw_scores[cid], {arm: i + 1}) for i, cid in enumerate(arms[arm])]
+
+        if config.rerank:
+            fused = self._rerank(query, fused, arms, config)
 
         top = fused[: config.k_final]
         if config.anchor_arm_top1 and config.mode == "hybrid":

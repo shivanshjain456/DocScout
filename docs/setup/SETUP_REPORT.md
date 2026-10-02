@@ -300,6 +300,24 @@ Reranker threshold check (§10.2: >50 ms/pair ⇒ downgrade): **4.56 ms/pair —
 so the heavier `bge-reranker-v2-m3` stays viable as a build-phase A/B arm rather than being excluded
 on latency. `HF_HOME=/home/user/.hf_cache` (217 MB) is outside the repo and gitignored.
 
+> **CORRECTION, 2026-10-02 — this check passed on an unrepresentative input and should have failed.**
+>
+> The 4.56 ms/pair above was measured over 50 pairs of **short synthetic sentences**. Re-measured on
+> this project's actual corpus chunks (946 characters / 267 tokens mean), the same model on the same
+> hardware costs **102–126 ms/pair** — transformer cost scales with sequence length, and the real
+> chunks are roughly eighteen times longer than the strings used here.
+>
+> Against §10.2's own rule — *>50 ms/pair ⇒ downgrade* — the honest result is **FAIL by a factor of
+> two**, not "PASS with wide margin". The end-to-end consequence is in ADR-0009: reranking the top 10
+> candidates costs ~1.2 s of the 3 s p95 budget, and the top 50 costs ~6.3 s, against the ≈230 ms this
+> report predicted.
+>
+> The original numbers are left unaltered because this is a signed point-in-time record. What changed
+> is the rule: `EVAL_PROTOCOL.md` E-16 now requires every model cost to be quoted from a measurement
+> on real corpus chunks. That rule already existed here for the embedder — this report correctly
+> distinguishes 112.4 sentences/s from 6.9 chunks/s — and was simply not carried across to the
+> reranker. Evidence: `evals/experiments/u10-rerank-20261002T062322Z/results.json`.
+
 **Phase 0 API spend: $0.00** — zero authenticated calls were made to any paid provider.
 (Budget was <$5; actual $0.00.)
 

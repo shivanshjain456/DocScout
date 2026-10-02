@@ -33,7 +33,9 @@ human checkbox left open.
 
 **What it delivered:** a pinned, verified toolchain (Python 3.12.14, uv, 169 locked packages),
 Postgres 18.4 + pgvector 0.8.2 and Redis 7 running healthy under compose, CPU model tier proven
-(embedder 384 d at 112.4 sentences/s; reranker 4.56 ms/pair), **corpus acquisition proven on 20
+(embedder 384 d at 112.4 sentences/s; reranker 4.56 ms/pair — both on short synthetic text, and
+both later re-measured on real chunks at 6.9 chunks/s and 102–126 ms/pair respectively; see
+ADR-0009), **corpus acquisition proven on 20
 documents with 20/20 extracting > 500 chars plus an injection canary**, repository gates live (11
 pre-commit hooks, gitleaks blocking a planted secret, agent command denylist 11/11 deny / 6/6
 allow), a CI skeleton, a UI scaffold, and a working k6 harness.
@@ -228,7 +230,7 @@ NOT met. M4 is therefore not complete, and is not recorded as complete.
 |---|---|---|
 | 1 | Baseline run with E-14 pinning fields | **DONE** — `evals/reports/20261001T192924Z/`, committed |
 | 2 | recall@k, MRR, nDCG with their artifact | **DONE** for retrieval; citation precision/recall need a generator, so they are absent, not estimated |
-| 3 | Lexical and rerank ablations | **PARTIAL, extended** — dense/BM25/hybrid A/B (ADR-0006) plus a full RRF-constant sweep (ADR-0007, U-10 partially closed); rerank still deferred with a reason, and ADR-0007 records why a reranker could not have fixed g-038 at all — dense/BM25/hybrid A/B done (ADR-0006); rerank deferred with a reason, not forgotten (recall@10 ≈ 0.98 leaves a reranker nothing to recover on a 170-chunk corpus) |
+| 3 | Lexical and rerank ablations | **DONE** — dense/BM25/hybrid A/B (ADR-0006), the RRF-constant sweep (ADR-0007) and now the rerank ablation (ADR-0009, four configurations over the full gold set with a paired bootstrap). The §8.1 instruction "if the lexical arm adds nothing, remove it" was applied to the reranker too: it adds three items for 30x the p95, so it ships disabled rather than removed, with the re-run condition recorded — dense/BM25/hybrid A/B (ADR-0006) plus a full RRF-constant sweep (ADR-0007, U-10 partially closed); rerank still deferred with a reason, and ADR-0007 records why a reranker could not have fixed g-038 at all — dense/BM25/hybrid A/B done (ADR-0006); rerank deferred with a reason, not forgotten (recall@10 ≈ 0.98 leaves a reranker nothing to recover on a 170-chunk corpus) |
 | 4 | `eval-smoke` enforcing the >1pp gate | **DONE, with one honest caveat** — `make eval-gate` enforces the rule and fails the build (exit 1, drilled against a real 1.90pp degradation); the CI job is written and pinned but has never run, because there is no remote (V10 BLOCKED), so no badge is claimed. The gate reports that 1pp sits below the gold set's 3.24pp noise floor rather than silently widening the threshold. Evidence: `docs/setup/verify/m4-eval-gate.txt` |
 | 5 | U-1 decided | **NOT DONE** — no API keys; the formal re-scope is still owed in writing |
 
@@ -241,7 +243,7 @@ on the strength of a one-item difference. Hybrid is kept, the reasoning is in AD
 decisive experiment is **U-18**.
 
 **Remaining work:** close U-1 in writing; grow the corpus and the gold set so the gate stops
-operating at single-item resolution; U-18; then the reranker ablation.
+operating at single-item resolution; U-18. The reranker ablation is done (ADR-0009).
 
 **Also landed with the gate (2026-10-02):** the corpus payloads are now tracked in git. The
 manifest alone did not make them re-derivable — the corpus contains withdrawn circulars, and

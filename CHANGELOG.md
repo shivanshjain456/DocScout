@@ -6,6 +6,36 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 ## [Unreleased]
 
 ### Added
+- **`app/retrieval/rerank.py` and ADR-0009: the cross-encoder rerank stage — built, measured,
+  and shipped disabled.** `ARCHITECTURE.md` had specified this stage since M1 and it did not
+  exist; it now does, with explicit `max_length`, deterministic tie-breaking toward the
+  incoming fusion order, a score/candidate length check, and `rerank_top_n >= k_final`
+  validation. Measured over the full gold set: **+2.3pp recall@1 (three items out of 131) for
+  30x to 160x the p95**, with a bootstrap CI spanning zero. At top-20 and top-50 it also drops
+  recall@10 from 1.000 to 0.992 by promoting deep candidates over evidence fusion had already
+  placed correctly. `SERVING_CONFIG.rerank` stays `False`. Closes the rerank half of U-10 and
+  the §8.1 rerank ablation.
+- `scripts/experiments/u10_rerank_ablation.py` with raw output under `evals/experiments/`, and
+  `tests/test_rerank.py` (12 cases; the 4 that load the real model are marked `slow` and run by
+  default). A registered `slow` pytest marker.
+
+### Fixed
+- **A documented "verified" cost was wrong by about twenty times, and the Phase 0 gate it
+  passed should have failed.** `ARCHITECTURE.md` recorded the reranker at **4.56 ms/pair**,
+  measured on short synthetic sentences. On real corpus chunks (946 chars / 267 tokens mean)
+  the same model on the same hardware costs **102–126 ms/pair**, because transformer cost
+  scales with sequence length. `SETUP_REPORT.md` §10.2 applied a ">50 ms/pair ⇒ downgrade"
+  threshold and recorded "PASS with wide margin"; the honest result is **FAIL by 2x**. Its
+  prediction that reranking 50 candidates costs ≈230 ms is really ≈6.3 s.
+  Corrected in `ARCHITECTURE.md` (§3, the pipeline diagram and the capability table),
+  `EVAL_PROTOCOL.md` (E-16), `ADR-0003` (which cited the reranker as a mitigation that is not
+  in the serving path), and `MILESTONES.md`. The signed `SETUP_REPORT.md` keeps its original
+  numbers with a correction block beside them, because a point-in-time record should not be
+  silently rewritten.
+  **E-16 is now a rule rather than a fact**: every model cost must be quoted from a measurement
+  on real corpus chunks. The project already applied exactly this reasoning to the embedder
+  (112.4 sentences/s generic vs 6.9 chunks/s real) and had not carried it across to the
+  reranker.
 - **`app/api/`: the serving API — citation-grounded retrieval over HTTP.** `POST /v1/search`
   returns ranked passages carrying a stable `chunk_id`, source document, canonical URL and
   character span, so a citation can be checked against the original PDF. **No model

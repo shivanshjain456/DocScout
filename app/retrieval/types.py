@@ -12,6 +12,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
+from app.retrieval.rerank import MODEL_ID as RERANK_MODEL_ID
+
 Mode = Literal["dense", "bm25", "hybrid"]
 
 # Reciprocal Rank Fusion's smoothing constant. 60 is the value from Cormack et al. (2009),
@@ -70,6 +72,21 @@ class RetrievalConfig:
     # Measured on gold item g-038, where BM25 ranked the answer first and fusion buried it at
     # 14. This reserves a seat rather than re-weighting, so no other result is reordered.
     anchor_arm_top1: bool = False
+    # Cross-encoder reranking of the fused candidates. Off by default: it is the single
+    # most expensive stage in the pipeline and ADR-0009 decides when it earns that cost.
+    rerank: bool = False
+    # How many fused candidates the cross-encoder scores. Must be >= k_final, or the
+    # reranker would be asked to choose the top k from fewer than k candidates, which
+    # quietly degrades to "no reranking" while still charging for the model.
+    rerank_top_n: int = 20
+
+    def __post_init__(self) -> None:
+        if self.rerank and self.rerank_top_n < self.k_final:
+            raise ValueError(
+                f"rerank_top_n ({self.rerank_top_n}) must be >= k_final ({self.k_final}); "
+                "reranking fewer candidates than are returned pays for the model without "
+                "giving it anything to reorder"
+            )
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -82,6 +99,9 @@ class RetrievalConfig:
             "weight_dense": self.weight_dense,
             "weight_lexical": self.weight_lexical,
             "anchor_arm_top1": self.anchor_arm_top1,
+            "rerank": self.rerank,
+            "rerank_top_n": self.rerank_top_n if self.rerank else None,
+            "rerank_model": RERANK_MODEL_ID if self.rerank else None,
         }
 
 

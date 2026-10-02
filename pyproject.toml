@@ -72,3 +72,10 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+# `slow` marks the tests that load the cross-encoder and score real corpus chunks: ~11 s to
+# load the weights and ~100 ms per pair on 2 vCPU. They run by default, because a reranker
+# that is only tested through stubs is a reranker nobody has checked end to end. Skip them
+# during a tight edit loop with `-m "not slow"`.
+markers = [
+    "slow: loads a model or scores real corpus chunks (seconds, not milliseconds)",
+]
