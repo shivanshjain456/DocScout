@@ -349,6 +349,42 @@ it is attacker-controlled text that ends up in every log line for the request. A
 redacted by a pipeline processor rather than by convention, so a forgetful call site cannot
 leak one; only the truncated fingerprint above is ever written.
 
+### Supply chain
+
+```bash
+make audit-deps      # -> docs/security/{dependency-audit.json, sbom.cdx.json}
+```
+
+`pip-audit` over the exported `uv.lock`, plus a CycloneDX SBOM. The gate fails only on an
+advisory affecting a dependency that is **actually installed at runtime**; development-only
+findings are reported without failing the build, because a CVE in `mutmut` cannot reach a
+user and gating on it teaches everyone to ignore the gate.
+
+It found something on its first run. **`ragas` was declared in `pyproject.toml` and imported
+in zero files**, and dragged in `diskcache`; both carried advisories with **no fix
+available** — `CVE-2025-69872`, arbitrary code execution via pickle-based cache
+deserialisation, and `CVE-2026-6587`. U-1 had already withdrawn the judge layer that was the
+only reason to depend on either, so the remediation was removal rather than suppression:
+**13 packages dropped, 4 advisories → 0**, suite unchanged. A test fails if either returns.
+
+Two details that make the number trustworthy:
+
+* **`torch` is audited at its upstream version.** `uv.lock` pins `torch==2.14.1+cpu`, which
+  does not exist on PyPI, so pip-audit skips it and still prints "No known vulnerabilities
+  found" — silently leaving the largest dependency unscanned. The local version identifier
+  is stripped before auditing.
+* **Phantom packages are named, not counted.** Doing the above makes pip-audit read upstream
+  torch metadata, which lists 22 `nvidia-*`/`cuda-*` packages a CPU build never installs.
+  Every audited package is compared against what `uv sync` actually installed, and an
+  advisory against an absent one is reported but cannot fail the gate.
+
+**What a green run does not mean.** It means no *published* advisory matched these pins at
+that moment. pip-audit matches at package granularity with no reachability analysis — an
+empirical study of SBOM-based scanners ([arXiv:2511.20313](https://arxiv.org/html/2511.20313v2))
+measured a 92% false-positive rate driven mostly by vulnerabilities in code paths the
+dependent never calls — and it cannot see a malicious package that has no CVE at all.
+Suppressions require a justification and a review date; there are none today.
+
 ### Test quality: mutation score, not coverage percentage
 
 The suite's own quality is measured with **mutation testing** rather than a coverage

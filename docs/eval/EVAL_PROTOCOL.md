@@ -349,7 +349,10 @@ gold set into a training set; hold out a slice that is looked at only before a r
 
 ## 9. Known traps carried forward
 
-- **RAGAS metric names and import paths move between versions** — `ragas.metrics` →
+- **RAGAS is no longer a dependency (2026-10-02).** It was removed after `make audit-deps` found
+  it carried CVE-2026-6587 while being imported nowhere; U-1 had already withdrawn the judge layer
+  it existed for. The note below is retained because it would apply again if a judge is ever
+  built. **RAGAS metric names and import paths move between versions** — `ragas.metrics` →
   `ragas.metrics.collections` is already deprecated in the pinned 0.4.3 (locked). Re-check metric
   *semantics* after any upgrade; a renamed metric is not the same metric.
 - **`openai` is held at 2.54.0** by a `jiter` conflict with `ragas` (K-4). An eval-stack upgrade is

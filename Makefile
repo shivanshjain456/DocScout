@@ -4,7 +4,7 @@ TS := $(shell date -u +%Y%m%dT%H%M%SZ)
 
 .PHONY: help setup dev test lint typecheck secret-scan eval load deploy destroy verify-setup down \
 	gold-lint gold-pin gold-review gold-stats eval-quick eval-gate eval-baseline \
-	mutation mutation-clean \
+	mutation mutation-clean audit-deps \
 	serve bench \
         migrate migrate-status migrate-down ingest ingest-dry ingest-status ingest-verify
 
@@ -78,6 +78,9 @@ serve:  ## run the API on :8000 (loads the model once at startup)
 
 bench:  ## measure e2e latency, cache effect and cost per 1k against a running API
 	uv run python scripts/bench_api.py --n 200 --concurrency 4
+
+audit-deps:  ## scan locked dependencies for advisories + regenerate the SBOM
+	uv run python scripts/audit_dependencies.py
 
 mutation:  ## mutation-test the measurement instruments -> evals/mutation/latest.json
 	uv run mutmut run --max-children 2

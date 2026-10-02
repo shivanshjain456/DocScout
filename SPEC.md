@@ -291,7 +291,7 @@ Authoritative detail: `docs/corpus/CORPUS_SPEC.md` and `ARCHITECTURE.md` §4.
 | sentence-transformers / transformers / torch | 6.1.0 / 5.17.0 / 2.14.1+cpu | VERIFIED |
 | Embedder | `BAAI/bge-small-en-v1.5`, 384 dims, 128.3 MB | VERIFIED runnable **and measured on the real corpus** (ADR-0002): 0/149 chunks truncated, 39 ms query p95, 6.9 chunks/s |
 | Reranker | `cross-encoder/ms-marco-MiniLM-L-6-v2`, 88 MB | VERIFIED runnable |
-| ragas / deepeval | 0.4.3 / 4.2.7 | VERIFIED locked, unused; `openai` held at 2.54.0 by a `jiter` conflict (K-4) |
+| ragas / deepeval | **ragas REMOVED 2026-10-02** / 4.2.7 | `ragas` was locked but imported nowhere and carried CVE-2026-6587, pulling in `diskcache` with CVE-2025-69872 (arbitrary code execution, no fix available). U-1 withdrew the judge layer that was its only purpose, so it was removed: 13 packages dropped. `deepeval` remains locked and unused (audit G8). The `jiter`/`openai` conflict recorded as K-4 was a `ragas` constraint and no longer applies |
 | Hosted LLM roles | none | **BLOCKED** — all `id: null` in `config/models.json`; Phase 0 API spend $0.00 |
 
 ---

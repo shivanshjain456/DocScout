@@ -33,6 +33,29 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # Supply chain: OWASP LLM04. Fails only on an advisory affecting a dependency that is
+  # actually installed at runtime; development-only and phantom findings are reported.
+  # Needs the network to reach the advisory database, so it is its own job -- a flaky
+  # advisory lookup must not be able to fail the unit tests.
+  supply-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: audit locked dependencies and regenerate the SBOM
+        run: uv run python scripts/audit_dependencies.py
+      - name: fail if the committed SBOM or audit is stale
+        run: git diff --exit-code -- docs/security/
+      - name: publish the SBOM
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: docs/security/
+
   # The quality gate of EVAL_PROTOCOL E-12: ingest the committed corpus, run the retrieval
   # eval over the gold set, and fail the build if the serving configuration regressed more
   # than 1pp against the mean of the last three accepted baselines.

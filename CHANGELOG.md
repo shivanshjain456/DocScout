@@ -6,6 +6,34 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 ## [Unreleased]
 
 ### Added
+- **Dependency vulnerability scanning and an SBOM** (`make audit-deps`, audit G9, OWASP
+  LLM04). `pip-audit` over the exported `uv.lock`, plus a CycloneDX SBOM, with a dedicated
+  `supply-chain` CI job that also fails if the committed artifacts are stale.
+  The gate fails only on an advisory affecting a dependency **actually installed at
+  runtime**: a CVE in `mutmut` cannot reach a user, and gating on it is how a gate gets
+  ignored. Development-only findings are reported, not fatal.
+  Two decisions keep the number honest. `torch` is audited at its **upstream** version
+  because `uv.lock` pins `torch==2.14.1+cpu`, which does not exist on PyPI — pip-audit
+  skips it and still prints "No known vulnerabilities found", silently leaving the largest
+  dependency unscanned. Doing that makes pip-audit read upstream torch metadata listing 22
+  `nvidia-*`/`cuda-*` packages a CPU build never installs, so every audited package is
+  compared against what `uv sync` really installed and **phantom** findings are named and
+  excluded from the gate rather than inflating it.
+  19 network-free tests cover the normalisation, the phantom rule, the suppression policy
+  (every suppression needs a justification and a review date; there are none) and whether
+  the committed artifacts still describe the current lockfile — verified to fail when the
+  digest is altered.
+
+### Fixed
+- **`ragas` was declared but imported nowhere, and shipped two unfixable CVEs.** The first
+  run of the new scanner found `ragas==0.4.3` (CVE-2026-6587) pulling in
+  `diskcache==5.6.3` (**CVE-2025-69872** — arbitrary code execution through pickle-based
+  cache deserialisation), both with **no fix version available**. U-1 had already withdrawn
+  the judge layer that was the only reason to depend on either, so the remediation was
+  removal rather than suppression: **13 packages dropped, 4 advisories → 0**, full suite
+  unchanged, `uv sync --frozen` still resolving. A test fails if either package returns.
+  `SPEC.md` K-4 is corrected: the `jiter`/`openai` version conflict it recorded was a
+  `ragas` constraint and no longer applies.
 - **Mutation testing of the measurement instruments** (`make mutation`, audit G10, rescoped).
   `app/evals/scorers.py` and `app/evals/stats.py` produce every number this project
   publishes, so a silent error there corrupts the README, the baselines and the regression
