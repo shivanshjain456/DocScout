@@ -1,0 +1,62 @@
+{
+  "schema": "docscout.eval.gate/1",
+  "checked_utc": "2026-10-02T12:45:13Z",
+  "passed": true,
+  "serving_config": "hybrid-rrf",
+  "cutoff": "5",
+  "threshold_pp": 1.0,
+  "baselines_used": [
+    "2026-10-01T19:29:25Z",
+    "2026-10-01T20:46:29Z",
+    "2026-10-02T12:44:09Z"
+  ],
+  "comparison": {
+    "recall": {
+      "current": 0.9656,
+      "baseline_mean": 0.9656,
+      "baseline_values": [
+        0.9656,
+        0.9656,
+        0.9656
+      ],
+      "delta": 0.0,
+      "delta_pp": 0.0,
+      "threshold_pp": 1.0
+    },
+    "mrr": {
+      "current": 0.8247,
+      "baseline_mean": 0.8245,
+      "baseline_values": [
+        0.824,
+        0.8247,
+        0.8247
+      ],
+      "delta": 0.0002,
+      "delta_pp": 0.02,
+      "threshold_pp": 1.0
+    },
+    "ndcg": {
+      "current": 0.8445,
+      "baseline_mean": 0.8445,
+      "baseline_values": [
+        0.8445,
+        0.8445,
+        0.8445
+      ],
+      "delta": 0.0,
+      "delta_pp": 0.0,
+      "threshold_pp": 1.0
+    }
+  },
+  "noise_floor": {
+    "available": true,
+    "n_paired_items": 131,
+    "observed_delta": 0.0,
+    "ci_low": 0.0,
+    "ci_high": 0.0,
+    "excludes_zero": false,
+    "minimum_detectable_effect_pp": 0.0,
+    "threshold_is_below_noise": false
+  },
+  "findings": []
+}

@@ -18,12 +18,12 @@ configuration with the best headline number, and the ADR explains why it is stil
 
 | Metric | Value | Reproduce | Raw output |
 |---|---|---|---|
-| Recall@1 (quote groups) | 0.695 | `make eval` | [`results.json`](evals/reports/20261001T204628Z/results.json) |
-| Recall@5 | 0.966 | `make eval` | [`results.json`](evals/reports/20261001T204628Z/results.json) |
-| Recall@10 | 1.000 | `make eval` | [`results.json`](evals/reports/20261001T204628Z/results.json) |
-| MRR | 0.825 | `make eval` | [`results.json`](evals/reports/20261001T204628Z/results.json) |
-| nDCG@5 | 0.845 | `make eval` | [`results.json`](evals/reports/20261001T204628Z/results.json) |
-| Retrieval p95 latency | 42 ms | `make eval` | [`report.md`](evals/reports/20261001T204628Z/report.md) |
+| Recall@1 (quote groups) | 0.695 | `make eval` | [`results.json`](evals/reports/20261002T124408Z/results.json) |
+| Recall@5 | 0.966 | `make eval` | [`results.json`](evals/reports/20261002T124408Z/results.json) |
+| Recall@10 | 1.000 | `make eval` | [`results.json`](evals/reports/20261002T124408Z/results.json) |
+| MRR | 0.825 | `make eval` | [`results.json`](evals/reports/20261002T124408Z/results.json) |
+| nDCG@5 | 0.845 | `make eval` | [`results.json`](evals/reports/20261002T124408Z/results.json) |
+| Retrieval p95 latency | 42 ms | `make eval` | [`report.md`](evals/reports/20261002T124408Z/report.md) |
 
 Hardware for the latency figure: 2 vCPU / 1.94 GiB, PostgreSQL 18.6 (Debian 18.6-1.pgdg13+2).
 Retrieval only — the embedding model is loaded once per run, not per query.
@@ -41,7 +41,7 @@ Every pairwise difference's 95% bootstrap CI includes zero: `bm25-only` leads `h
 report says so rather than crowning a winner. Worse, the gold set's questions were written from
 the evidence quotes, so they share 73.3% of their terms with the chunk they point at (9.4% for a
 random chunk) — a 7.8x handicap in BM25's favour. In the least-contaminated band BM25 is the
-*worst* of the three. Full working: [`report.md`](evals/reports/20261001T204628Z/report.md).
+*worst* of the three. Full working: [`report.md`](evals/reports/20261002T124408Z/report.md).
 
 ### Regression gate
 
