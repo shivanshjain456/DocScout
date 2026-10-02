@@ -6,6 +6,29 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 ## [Unreleased]
 
 ### Added
+- **`app/observability.py`: structured logging and request correlation** (audit G2 + G3).
+  There was no logging configuration anywhere in the repository: six `logger.*` calls wrote
+  to an unconfigured root logger, so every INFO record — including every access line — was
+  silently discarded. Now one structlog pipeline renders *all* records, including stdlib
+  ones from uvicorn and psycopg, so a process emits one format instead of two that drift.
+  JSON off a TTY, human-readable on one, `DOCSCOUT_LOG_JSON` to override,
+  `DOCSCOUT_LOG_LEVEL` for level.
+  This uses the `structlog` dependency that was previously declared and imported nowhere,
+  removing that supply-chain surface rather than adding a new one.
+- **Credential redaction as a pipeline processor, not a convention.** Any event key that
+  looks like a credential has its *string* value replaced before rendering, so one
+  forgetful call site cannot leak a key. Verified against the running service: the
+  configured API key appears **0 times** in the logs.
+- **Request correlation.** Every request binds a `request_id` contextvar that appears on
+  every record emitted while handling it — ours and uvicorn's — and is echoed as
+  `X-Request-ID` on every response including errors. An inbound id is honoured only if it
+  is short and free of control characters, because it is attacker-controlled text that
+  lands in every log line. The 500 handler now reuses that id, so the reference a caller is
+  given is the string that appears in the logs. One access line per request, after the
+  fact, carrying status and duration.
+- 30 tests in `tests/test_observability.py` plus 4 API-level correlation tests, asserting on
+  emitted records rather than on configuration — the failure that mattered was "nothing came
+  out", which no configuration-shaped assertion would have caught.
 - **`docs/AUDIT-2026-10-02.md`** — a production-readiness audit against researched recruiter
   and senior-engineer expectations (10 cited sources, accessed 2026-10-02, with the
   disagreements between them resolved explicitly), and a prioritised 27-item gap checklist.
@@ -14,6 +37,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   method.
 
 ### Fixed
+- **Third-party INFO noise buried the signal.** Loading the encoder emitted ~30 `httpx`
+  lines resolving files on the Hugging Face hub, around the one `api.ready` line that
+  matters. Library loggers are quieted to WARNING; measured 30 → 0 at startup.
+- **The redactor destroyed an operational signal.** Matching on key name alone turned
+  `api_keys=1` — the *count* of configured keys, logged at startup — into "[redacted]".
+  A credential is a string; a count, a flag and a duration are not. Redaction now applies
+  to string and bytes values only.
+- **A latent test-isolation defect, surfaced by the new tests.**
+  `test_unhandled_errors_do_not_leak_internals` constructed a second `TestClient` over the
+  same application object; exiting its lifespan closed the connection pool the
+  module-scoped client still held, so every test ordered after it failed with `PoolClosed`.
+  Nothing ran after it before, so it had never shown. It now reuses the module client.
 - **Invisible and private-use characters survived ingestion into embeddings and citations**
   (OWASP LLM09). A character-level scan of all 170 stored chunks found four occurrences of
   **U+F0E0** — the Wingdings breadcrumb arrow in SEBI circulars, "under the link *Legal →

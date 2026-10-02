@@ -24,7 +24,6 @@ Three things are load-bearing in the design:
 
 from __future__ import annotations
 
-import logging
 import time
 import uuid
 from collections.abc import AsyncIterator
@@ -33,6 +32,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import structlog
 from fastapi import Depends, FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -53,11 +53,12 @@ from app.api.security import RATE_LIMIT_REQUESTS, load_keys, require_api_key
 from app.config import database_url, sha256_file
 from app.ingest.chunk import CHUNK_OVERLAP, CHUNK_SIZE
 from app.ingest.embed import EMBEDDING_DIM, MODEL_ID, Embedder
+from app.observability import configure_logging, get_logger, normalise_request_id
 from app.retrieval import SERVING_CONFIG, RetrievalConfig, Retriever
 from app.retrieval.lexical import BM25Index
 from app.rowtypes import as_int
 
-logger = logging.getLogger("docscout.api")
+logger = get_logger("docscout.api")
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -83,6 +84,7 @@ class CachedResult:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Pay every fixed cost before the first request is served."""
+    configure_logging()
     app.state.api_keys = load_keys()  # raises, by design, if none are configured
 
     app.state.pool = ConnectionPool(
@@ -114,10 +116,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.manifest_digest = sha256_file(REPO_ROOT / "corpus" / "raw" / "manifest.json")
 
     logger.info(
-        "api ready: %d chunks, model %s, %d api key(s)",
-        app.state.corpus_chunks,
-        MODEL_ID,
-        len(app.state.api_keys),
+        "api.ready",
+        corpus_chunks=app.state.corpus_chunks,
+        embedding_model=MODEL_ID,
+        api_keys=len(app.state.api_keys),
+        rate_limit_per_minute=RATE_LIMIT_REQUESTS,
     )
     try:
         yield
@@ -139,6 +142,41 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url=None,
 )
+
+
+@app.middleware("http")
+async def correlate_and_log(request: Request, call_next: Any) -> Any:
+    """Bind a correlation id for the request and emit exactly one access line.
+
+    The id is bound into a contextvar rather than passed around, so every log record
+    emitted anywhere while handling this request carries it without the call sites
+    knowing. It is echoed on the response so a caller reporting a bad answer can quote
+    something that joins to the logs.
+
+    One line per request, after the fact, with the status and duration on it -- rather
+    than a line on entry and another on exit, which doubles log volume and still needs a
+    join to answer "how long did it take".
+    """
+    request_id = normalise_request_id(request.headers.get("X-Request-ID"))
+    structlog.contextvars.clear_contextvars()
+    structlog.contextvars.bind_contextvars(
+        request_id=request_id, method=request.method, path=request.url.path
+    )
+    request.state.request_id = request_id
+    started = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        # The 500 handler below renders the body; this records the timing and re-raises
+        # so that behaviour is unchanged.
+        logger.exception(
+            "http.request", status=500, duration_ms=round((time.perf_counter() - started) * 1000, 2)
+        )
+        raise
+    duration_ms = round((time.perf_counter() - started) * 1000, 2)
+    response.headers["X-Request-ID"] = request_id
+    logger.info("http.request", status=response.status_code, duration_ms=duration_ms)
+    return response
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -174,8 +212,10 @@ async def validation_exception_handler(
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Never leak internals to a public URL; log them with a correlation id instead."""
-    correlation = uuid.uuid4().hex[:12]
-    logger.exception("unhandled error [%s] on %s", correlation, request.url.path)
+    # Reuse the request's correlation id when the middleware set one, so the reference a
+    # caller is given is the same string that appears in every log line for that request.
+    correlation = getattr(request.state, "request_id", None) or uuid.uuid4().hex[:16]
+    logger.exception("http.unhandled", correlation=correlation, path=request.url.path)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"detail": f"internal error (reference {correlation})"},
@@ -203,7 +243,7 @@ def healthz(request: Request) -> HealthResponse:
             row = conn.execute("SELECT count(*) FROM chunks").fetchone()
             chunks = as_int(row[0]) if row else 0
     except Exception:  # noqa: BLE001 - health must report, never raise
-        logger.warning("healthz: database probe failed", exc_info=True)
+        logger.warning("healthz.database_probe_failed", exc_info=True)
         database_ok = False
 
     return HealthResponse(
@@ -268,7 +308,11 @@ def search(
     if cached is not None:
         total_ms = (time.perf_counter() - started) * 1000.0
         logger.info(
-            "search hit key=%s mode=%s k=%d %.1fms", fingerprint, payload.mode, payload.k, total_ms
+            "search.cache_hit",
+            key_fingerprint=fingerprint,
+            mode=payload.mode,
+            k=payload.k,
+            duration_ms=round(total_ms, 2),
         )
         return SearchResponse(
             query=payload.query,
@@ -317,12 +361,13 @@ def search(
 
     total_ms = (time.perf_counter() - started) * 1000.0
     logger.info(
-        "search miss key=%s mode=%s k=%d %.1fms (retrieval %.1fms)",
-        fingerprint,
-        payload.mode,
-        payload.k,
-        total_ms,
-        retrieval_ms,
+        "search.completed",
+        key_fingerprint=fingerprint,
+        mode=payload.mode,
+        k=payload.k,
+        duration_ms=round(total_ms, 2),
+        retrieval_ms=round(retrieval_ms, 2),
+        passages=len(result.passages),
     )
     return SearchResponse(
         query=payload.query,

@@ -309,6 +309,30 @@ and citations resolve to `chunk_id` instead.
 **Latency figures are retrieval only, on 2 vCPU / 1.9 GiB.** The embedding model is loaded once
 per run and excluded. They are not end-to-end numbers and must not be read as a service SLO.
 
+### Logs and request correlation
+
+Every record — the application's, uvicorn's and psycopg's — renders through one structlog
+pipeline. JSON when stderr is not a TTY, human-readable when it is.
+
+```bash
+DOCSCOUT_LOG_JSON=1 DOCSCOUT_LOG_LEVEL=INFO make serve
+```
+
+Each request binds a correlation id that appears on every line it produces and is returned
+as `X-Request-ID`, so a caller reporting a bad answer can quote something that joins to the
+logs:
+
+```json
+{"key_fingerprint":"afae76d828ca","mode":"hybrid","duration_ms":37.3,"retrieval_ms":37.18,
+ "passages":2,"event":"search.completed","request_id":"recruiter-demo-1","path":"/v1/search"}
+{"status":200,"duration_ms":40.81,"event":"http.request","request_id":"recruiter-demo-1"}
+```
+
+An inbound `X-Request-ID` is honoured only if it is short and free of control characters —
+it is attacker-controlled text that ends up in every log line for the request. API keys are
+redacted by a pipeline processor rather than by convention, so a forgetful call site cannot
+leak one; only the truncated fingerprint above is ever written.
+
 ### Rebuilding derived data
 
 Ingestion skips any document whose source `sha256` is unchanged, which is what makes

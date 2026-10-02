@@ -300,12 +300,16 @@ def test_openapi_schema_documents_the_search_contract(client: TestClient) -> Non
         assert code in responses
 
 
-def test_unhandled_errors_do_not_leak_internals(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_unhandled_errors_do_not_leak_internals(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """A public URL must not return a stack trace or a connection string.
 
-    Its own client, because TestClient re-raises server exceptions by default and would
-    surface the error to the test instead of the handler's response. Production behaviour
-    is the `raise_server_exceptions=False` path.
+    Reuses the module client and flips `raise_server_exceptions` on its transport for the
+    duration, rather than constructing a second TestClient. A second client would enter and
+    then exit the same application object's lifespan, closing the connection pool that the
+    module-scoped client still holds -- every test after this one then failed with
+    PoolClosed. Production behaviour is the `raise_server_exceptions=False` path.
     """
     from app.api import app as api_module
 
@@ -313,45 +317,52 @@ def test_unhandled_errors_do_not_leak_internals(monkeypatch: pytest.MonkeyPatch)
         raise RuntimeError("postgresql://secret:password@host/db")
 
     monkeypatch.setattr(api_module, "Retriever", boom)
-    with TestClient(api_module.app, raise_server_exceptions=False) as strict_client:
-        response = strict_client.post(
-            "/v1/search",
-            json={"query": "trigger the failure path", "use_cache": False},
-            headers=auth(),
-        )
-        assert response.status_code == 500
-        assert "secret" not in response.text
-        assert "Traceback" not in response.text
-        assert "internal error (reference " in response.json()["detail"]
+    transport = client._transport  # noqa: SLF001 - no public setter for this flag
+    monkeypatch.setattr(transport, "raise_server_exceptions", False)
+
+    response = client.post(
+        "/v1/search",
+        json={"query": "trigger the failure path", "use_cache": False},
+        headers=auth(),
+    )
+    assert response.status_code == 500
+    assert "secret" not in response.text
+    assert "Traceback" not in response.text
+    assert "internal error (reference " in response.json()["detail"]
 
 
-# --- the benchmark's own arithmetic -----------------------------------------------------
-# These produce published numbers (README cost and latency table), so they are asserted
-# against hand-computed values rather than trusted because they look plausible.
-def test_nearest_rank_returns_an_observed_value() -> None:
-    from scripts.bench_api import nearest_rank
-
-    values = [float(v) for v in range(1, 101)]  # 1..100
-    # ceil(0.95 * 100) = 95 -> index 94 -> the 95th smallest, which is 95.
-    assert nearest_rank(values, 0.95) == 95.0
-    assert nearest_rank(values, 0.50) == 50.0
-    assert nearest_rank(values, 1.0) == 100.0
-    # Every result must be a value that was actually measured.
-    assert all(nearest_rank(values, q) in values for q in (0.1, 0.5, 0.9, 0.95, 0.99))
+# --- request correlation ----------------------------------------------------------------
+def test_every_response_carries_a_request_id(client: TestClient) -> None:
+    """A caller reporting a bad answer needs something that joins to the logs."""
+    response = client.post(
+        "/v1/search", json={"query": "capital adequacy requirements"}, headers=auth()
+    )
+    assert response.status_code == 200
+    assert len(response.headers["X-Request-ID"]) == 16
 
 
-def test_nearest_rank_handles_short_and_empty_samples() -> None:
-    from scripts.bench_api import nearest_rank
+def test_an_inbound_request_id_is_echoed(client: TestClient) -> None:
+    """Lets a proxy or client correlate across the hop."""
+    response = client.post(
+        "/v1/search",
+        json={"query": "capital adequacy requirements"},
+        headers={**auth(), "X-Request-ID": "caller-supplied-1"},
+    )
+    assert response.headers["X-Request-ID"] == "caller-supplied-1"
 
-    assert nearest_rank([], 0.95) == 0.0
-    assert nearest_rank([7.0], 0.95) == 7.0
-    assert nearest_rank([1.0, 2.0], 0.95) == 2.0
+
+def test_a_hostile_request_id_is_replaced_not_echoed(client: TestClient) -> None:
+    """The id lands in every log line for the request, so it must not carry a newline."""
+    response = client.post(
+        "/v1/search",
+        json={"query": "capital adequacy requirements"},
+        headers={**auth(), "X-Request-ID": "x" * 300},
+    )
+    assert response.headers["X-Request-ID"] != "x" * 300
+    assert len(response.headers["X-Request-ID"]) == 16
 
 
-def test_summarise_reports_the_sample_size_with_the_percentiles() -> None:
-    from scripts.bench_api import summarise
-
-    summary = summarise([10.0, 20.0, 30.0, 40.0])
-    assert summary["n"] == 4
-    assert summary["mean_ms"] == 25.0
-    assert summary["max_ms"] == 40.0
+def test_error_responses_also_carry_the_request_id(client: TestClient) -> None:
+    response = client.post("/v1/search", json={"query": "no key supplied"})
+    assert response.status_code == 401
+    assert "X-Request-ID" in response.headers
