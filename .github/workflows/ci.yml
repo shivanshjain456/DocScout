@@ -150,3 +150,70 @@ jobs:
         with:
           name: eval-report
           path: evals/reports/
+
+  # P0-4 proof: the committed Dockerfile builds and serves /healthz with the
+  # full corpus. Independent job (never collapsed into eval-gate) so a broken
+  # image cannot hide behind a green eval, and vice versa. Local-only: no
+  # registry push, no cloud resources, teardown in `always()`.
+  deploy-smoke:
+    runs-on: ubuntu-latest
+    env:
+      DEEPEVAL_TELEMETRY_OPT_OUT: "YES"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+
+      - name: cache embedding model
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.hf_cache
+          key: hf-bge-small-en-v1.5-v1
+
+      - name: write CI-only .env (throwaway secrets, never committed)
+        run: |
+          cat > .env <<'EOF'
+          DB_PASSWORD=ci_deploy_owner_pw_0123456789abcdef
+          DB_APP_PASSWORD=ci_deploy_app_pw_0123456789abcdef
+          DATABASE_URL=postgresql://docscout_app:ci_deploy_app_pw_0123456789abcdef@localhost:5432/docscout
+          MIGRATION_DATABASE_URL=postgresql://docscout:ci_deploy_owner_pw_0123456789abcdef@localhost:5432/docscout
+          DOCSCOUT_API_KEY=ci_deploy_api_key_0123456789abcdef
+          DOCSCOUT_RATE_LIMIT_PER_MINUTE=60
+          DOCSCOUT_LOG_JSON=1
+          HF_HOME=${{ github.workspace }}/.hf_cache
+          EOF
+
+      - name: build the api image (pinned base, frozen lock, no secret in layers)
+        run: docker build -t docscout-api:ci .
+
+      - name: start db and wait healthy
+        run: |
+          docker compose up -d db
+          for i in $(seq 1 30); do
+            docker compose exec -T db pg_isready -U docscout -d docscout && break
+            sleep 2
+          done
+          docker compose exec -T db pg_isready -U docscout -d docscout
+
+      - name: migrate and ingest (offline corpus, re-hashed against manifest)
+        run: |
+          uv run python scripts/migrate.py up
+          uv run python -m app.ingest run
+          uv run python -m app.ingest verify
+
+      - name: start api and prove /healthz serves the full corpus
+        run: |
+          docker compose up -d api
+          for i in $(seq 1 30); do
+            curl -fs http://localhost:8000/healthz && break
+            sleep 2
+          done
+          curl -s http://localhost:8000/healthz | tee /tmp/healthz.json
+          python -c "import json; h=json.load(open('/tmp/healthz.json')); assert h['status']=='ok', h; assert h['corpus_chunks']==170, h; print('deploy-smoke ok:', h['status'], h['corpus_chunks'])"
+
+      - name: teardown (always, even on failure)
+        if: always()
+        run: docker compose down -v --remove-orphans || true

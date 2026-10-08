@@ -32,8 +32,42 @@ services:
       timeout: 3s
       retries: 10
 
+  # Runnable API service (P0-4). Built from `Dockerfile` (pinned base digest,
+  # `uv sync --frozen`, non-root, HEALTHCHECK, no secret in layers). Shares the
+  # same `db` + `infra/initdb/` contract as every other provisioning path, so
+  # `tests/test_config_coherence.py` still guards the triple-pin.
+  #
+  # DATABASE_URL is overridden here because `.env` names `localhost` for native
+  # runs; inside the compose network the host is `db`. Passwords still come
+  # from `.env` (never committed, never baked into the image).
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: docscout-api:local
+    container_name: docscout_api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://docscout_app:${DB_APP_PASSWORD:?set in .env}@db:5432/docscout
+      DOCSCOUT_API_KEY: ${DOCSCOUT_API_KEY:?set in .env}
+      DOCSCOUT_RATE_LIMIT_PER_MINUTE: ${DOCSCOUT_RATE_LIMIT_PER_MINUTE:-60}
+      DOCSCOUT_LOG_JSON: ${DOCSCOUT_LOG_JSON:-1}
+      HF_HOME: /opt/hf-cache
+    ports: ["8000:8000"]
+    volumes:
+      - hf-cache:/opt/hf-cache
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/healthz || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 60s
+
 volumes:
   pgdata:
+  hf-cache:
 
 # There is deliberately no Redis service. `REDIS_URL` appears in .env.example because a
 # multi-worker deployment would need it for the result cache and the rate limiter, but

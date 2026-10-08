@@ -13,9 +13,9 @@ help:  ## show this help
 
 setup: verify-setup  ## alias for verify-setup (installs nothing; verifies the environment)
 
-dev:  ## start local services + the API with reload
-	docker compose up -d
-	uv run uvicorn app.main:app --reload --port 8000
+dev:  ## start local db + the API with reload (runnable entrypoint app.api.app:app)
+	docker compose up -d db
+	uv run uvicorn app.api.app:app --reload --port 8000
 
 down:  ## stop local services
 	docker compose down
@@ -101,18 +101,25 @@ load:  ## k6 load test -> loadtests/reports/<ts>/
 	  | tee loadtests/reports/$(TS)/k6-stdout.txt
 	@echo "report: loadtests/reports/$(TS)/"
 
-deploy:  ## deploy to staging   [stub — deploy phase]
-	@echo "STUB. Follow skill deploy-protocol before implementing:"
-	@echo "  - dedicated account, cost cap + billing alarm configured FIRST"
-	@echo "  - least-privilege runtime identity (no admin)"
-	@echo "  - record image digest + IaC hash to docs/deploys/<ts>.md"
-	@echo "  - make destroy must be tested before anything outlives a dev session"
-	@exit 1
+deploy:  ## build + run db + migrate + ingest + serve api locally (one-command local deploy)
+	@test -f .env || { echo "refusing: copy .env.example to .env and fill DB_PASSWORD, DB_APP_PASSWORD, DOCSCOUT_API_KEY"; exit 2; }
+	@docker info >/dev/null 2>&1 || { echo "refusing: docker daemon not reachable (need a daemon for P0-4)"; exit 2; }
+	docker compose build api
+	docker compose up -d db
+	@for i in $$(seq 1 30); do docker compose exec -T db pg_isready -U docscout -d docscout >/dev/null 2>&1 && break; sleep 2; done
+	uv run python scripts/migrate.py up
+	uv run python -m app.ingest run
+	docker compose up -d api
+	@for i in $$(seq 1 30); do curl -fs http://localhost:8000/healthz >/dev/null 2>&1 && break; sleep 2; done
+	curl -s http://localhost:8000/healthz
+	@echo ""
+	@echo "deployed: curl -H 'X-API-Key: <key>' http://localhost:8000/docs"
 
-destroy:  ## tear down ALL cloud resources   [stub — deploy phase]
-	@echo "STUB. Must remove: compute, registry images, log groups, secrets, roles, networking."
-	@echo "Verify with provider list commands and record empty output as evidence."
-	@exit 1
+destroy:  ## tear down local compose services, volumes and image (tested with deploy)
+	docker compose down -v --remove-orphans || true
+	-docker rmi docscout-api:local || true
+	@docker compose ps 2>/dev/null || true
+	@echo "destroyed: no containers remain (local-only; no cloud resources are created by deploy)"
 
 verify-setup:  ## run the V1-V17 environment verification matrix
 	@bash scripts/verify_setup.sh

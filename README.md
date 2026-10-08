@@ -191,10 +191,29 @@ Verify the install:
 
 ```bash
 make verify-setup    # the V1–V17 verification matrix
-make test            # 196 tests
+make test            # full suite (DB-gated skips documented, no hidden failures)
 make eval            # the retrieval baseline -> evals/reports/<UTC-ts>/
 make eval-gate       # fails the build on a >1pp regression
 ```
+
+Container path (P0-4, needs a daemon). From a clean checkout with only `.env`
+edited (`DB_PASSWORD`, `DB_APP_PASSWORD`, `DOCSCOUT_API_KEY`):
+
+```bash
+make deploy          # build api image -> up db -> migrate -> ingest -> up api -> curl /healthz
+curl -s localhost:8000/healthz   # status: ok, corpus_chunks: 170
+make destroy         # compose down -v + remove local image; proves nothing remains
+```
+
+The image is pinned (`python:3.12-slim-trixie@sha256:05cda9…`, `uv sync
+--frozen`, non-root, `HEALTHCHECK /healthz`, no secret in layers) and
+pre-warms BGE-small at build time into `/opt/hf-cache` (named volume
+`hf-cache` at run time) so first boot does not silently download. The `db`
+service is byte-identical to the native and CI paths; `tests/test_config_coherence.py`
+fails the build if the three drift. Proven live on 2026-10-08
+(`docs/deploys/20261008T190000Z-p0-4-live.md`: ok/170, fresh eval identical
+to baseline, gate PASS, destroy proven) and re-proven by CI `deploy-smoke`
+on every push.
 
 Requires: `uv`, `sudo` for the two apt packages the database script installs. Nothing else.
 
@@ -220,14 +239,15 @@ Requires: `uv`, `sudo` for the two apt packages the database script installs. No
 
 | Command | Does |
 |---|---|
-| `make dev` | compose up + uvicorn with reload |
+| `make dev` | db up + local uvicorn `app.api.app:app` with reload |
+| `make deploy` | local container deploy: build api, migrate, ingest, serve, prove `/healthz` |
+| `make destroy` | tear down local compose services, volumes and image (tested with deploy) |
 | `make test` | pytest |
 | `make lint` / `make typecheck` | ruff / mypy |
 | `make eval` | full eval run → `evals/reports/<ts>/` |
 | `make load` | k6 load test → `loadtests/reports/<ts>/` |
 | `make secret-scan` | gitleaks over the full history |
 | `make verify-setup` | the V1–V17 environment matrix |
-| `make destroy` | tear down all cloud resources (deploy phase) |
 
 ## Limitations
 
@@ -257,10 +277,14 @@ threshold, but on 131 items one item is 0.76pp and the measured minimum detectab
 3.24pp. The gate reports this beside every verdict. The fix is a bigger gold set, not a looser
 gate.
 
-**The API is not deployed to a public cloud URL.** It runs locally with `make serve`, and
-in review it is reachable through a sandbox preview. No cloud resources have been created
-for this project, by design. The 30–90 second demo video the brief asks for also does not
-exist.
+**The API is runnable as a local container; it is not hosted at a public URL.**
+`make deploy` builds the pinned image and serves `/healthz` (`status: ok`,
+`corpus_chunks: 170`) where a daemon exists, proven by CI `deploy-smoke` on
+every push. No cloud resources are created by default and none are required:
+`make destroy` removes the local containers, volumes, and image. A public
+cloud URL, registry push, and billing/identity topology remain future work
+with their own decision record (see ADR-0010 rejected alternative A). The
+30–90 second demo video the brief asks for also does not exist.
 
 **The serving process is single-worker, and its cache and rate limiter live in memory.**
 Neither survives a restart and neither coordinates across processes. `/healthz` reports

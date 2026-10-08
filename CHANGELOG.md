@@ -6,6 +6,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 ## [Unreleased]
 
 ### Added
+- **Runnable local container deploy (P0-4, ADR-0010).** One `Dockerfile`
+  (Debian trixie Python 3.12 pinned by manifest-list digest, `uv sync
+  --frozen --no-dev`, non-root `app`, `HEALTHCHECK /healthz`, no secret in
+  layers, BGE-small pre-warmed at build into `/opt/hf-cache` with a named
+  volume at run time) plus an `api` service in `docker-compose.yml` sharing
+  the existing `db` (`pgvector/pgvector:0.8.6-pg18-trixie`) and
+  `infra/initdb/` contract. `make deploy` builds, migrates, ingests, serves,
+  and proves `/healthz` (`status: ok`, `corpus_chunks: 170`); `make destroy`
+  tears down containers, volumes, and the image. CI `deploy-smoke` builds and
+  serves the same image on every push. `tests/test_config_coherence.py` keeps
+  the triple-pin and gains Dockerfile/api/entrypoint assertions;
+  `verify_setup.sh` V2 moves to the measured `0.8.6` and V3/V17 stop expecting
+  a `redis` service nothing connects to; `Makefile dev` and `AGENTS.md` now
+   name the runnable `app.api.app:app`. Live proof
+   `docs/deploys/20261008T190000Z-p0-4-live.md`: image built and served,
+   `/healthz` ok/170, fresh eval identical to baseline with gate PASS
+   (+0.00/+0.02/+0.00pp), destroy proven with nothing remaining.
 - **Abstention: measuring when the corpus cannot answer** (audit G11). 22 of 153 gold
   items (14.4%) are deliberately unanswerable and were excluded from every metric; they
   are now scored in every `make eval` run, with refusal rate, false rejection rate,
@@ -30,6 +47,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   `docs/verification/0002-abstention-signal.md`. 20 tests.
 
 ### Fixed
+- **Explicit UTF-8 on every text read/write in `app/` and `scripts/` (found
+  live).** `make eval` crashed on Windows writing `results.json`
+  (`UnicodeEncodeError` on U+20B9: `Path.write_text()` defaults to cp1252
+  there, utf-8 on Linux, so CI never saw it). All text I/O over
+  corpus-derived content now pins `encoding="utf-8"` with zero behavior
+  change on Linux. Same one-token fix in the test files that read JSON
+  artifacts. A 0-byte remnant of the crashed run correctly tripped the
+  rescope guard and was removed (gitignored, no evidence value).
+- **Dockerfile `curl` unpinned (found live).** `curl=8.14.1-2` is absent from
+  the frozen trixie snapshot the pinned base digest freezes, failing the
+  build; reproducibility comes from the base digest + `uv sync --frozen`.
 - Two comments asserted that abstention is "a generation property", which was true when
   nothing measured it and is now misleading: answer-level abstention is generative,
   retrieval-side evidence coverage is not and is measured.

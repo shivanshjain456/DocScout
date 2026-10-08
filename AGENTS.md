@@ -2,8 +2,8 @@
 
 ## Project
 DocScout: production RAG service over the RBI/SEBI regulatory corpus.
-Stack: Python 3.12 (uv) + FastAPI + Postgres 18 + pgvector 0.8.2 + Redis 7 + React/TS UI.
-Local services: `docker compose up -d` (db:5432, redis:6379). App: `uv run uvicorn app.main:app --port 8000`.
+Stack: Python 3.12 (uv) + FastAPI + Postgres 18 + pgvector 0.8.6 + React/TS demo (self-contained; no Redis service — cache/limiter are in-process, `single_process: true`).
+Local services: `docker compose up -d` (db:5432 + api:8000). App: `uv run uvicorn app.api.app:app --port 8000`.
 Phase 0 (environment) is complete and signed off in `docs/setup/SETUP_REPORT.md`. Read its
 **Known issues** before writing code — several brief assumptions did not survive contact with reality.
 

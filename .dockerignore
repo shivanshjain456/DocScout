@@ -1,0 +1,50 @@
+# Build context exclusions for the DocScout API image.
+#
+# The governing rule is guardrail §1.4: secrets never enter the repo, and by
+# extension never enter an image layer or its history. `.env` (and any
+# `.env.*` variant except the committed `.env.example`) is excluded first.
+# Caches, VCS metadata, and generated reports are excluded so the context stays
+# small and the build stays reproducible.
+
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+.git/
+.github/
+.history/
+.venv/
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+mutants/
+.mutmut-cache/
+mutants.lock
+
+node_modules/
+ui/dist/
+ui/node_modules/
+.playwright/
+playwright-report/
+test-results/
+
+.hf_cache/
+*.pt
+*.bin
+*.safetensors
+
+evals/reports/
+evals/experiments/
+evals/bench/
+loadtests/reports/
+docs/setup/verify/
+corpus/reports/
+
+.DS_Store
+.docker/
