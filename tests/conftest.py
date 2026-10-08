@@ -25,12 +25,30 @@ from pgvector.psycopg import register_vector
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
+def pytest_configure(config: pytest.Config) -> None:
+    """Ensure pytest uses a writable basetemp if the system temp is locked."""
+    if config.option.basetemp is None:
+        try:
+            import tempfile
+
+            user = os.environ.get("USERNAME") or os.environ.get("USER") or "user"
+            candidate = Path(tempfile.gettempdir()) / f"pytest-of-{user}"
+            if candidate.exists():
+                list(candidate.iterdir())
+        except (PermissionError, OSError):
+            import tempfile
+
+            safe = Path(tempfile.gettempdir()) / f"pytest-safe-{os.getpid()}"
+            safe.mkdir(parents=True, exist_ok=True)
+            config.option.basetemp = str(safe)
+
+
 def load_dotenv() -> None:
     """Fill os.environ from .env without overriding anything already set."""
     path = REPO_ROOT / ".env"
     if not path.is_file():
         return
-    for raw in path.read_text().splitlines():
+    for raw in path.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
         if line and not line.startswith("#") and "=" in line:
             key, _, value = line.partition("=")

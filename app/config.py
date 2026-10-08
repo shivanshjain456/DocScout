@@ -25,7 +25,7 @@ def load_dotenv(path: Path | None = None) -> None:
     dotenv = DEFAULT_DOTENV if path is None else path
     if not dotenv.is_file():
         return
-    for raw in dotenv.read_text().splitlines():
+    for raw in dotenv.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue

@@ -45,7 +45,7 @@ def run_script(repo: Path, command: str) -> subprocess.CompletedProcess[str]:
     assert local.is_file(), "fixture must carry its own copy of the script"
     env = {**os.environ, "HOME": str(repo)}
     return subprocess.run(
-        ["bash", str(local), command],
+        ["bash", "scripts/git_history.sh", command],
         cwd=repo,
         capture_output=True,
         text=True,

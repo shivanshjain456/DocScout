@@ -41,7 +41,7 @@ def display_path(path: Path) -> str:
     """
     resolved = path.resolve()
     try:
-        return str(resolved.relative_to(REPO_ROOT))
+        return resolved.relative_to(REPO_ROOT).as_posix()
     except ValueError:
         return str(resolved)
 

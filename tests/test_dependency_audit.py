@@ -88,7 +88,7 @@ def test_every_suppression_is_justified_and_expires() -> None:
 # --- the committed artifacts ------------------------------------------------------------
 def test_audit_artifact_exists_and_records_a_verdict() -> None:
     assert AUDIT.is_file(), "run `make audit-deps`"
-    report = json.loads(AUDIT.read_text())
+    report = json.loads(AUDIT.read_text(encoding="utf-8"))
     assert report["schema"] == "docscout.dependency-audit/1"
     assert report["tool"] == "pip-audit"
     assert report["gate"]["fails_on"]
@@ -103,7 +103,7 @@ def test_audit_artifact_matches_the_current_lockfile() -> None:
     """
     from app.config import sha256_file
 
-    report = json.loads(AUDIT.read_text())
+    report = json.loads(AUDIT.read_text(encoding="utf-8"))
     assert report["lockfile_sha256"] == sha256_file(REPO_ROOT / "uv.lock"), (
         "docs/security/dependency-audit.json describes a different uv.lock. "
         "Run `make audit-deps` and commit the result."
@@ -112,7 +112,7 @@ def test_audit_artifact_matches_the_current_lockfile() -> None:
 
 def test_recorded_runtime_findings_agree_with_the_verdict() -> None:
     """Guards against an artifact that lists advisories while claiming to have passed."""
-    report = json.loads(AUDIT.read_text())
+    report = json.loads(AUDIT.read_text(encoding="utf-8"))
     blocking = [
         f for f in report["runtime"]["findings"] if f["installed"] and f["id"] not in SUPPRESSIONS
     ]
@@ -124,7 +124,7 @@ def test_phantom_packages_are_recorded_not_silently_dropped() -> None:
     """Stripping `+cpu` makes pip-audit read upstream torch metadata, which lists CUDA
     packages a CPU build never installs. They must be named, so a finding against one is
     recognisable as inapplicable rather than mysterious."""
-    report = json.loads(AUDIT.read_text())
+    report = json.loads(AUDIT.read_text(encoding="utf-8"))
     phantom = report["runtime"]["phantom_packages"]
     assert isinstance(phantom, list)
     assert report["runtime"]["packages_audited"] >= report["runtime"]["packages_installed"]
@@ -134,12 +134,12 @@ def test_phantom_packages_are_recorded_not_silently_dropped() -> None:
 
 def test_sbom_is_valid_cyclonedx_and_covers_the_audited_set() -> None:
     assert SBOM.is_file(), "run `make audit-deps`"
-    sbom = json.loads(SBOM.read_text())
+    sbom = json.loads(SBOM.read_text(encoding="utf-8"))
     assert sbom["bomFormat"] == "CycloneDX"
     assert sbom["specVersion"]
     components = sbom["components"]
     assert components, "SBOM lists no components"
-    report = json.loads(AUDIT.read_text())
+    report = json.loads(AUDIT.read_text(encoding="utf-8"))
     assert len(components) == report["runtime"]["packages_audited"]
     for component in components[:5]:
         assert component["name"] and component["version"]
@@ -147,7 +147,9 @@ def test_sbom_is_valid_cyclonedx_and_covers_the_audited_set() -> None:
 
 def test_sbom_contains_the_direct_runtime_dependencies() -> None:
     """A bill of materials that omits what the application imports is not one."""
-    names = {normalise(c["name"]) for c in json.loads(SBOM.read_text())["components"]}
+    names = {
+        normalise(c["name"]) for c in json.loads(SBOM.read_text(encoding="utf-8"))["components"]
+    }
     for required in ("fastapi", "psycopg", "sentence-transformers", "pgvector", "torch"):
         assert required in names, f"{required} missing from the SBOM"
 
@@ -161,7 +163,9 @@ def test_removed_vulnerable_packages_are_absent() -> None:
     was removal, since U-1 had already withdrawn the judge layer that was the only reason
     to depend on them. This fails if either returns.
     """
-    names = {normalise(c["name"]) for c in json.loads(SBOM.read_text())["components"]}
+    names = {
+        normalise(c["name"]) for c in json.loads(SBOM.read_text(encoding="utf-8"))["components"]
+    }
     assert "ragas" not in names
     assert "diskcache" not in names
 
@@ -173,7 +177,7 @@ def test_sbom_has_no_volatile_timestamp() -> None:
     Committed, that makes the file change on every run even when no dependency moved: the
     diff becomes useless for review and the CI staleness check can never pass.
     """
-    sbom = json.loads(SBOM.read_text())
+    sbom = json.loads(SBOM.read_text(encoding="utf-8"))
     assert "timestamp" not in sbom.get("metadata", {})
 
 
@@ -184,7 +188,7 @@ def test_sbom_serial_number_is_derived_from_the_component_set() -> None:
     sys.path.insert(0, str(REPO_ROOT / "scripts"))
     from audit_dependencies import SBOM_NAMESPACE
 
-    sbom = json.loads(SBOM.read_text())
+    sbom = json.loads(SBOM.read_text(encoding="utf-8"))
     fingerprint = "\n".join(
         sorted(f"{c.get('name')}=={c.get('version')}" for c in sbom["components"])
     )
@@ -198,7 +202,7 @@ def test_sbom_refs_identify_packages_not_random_numbers() -> None:
     """cyclonedx-python-lib emits refs like `BomRef.74974887.30280564`, which differ on
     every run. A bom-ref is supposed to identify the component, so they are re-keyed on
     the purl."""
-    sbom = json.loads(SBOM.read_text())
+    sbom = json.loads(SBOM.read_text(encoding="utf-8"))
     refs = [c["bom-ref"] for c in sbom["components"] if "bom-ref" in c]
     assert refs, "no bom-refs present"
     assert all(r.startswith("pkg:pypi/") for r in refs), [r for r in refs if "pkg:" not in r][:3]
@@ -207,7 +211,7 @@ def test_sbom_refs_identify_packages_not_random_numbers() -> None:
 
 def test_sbom_dependency_graph_references_resolve() -> None:
     """Rewriting refs must not leave the graph pointing at identifiers that no longer exist."""
-    sbom = json.loads(SBOM.read_text())
+    sbom = json.loads(SBOM.read_text(encoding="utf-8"))
     known = {c["bom-ref"] for c in sbom["components"] if "bom-ref" in c}
     for node in sbom.get("dependencies", []):
         for target in node.get("dependsOn", []):
@@ -216,6 +220,6 @@ def test_sbom_dependency_graph_references_resolve() -> None:
 
 def test_sbom_components_are_sorted() -> None:
     """Stable ordering is what makes a dependency change show up as one line in review."""
-    sbom = json.loads(SBOM.read_text())
+    sbom = json.loads(SBOM.read_text(encoding="utf-8"))
     pairs = [(c["name"], c["version"]) for c in sbom["components"]]
     assert pairs == sorted(pairs)

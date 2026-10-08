@@ -41,18 +41,24 @@ if docker compose ps --format '{{.Service}}' 2>/dev/null | grep -q '^db$'; then
         "SELECT '[1,0]'::vector; SHOW hnsw.iterative_scan;" 2>/dev/null | tail -1 | tr -d '[:space:]')
   FTS=$(docker compose exec -T db psql -U docscout -d docscout -tAc \
         "SELECT to_tsvector('english','Reserve Bank of India circular on payment aggregators') @@ to_tsquery('english','circular & aggregator');" 2>/dev/null | tr -d '[:space:]')
-  if [ "$EXTV" = "0.8.2" ] && [ "$COS" = "0.000" ] && [ -n "$GUC" ] && [ "$FTS" = "t" ]; then
+  if [ "$EXTV" = "0.8.6" ] && [ "$COS" = "0.000" ] && [ -n "$GUC" ] && [ "$FTS" = "t" ]; then
     ok "V2 postgres+pgvector" "pgvector=$EXTV cosine=$COS iterative_scan=$GUC fts=$FTS"
   else
-    bad "V2 postgres+pgvector" "pgvector=$EXTV cosine=$COS guc=$GUC fts=$FTS (expected 0.8.2/0.000/off/t)"
+    bad "V2 postgres+pgvector" "pgvector=$EXTV cosine=$COS guc=$GUC fts=$FTS (expected 0.8.6/0.000/off/t)"
   fi
 else
-  bad "V2 postgres+pgvector" "db service not running (docker compose up -d)"
+  bad "V2 postgres+pgvector" "db service not running (docker compose up -d db)"
 fi
 
-# ---------- V3 redis ----------
-[ "$(docker compose exec -T redis redis-cli ping 2>/dev/null | tr -d '[:space:]')" = "PONG" ] \
-  && ok "V3 redis" "PONG" || bad "V3 redis" "no PONG"
+# ---------- V3 in-process cache (no Redis service) ----------
+# Compose deliberately declares no Redis: cache + limiter live in-process and
+# /healthz reports single_process:true. A container nothing talks to would be
+# scaffolding presented as architecture (see test_config_coherence.py).
+if docker compose config --services 2>/dev/null | grep -qx 'redis'; then
+  bad "V3 redis" "compose declares a redis service nothing in app/ connects to"
+else
+  ok "V3 redis" "no redis service by design (in-process cache; single_process:true)"
+fi
 
 # ---------- V4 python env ----------
 if uv run python -c "
@@ -193,10 +199,12 @@ else
 fi
 
 # ---------- V17 clean running state ----------
+# Local topology is db (+ api when deployed). No other containers; no cloud
+# resources are created by `make deploy` (local-only by design).
 running=$(docker compose ps --services --filter status=running 2>/dev/null | sort | tr '\n' ' ' | xargs)
 others=$(docker ps --format '{{.Names}}' 2>/dev/null | grep -v '^docscout_' | tr '\n' ' ' | xargs)
-if [ "$running" = "db redis" ] && [ -z "$others" ]; then
-  ok "V17 clean state" "only db + redis running; no other containers; 0 cloud resources"
+if { [ "$running" = "db" ] || [ "$running" = "db api" ]; } && [ -z "$others" ]; then
+  ok "V17 clean state" "running='$running'; no other containers; 0 cloud resources"
 else
   bad "V17 clean state" "running='$running' other_containers='$others'"
 fi

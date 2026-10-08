@@ -71,7 +71,7 @@ def _host_context() -> dict[str, Any]:
     mem_kb = 0
     meminfo = Path("/proc/meminfo")
     if meminfo.exists():
-        for line in meminfo.read_text().splitlines():
+        for line in meminfo.read_text(encoding="utf-8").splitlines():
             if line.startswith("MemTotal:"):
                 mem_kb = int(line.split()[1])
                 break
@@ -89,7 +89,7 @@ def _provenance(goldset_path: Path, conn: psycopg.Connection[tuple[object, ...]]
     metadata_path = goldset_path.parent / "metadata.json"
     metadata: dict[str, Any] = {}
     if metadata_path.exists():
-        metadata = json.loads(metadata_path.read_text())
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     counts = conn.execute(
         "SELECT (SELECT count(*) FROM documents), (SELECT count(*) FROM chunks)"
     ).fetchone()
@@ -403,7 +403,9 @@ def write_report(
         ],
     }
     results_path = out_dir / "results.json"
-    results_path.write_text(json.dumps(results, indent=2, ensure_ascii=False) + "\n")
+    results_path.write_text(
+        json.dumps(results, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
 
     ranked = sorted(runs, key=lambda r: -r.by_cutoff[5].recall)
     winner, *losers = ranked
@@ -552,7 +554,7 @@ def write_report(
     )
     lines.append("Raw per-item rankings: `results.json`.\n")
 
-    (out_dir / "report.md").write_text("\n".join(lines))
+    (out_dir / "report.md").write_text("\n".join(lines), encoding="utf-8")
     return results_path
 
 

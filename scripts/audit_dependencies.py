@@ -178,7 +178,7 @@ def export_requirements(dev: bool) -> list[str]:
 def audit(requirements: list[str], label: str, installed: set[str]) -> AuditResult:
     """Run pip-audit over a pinned requirement list."""
     scratch = REPO_ROOT / f".audit-{label}.txt"
-    scratch.write_text("\n".join(requirements) + "\n")
+    scratch.write_text("\n".join(requirements) + "\n", encoding="utf-8")
     try:
         result = run(
             [
@@ -241,7 +241,7 @@ def audit(requirements: list[str], label: str, installed: set[str]) -> AuditResu
 def generate_sbom(requirements: list[str]) -> bool:
     """Write a CycloneDX SBOM for the runtime set. Returns True on success."""
     scratch = REPO_ROOT / ".sbom-input.txt"
-    scratch.write_text("\n".join(requirements) + "\n")
+    scratch.write_text("\n".join(requirements) + "\n", encoding="utf-8")
     try:
         result = run(
             [
@@ -294,7 +294,7 @@ def generate_sbom(requirements: list[str]) -> bool:
         fingerprint = "\n".join(sorted(f"{c.get('name')}=={c.get('version')}" for c in components))
         sbom["serialNumber"] = f"urn:uuid:{uuid.uuid5(SBOM_NAMESPACE, fingerprint)}"
         sbom.get("metadata", {}).pop("timestamp", None)
-        SBOM_PATH.write_text(json.dumps(sbom, indent=2, sort_keys=True) + "\n")
+        SBOM_PATH.write_text(json.dumps(sbom, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         return True
     finally:
         scratch.unlink(missing_ok=True)
@@ -343,7 +343,7 @@ def main(argv: list[str] | None = None) -> int:
         },
     }
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    AUDIT_JSON.write_text(json.dumps(payload, indent=2) + "\n")
+    AUDIT_JSON.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
     if not args.skip_sbom and generate_sbom(runtime):
         print(f"  SBOM     {SBOM_PATH.relative_to(REPO_ROOT)}")

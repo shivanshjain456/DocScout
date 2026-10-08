@@ -69,7 +69,7 @@ def main() -> int:
         source = SANDBOX / f"{module}.py"
         if not source.is_file():
             raise SystemExit(f"{source} is missing; the sandbox is incomplete")
-        generated = set(_MUTANT_DEF.findall(source.read_text()))
+        generated = set(_MUTANT_DEF.findall(source.read_text(encoding="utf-8")))
         survived = {name for mod, name in survivors if mod == module}
         unknown = survived - generated
         if unknown:
@@ -108,7 +108,7 @@ def main() -> int:
     }
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT.write_text(json.dumps(payload, indent=2) + "\n")
+    OUTPUT.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
     print(f"  {'module':<9} {'mutants':>8} {'killed':>7} {'survived':>9} {'score':>7}")
     for module, row in modules.items():

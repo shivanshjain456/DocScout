@@ -256,7 +256,7 @@ def main() -> int:
         },
         "documents": records,
     }
-    (outdir / "manifest.json").write_text(json.dumps(manifest, indent=2))
+    (outdir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
     print(
         f"\n{'=' * 62}\nRESULT: {ok}/{len(real)} documents extracted >500 chars "

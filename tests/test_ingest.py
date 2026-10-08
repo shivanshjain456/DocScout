@@ -332,7 +332,7 @@ def test_extraction_reproduces_every_recorded_char_count() -> None:
     upgrade or an edit to the normaliser changed that, chunk boundaries would move and
     ADR-0003's evidence would quietly stop describing the shipped pipeline.
     """
-    records = json.loads((CORPUS_DIR / "manifest.json").read_text())["documents"]
+    records = json.loads((CORPUS_DIR / "manifest.json").read_text(encoding="utf-8"))["documents"]
     checked = 0
     for record in records:
         local = REPO_ROOT / str(record["local_path"])

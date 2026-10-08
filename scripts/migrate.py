@@ -63,7 +63,7 @@ def load_dotenv(path: Path) -> None:
     """
     if not path.is_file():
         return
-    for raw in path.read_text().splitlines():
+    for raw in path.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue

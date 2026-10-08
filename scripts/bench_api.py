@@ -98,7 +98,9 @@ def summarise(values: list[float], *, label: str = "phase") -> dict[str, float]:
 def load_queries(limit: int) -> list[str]:
     """Real questions from the gold set, cycled if more samples than items are requested."""
     questions = [
-        json.loads(line)["question"] for line in GOLDSET.read_text().splitlines() if line.strip()
+        json.loads(line)["question"]
+        for line in GOLDSET.read_text(encoding="utf-8").splitlines()
+        if line.strip()
     ]
     if not questions:
         raise SystemExit("gold set is empty; nothing to benchmark against")
@@ -242,7 +244,7 @@ def main(argv: list[str] | None = None) -> int:
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     out_dir = args.out or (REPO_ROOT / "evals" / "bench" / stamp)
     out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "bench.json").write_text(json.dumps(payload, indent=2) + "\n")
+    (out_dir / "bench.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
     print()
     print(f"  {'phase':<22} {'mean':>9} {'p50':>9} {'p95':>9} {'p99':>9} {'max':>9}")

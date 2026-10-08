@@ -64,6 +64,8 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .pytest_cache/
+.pytest_tmp/
+.cache/
 *.egg-info/
 
 # --- node / ui ---

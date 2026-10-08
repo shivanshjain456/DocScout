@@ -238,7 +238,7 @@ def test_gate_result_serialises_for_the_raw_artifact() -> None:
 def test_committed_baselines_match_the_schema_the_gate_reads() -> None:
     """Guards against a ledger entry that the gate cannot interpret."""
     for path in sorted(gate.BASELINES_DIR.glob("*.json")):
-        record = json.loads(Path(path).read_text())
+        record = json.loads(Path(path).read_text(encoding="utf-8"))
         assert record["schema"] == "docscout.eval.baseline/1", path
         for key in (
             "run_utc",

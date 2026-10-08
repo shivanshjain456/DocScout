@@ -64,7 +64,7 @@ CALIBRATION_CLAIMS = (
 
 
 def published_text() -> list[tuple[Path, str]]:
-    return [(path, path.read_text()) for path in PUBLISHED_DOCS if path.is_file()]
+    return [(path, path.read_text(encoding="utf-8")) for path in PUBLISHED_DOCS if path.is_file()]
 
 
 # --- no withdrawn metric may reappear as a value ----------------------------------------
@@ -78,7 +78,7 @@ def test_no_withdrawn_metric_is_published_as_a_value(path: Path) -> None:
     """
     if not path.is_file():  # pragma: no cover - a doc being absent is another test's job
         pytest.skip(f"{path.name} not present")
-    hits = [m.group(0).strip() for m in REPORTED_VALUE.finditer(path.read_text())]
+    hits = [m.group(0).strip() for m in REPORTED_VALUE.finditer(path.read_text(encoding="utf-8"))]
     assert not hits, (
         f"{path.name} publishes a withdrawn metric as a value: {hits}. "
         "U-1 closed as outcome (b) (EVAL_PROTOCOL §4.2): faithfulness, answer relevance, "
@@ -91,7 +91,7 @@ def test_no_withdrawn_metric_is_published_as_a_value(path: Path) -> None:
 def test_no_document_claims_a_calibrated_judge(path: Path) -> None:
     if not path.is_file():  # pragma: no cover
         pytest.skip(f"{path.name} not present")
-    text = path.read_text().lower()
+    text = path.read_text(encoding="utf-8").lower()
     for claim in CALIBRATION_CLAIMS:
         # "drops the calibrated-judge claim" and similar are withdrawals, not claims.
         for match in re.finditer(re.escape(claim), text):
@@ -123,7 +123,7 @@ def test_no_document_claims_a_calibrated_judge(path: Path) -> None:
 # --- the model configuration must stay consistent with the re-scope ---------------------
 def test_no_hosted_role_is_marked_verified() -> None:
     """Phase 0 spend was $0.00 and no key has been provisioned since."""
-    config = json.loads(MODELS_CONFIG.read_text())
+    config = json.loads(MODELS_CONFIG.read_text(encoding="utf-8"))
     for role, entry in config.items():
         if role.startswith("_") or not isinstance(entry, dict):
             continue
@@ -140,13 +140,13 @@ def test_judge_fast_is_not_ci_approved() -> None:
     §5 has never run, so this must be false. It is the single flag that would let an
     uncalibrated judge gate the build.
     """
-    config = json.loads(MODELS_CONFIG.read_text())
+    config = json.loads(MODELS_CONFIG.read_text(encoding="utf-8"))
     assert config["judge_fast"]["ci_approved"] is False
 
 
 def test_models_config_records_the_rescope() -> None:
     """The decision must be discoverable from the config, not only from the protocol."""
-    config = json.loads(MODELS_CONFIG.read_text())
+    config = json.loads(MODELS_CONFIG.read_text(encoding="utf-8"))
     rescope = config.get("_u1_rescope")
     assert rescope is not None, "config/models.json does not record the U-1 decision"
     assert rescope["outcome"] == "b"
@@ -162,7 +162,7 @@ def test_committed_eval_reports_declare_no_judge() -> None:
     reports = sorted((REPO_ROOT / "evals" / "reports").glob("*/results.json"))
     assert reports, "no committed eval report to check"
     for report in reports:
-        payload = json.loads(report.read_text())
+        payload = json.loads(report.read_text(encoding="utf-8"))
         assert payload.get("judge") is None, f"{report} claims a judge"
         assert payload["provenance"]["judge"] is None, f"{report} provenance claims a judge"
         assert payload["provenance"]["generator"] is None, f"{report} claims a generator"
@@ -170,7 +170,7 @@ def test_committed_eval_reports_declare_no_judge() -> None:
 
 def test_the_protocol_records_the_closure_itself() -> None:
     """Guards against the decision being reverted in prose while the tests stay green."""
-    text = (REPO_ROOT / "docs" / "eval" / "EVAL_PROTOCOL.md").read_text()
+    text = (REPO_ROOT / "docs" / "eval" / "EVAL_PROTOCOL.md").read_text(encoding="utf-8")
     assert "U-1 CLOSED" in text
     assert "outcome (b)" in text
     for required in ("Reopening condition", "nothing to judge"):
@@ -215,6 +215,9 @@ def test_guard_fires_on_a_real_document_when_violated(tmp_path: Path) -> None:
     """End-to-end proof: take a real published doc, inject a number, confirm it trips."""
     source = REPO_ROOT / "docs" / "QUALITY_BAR.md"
     poisoned = tmp_path / "QUALITY_BAR.md"
-    poisoned.write_text(source.read_text() + "\n\nFaithfulness: 0.91 (measured).\n")
-    assert REPORTED_VALUE.search(poisoned.read_text())
-    assert not REPORTED_VALUE.search(source.read_text())
+    poisoned.write_text(
+        source.read_text(encoding="utf-8") + "\n\nFaithfulness: 0.91 (measured).\n",
+        encoding="utf-8",
+    )
+    assert REPORTED_VALUE.search(poisoned.read_text(encoding="utf-8"))
+    assert not REPORTED_VALUE.search(source.read_text(encoding="utf-8"))

@@ -116,18 +116,18 @@ def _git_commit() -> str:
     head_file = git_dir / "HEAD"
     if not head_file.is_file():
         return "unknown"
-    head = head_file.read_text().strip()
+    head = head_file.read_text(encoding="utf-8").strip()
     if not head.startswith("ref:"):
         # Detached HEAD: the file already holds the sha.
         return head
     ref = head.split(" ", 1)[1].strip()
     loose = git_dir / ref
     if loose.is_file():
-        return loose.read_text().strip()
+        return loose.read_text(encoding="utf-8").strip()
     # Refs get packed by `git gc`, after which the loose file no longer exists.
     packed = git_dir / "packed-refs"
     if packed.is_file():
-        for line in packed.read_text().splitlines():
+        for line in packed.read_text(encoding="utf-8").splitlines():
             if line.startswith(("#", "^")):
                 continue
             parts = line.split(" ", 1)
@@ -204,7 +204,7 @@ def load_baselines(limit: int = BASELINE_WINDOW) -> list[dict[str, Any]]:
         return []
     records = []
     for path in sorted(BASELINES_DIR.glob("*.json")):
-        records.append(json.loads(path.read_text()))
+        records.append(json.loads(path.read_text(encoding="utf-8")))
     records.sort(key=lambda r: str(r["run_utc"]))
     return records[-limit:]
 
@@ -474,14 +474,14 @@ def main(argv: list[str] | None = None) -> int:
         results_path = (args.results or latest_report()).resolve()
         if not results_path.is_file():
             raise GateError(f"no such results file: {results_path}")
-        results = json.loads(results_path.read_text())
+        results = json.loads(results_path.read_text(encoding="utf-8"))
 
         if args.accept:
             record = baseline_record(results, results_path)
             BASELINES_DIR.mkdir(parents=True, exist_ok=True)
             stamp = str(record["run_utc"]).replace(":", "").replace("-", "")
             out = BASELINES_DIR / f"{stamp}.json"
-            out.write_text(json.dumps(record, indent=2) + "\n")
+            out.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
             print(f"  accepted baseline {record['run_utc']}")
             print(f"  metrics {record['metrics']}")
             print(f"  written {_display(out)}")
@@ -489,7 +489,7 @@ def main(argv: list[str] | None = None) -> int:
 
         result = evaluate(results, load_baselines())
         gate_path = results_path.parent / "gate.json"
-        gate_path.write_text(json.dumps(result.as_dict(), indent=2) + "\n")
+        gate_path.write_text(json.dumps(result.as_dict(), indent=2) + "\n", encoding="utf-8")
         print(render(result))
         print(f"\n  raw: {_display(gate_path)}")
         return 0 if result.passed else 1

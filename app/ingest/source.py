@@ -92,7 +92,7 @@ def load_manifest(path: Path = DEFAULT_MANIFEST) -> list[dict[str, object]]:
             f"{path} does not exist. Run `uv run python scripts/verify_corpus_fetch.py` "
             "to fetch the corpus first."
         )
-    payload = json.loads(path.read_text())
+    payload = json.loads(path.read_text(encoding="utf-8"))
     records = payload.get("documents")
     if not isinstance(records, list):
         raise ManifestError(f"{path} has no 'documents' list")
