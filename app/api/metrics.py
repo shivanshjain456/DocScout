@@ -142,6 +142,17 @@ MANIFEST_CHANGED = Counter(
     "Count of detected manifest or document changes during corpus refresh.",
 )
 
+CACHE_INVALIDATIONS = Counter(
+    "docscout_cache_invalidations_total",
+    "Count of cache invalidation events triggered on supersession or admin action.",
+    ("reason",),
+)
+
+CORPUS_GENERATION = Gauge(
+    "docscout_corpus_generation",
+    "Monotonically increasing corpus generation counter for the in-memory cache and indices.",
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

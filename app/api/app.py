@@ -31,7 +31,8 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from threading import Lock
+from typing import Any, Literal
 
 import structlog
 from fastapi import Depends, FastAPI, Request, status
@@ -41,12 +42,21 @@ from psycopg_pool import ConnectionPool
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api import demo, metrics
-from app.api.cache import DEFAULT_RESULT_TTL_SECONDS, TTLCache
+from app.api.cache import (
+    DEFAULT_RESULT_TTL_SECONDS,
+    TTLCache,
+    register_invalidation_listener,
+    trigger_corpus_invalidation,
+    unregister_invalidation_listener,
+)
 from app.api.models import (
+    CacheInvalidateRequest,
+    CacheInvalidateResponse,
     Confidence,
-    HealthResponse,
+    LivenessResponse,
     Passage,
     Provenance,
+    ReadinessResponse,
     SearchRequest,
     SearchResponse,
     Timings,
@@ -92,6 +102,12 @@ class CachedResult:
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Pay every fixed cost before the first request is served."""
     configure_logging()
+    app.state.started_at = time.monotonic()
+    app.state.corpus_generation = 1
+    app.state.bm25_needs_reload = False
+    app.state.bm25_lock = Lock()
+    metrics.CORPUS_GENERATION.set(1)
+
     app.state.api_keys = load_keys()  # raises, by design, if none are configured
 
     app.state.pool = ConnectionPool(
@@ -124,9 +140,27 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.generator = get_generator()
 
     metrics.CORPUS_CHUNKS.set(app.state.corpus_chunks)
+
+    def _on_corpus_invalidated(reason: str | None = None) -> None:
+        cleared = len(app.state.result_cache)
+        app.state.result_cache.clear()
+        app.state.corpus_generation += 1
+        app.state.bm25_needs_reload = True
+        metrics.CORPUS_GENERATION.set(app.state.corpus_generation)
+        metrics.CACHE_INVALIDATIONS.labels(reason or "unknown").inc()
+        logger.info(
+            "cache.invalidated",
+            reason=reason,
+            generation=app.state.corpus_generation,
+            cleared_entries=cleared,
+        )
+
+    register_invalidation_listener(_on_corpus_invalidated)
+
     logger.info(
         "api.ready",
         corpus_chunks=app.state.corpus_chunks,
+        corpus_generation=app.state.corpus_generation,
         embedding_model=MODEL_ID,
         api_keys=len(app.state.api_keys),
         rate_limit_per_minute=RATE_LIMIT_REQUESTS,
@@ -134,6 +168,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     try:
         yield
     finally:
+        unregister_invalidation_listener(_on_corpus_invalidated)
         app.state.pool.close()
 
 
@@ -266,26 +301,76 @@ def prometheus_metrics() -> Response:
     return Response(content=body, media_type=content_type)
 
 
-@app.get("/healthz", response_model=HealthResponse, tags=["ops"])
-def healthz(request: Request) -> HealthResponse:
-    """Liveness, readiness, and operational freshness in one place, unauthenticated.
+@app.get("/healthz", response_model=LivenessResponse, tags=["ops"])
+def healthz(request: Request) -> LivenessResponse:
+    """Process liveness probe for orchestrators and balancers, unauthenticated.
 
-    A health check behind auth cannot be used by the thing that needs it most -- a load
-    balancer or orchestrator -- and this endpoint reveals only operational health,
-    freshness state, and configuration names.
+    Reflects only internal process health and event loop responsiveness.
+    Executes NO database or network I/O, ensuring that downstream database blips,
+    migrations, or network hiccups never induce cascading pod restart loops.
+    """
+    state = request.app.state
+    uptime = max(0.0, time.monotonic() - getattr(state, "started_at", time.monotonic()))
+    return LivenessResponse(
+        status="ok",
+        uptime_seconds=round(uptime, 2),
+        model_loaded=getattr(state, "embedder", None) is not None,
+        single_process=True,
+        corpus_generation=getattr(state, "corpus_generation", 1),
+    )
+
+
+@app.get(
+    "/readyz",
+    response_model=ReadinessResponse,
+    tags=["ops"],
+    responses={
+        200: {"description": "Service is ready to serve traffic (ok or degraded/stale)"},
+        503: {"description": "Service is unready (database unreachable or empty corpus)"},
+    },
+)
+def readyz(request: Request, response: Response) -> ReadinessResponse:
+    """Traffic readiness probe for load balancers and mesh routers, unauthenticated.
+
+    Verifies pooled database connectivity, chunk count (> 0), embedding and lexical
+    index readiness, and freshness budget status. Returns HTTP 503 if downstream
+    dependencies prevent serving query traffic.
     """
     state = request.app.state
     database_ok = True
-    chunks = state.corpus_chunks
+    chunks = 0
     sync_state = None
+    bm25_ready = False
+
     try:
         with state.pool.connection() as conn:
+            # Check if BM25 index needs reload
+            if getattr(state, "bm25_needs_reload", False) is True:
+                with getattr(state, "bm25_lock", Lock()):
+                    if getattr(state, "bm25_needs_reload", False) is True:
+                        state.bm25 = BM25Index(conn)
+                        row = conn.execute("SELECT count(*) FROM chunks").fetchone()
+                        state.corpus_chunks = as_int(row[0]) if row else 0
+                        metrics.CORPUS_CHUNKS.set(state.corpus_chunks)
+                        state.bm25_needs_reload = False
+
             row = conn.execute("SELECT count(*) FROM chunks").fetchone()
             chunks = as_int(row[0]) if row else 0
+            state.corpus_chunks = chunks
+            metrics.CORPUS_CHUNKS.set(chunks)
             sync_state = get_sync_state(conn)
-    except Exception:  # noqa: BLE001 - health must report, never raise
-        logger.warning("healthz.database_probe_failed", exc_info=True)
+            bm25_ready = getattr(state, "bm25", None) is not None
+    except Exception:  # noqa: BLE001 - probe must report, never crash
+        logger.warning("readyz.database_probe_failed", exc_info=True)
         database_ok = False
+
+    # Check for external sync updates
+    if sync_state is not None:
+        if getattr(state, "last_seen_sync_updated_at", None) is None:
+            state.last_seen_sync_updated_at = sync_state.updated_at
+        elif sync_state.updated_at > state.last_seen_sync_updated_at:
+            state.last_seen_sync_updated_at = sync_state.updated_at
+            trigger_corpus_invalidation("external_sync_detected")
 
     budget = staleness_budget_hours()
     last_checked_at: datetime | None = None
@@ -307,27 +392,34 @@ def healthz(request: Request) -> HealthResponse:
         metrics.CORPUS_VERSIONS_CURRENT.set(sync_state.documents_current)
         metrics.CORPUS_VERSIONS_SUPERSEDED.set(sync_state.documents_superseded)
 
-    is_healthy = database_ok and chunks > 0 and not is_stale
-    if is_stale:
-        logger.warning(
-            "healthz.corpus_stale",
-            stale_hours=stale_hours,
-            staleness_budget_hours=budget,
-            last_checked_at=last_checked_at.isoformat() if last_checked_at else None,
-        )
+    model_loaded = getattr(state, "embedder", None) is not None
+    is_ready = database_ok and chunks > 0 and model_loaded and bm25_ready
 
-    return HealthResponse(
-        status="ok" if is_healthy else "degraded",
+    ready_status: Literal["ok", "degraded", "unready"]
+    if not is_ready:
+        ready_status = "unready"
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    elif is_stale:
+        ready_status = "degraded"
+        response.status_code = status.HTTP_200_OK
+    else:
+        ready_status = "ok"
+        response.status_code = status.HTTP_200_OK
+
+    return ReadinessResponse(
+        status=ready_status,
         database=database_ok,
         corpus_chunks=chunks,
         embedding_model=MODEL_ID,
-        model_loaded=state.embedder is not None,
+        model_loaded=model_loaded,
+        bm25_ready=bm25_ready,
         cache={
             **state.result_cache.stats.as_dict(),
             "entries": len(state.result_cache),
         },
         rate_limit_per_minute=RATE_LIMIT_REQUESTS,
         single_process=True,
+        corpus_generation=getattr(state, "corpus_generation", 1),
         last_checked_at=last_checked_at,
         stale_hours=round(stale_hours, 2) if stale_hours is not None else None,
         staleness_budget_hours=budget,
@@ -377,6 +469,7 @@ def search(
     and optional citation-grounded answer generation sitting behind them."""
     started = time.perf_counter()
     state = request.app.state
+    req_generation = getattr(state, "corpus_generation", 1)
     cache_key = (payload.query, payload.mode, payload.k, payload.generate_answer)
 
     cached: CachedResult | None = state.result_cache.get(cache_key) if payload.use_cache else None
@@ -414,6 +507,19 @@ def search(
     config = _config_for(payload)
     retrieval_started = time.perf_counter()
     with state.pool.connection() as conn:
+        if getattr(state, "bm25_needs_reload", False) is True:
+            with getattr(state, "bm25_lock", Lock()):
+                if getattr(state, "bm25_needs_reload", False) is True:
+                    state.bm25 = BM25Index(conn)
+                    row = conn.execute("SELECT count(*) FROM chunks").fetchone()
+                    state.corpus_chunks = as_int(row[0]) if row else 0
+                    metrics.CORPUS_CHUNKS.set(state.corpus_chunks)
+                    state.bm25_needs_reload = False
+                    logger.info(
+                        "bm25.reloaded",
+                        corpus_chunks=state.corpus_chunks,
+                        generation=state.corpus_generation,
+                    )
         retriever = Retriever(conn, embedder=state.embedder, bm25=state.bm25)
         hits = retriever.retrieve(payload.query, config)
         assessed = retriever.assess_confidence(payload.query, hits)
@@ -445,6 +551,11 @@ def search(
         corpus_manifest_digest=state.manifest_digest,
         corpus_chunks=state.corpus_chunks,
         retrieval=config.as_dict(),
+        corpus_generation=(
+            state.corpus_generation
+            if isinstance(getattr(state, "corpus_generation", None), int)
+            else 1
+        ),
     )
 
     generated_answer: GeneratedAnswer | None = None
@@ -462,7 +573,15 @@ def search(
         answer=generated_answer,
     )
     if payload.use_cache:
-        state.result_cache.put(cache_key, result)
+        # Check that generation hasn't moved while request was in flight
+        if getattr(state, "corpus_generation", 1) == req_generation:
+            state.result_cache.put(cache_key, result)
+        else:
+            logger.info(
+                "search.cache_skip_stale_generation",
+                req_generation=req_generation,
+                current_generation=getattr(state, "corpus_generation", 1),
+            )
 
     total_ms = (time.perf_counter() - started) * 1000.0
     logger.info(
@@ -531,3 +650,56 @@ def chat_endpoint(
     """Chat-compatible endpoint returning citation-grounded answers behind retrieved passages."""
     req = payload.model_copy(update={"generate_answer": True})
     return search(req, request, fingerprint)
+
+
+@app.post(
+    "/v1/admin/cache/invalidate",
+    response_model=CacheInvalidateResponse,
+    tags=["admin"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+    },
+)
+def admin_invalidate_cache(
+    payload: CacheInvalidateRequest,
+    request: Request,
+    fingerprint: str = Depends(require_api_key),
+) -> CacheInvalidateResponse:
+    """Explicitly invalidate the in-memory result cache and reload BM25 index.
+
+    Used by ingestion pipelines, operators, or external cron tasks to immediately
+    evict cached queries and rescan active chunks from PostgreSQL.
+    """
+    state = request.app.state
+    prev_gen = getattr(state, "corpus_generation", 1)
+    cleared = len(state.result_cache)
+    state.result_cache.clear()
+    state.corpus_generation = prev_gen + 1
+    state.bm25_needs_reload = True
+    metrics.CORPUS_GENERATION.set(state.corpus_generation)
+    metrics.CACHE_INVALIDATIONS.labels(payload.reason).inc()
+
+    with state.pool.connection() as conn:
+        with getattr(state, "bm25_lock", Lock()):
+            state.bm25 = BM25Index(conn)
+            row = conn.execute("SELECT count(*) FROM chunks").fetchone()
+            state.corpus_chunks = as_int(row[0]) if row else 0
+            metrics.CORPUS_CHUNKS.set(state.corpus_chunks)
+            state.bm25_needs_reload = False
+
+    logger.info(
+        "admin.cache_invalidated",
+        key_fingerprint=fingerprint,
+        reason=payload.reason,
+        previous_generation=prev_gen,
+        new_generation=state.corpus_generation,
+        entries_cleared=cleared,
+        corpus_chunks=state.corpus_chunks,
+    )
+    return CacheInvalidateResponse(
+        status="ok",
+        previous_generation=prev_gen,
+        new_generation=state.corpus_generation,
+        entries_cleared=cleared,
+        corpus_chunks=state.corpus_chunks,
+    )

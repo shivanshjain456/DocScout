@@ -235,14 +235,29 @@ def test_the_endpoint_enforces_the_limit(
 
 
 # --- ops surface ------------------------------------------------------------------------
-def test_healthz_is_unauthenticated_and_reports_readiness(client: TestClient) -> None:
-    body = client.get("/healthz").json()
+def test_healthz_is_unauthenticated_and_reports_liveness(client: TestClient) -> None:
+    res = client.get("/healthz")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["status"] == "ok"
+    assert body["model_loaded"] is True
+    assert body["single_process"] is True
+    assert body["uptime_seconds"] >= 0.0
+    assert body["corpus_generation"] >= 1
+
+
+def test_readyz_is_unauthenticated_and_reports_readiness(client: TestClient) -> None:
+    res = client.get("/readyz")
+    assert res.status_code == 200
+    body = res.json()
     assert body["status"] == "ok"
     assert body["database"] is True
     assert body["corpus_chunks"] > 0
     assert body["model_loaded"] is True
+    assert body["bm25_ready"] is True
     # Stated so nobody reads these numbers as cluster-wide.
     assert body["single_process"] is True
+    assert body["corpus_generation"] >= 1
     # P0-2: operational freshness
     assert "last_checked_at" in body
     assert body["last_checked_at"] is not None

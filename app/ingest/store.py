@@ -33,6 +33,7 @@ import numpy as np
 import psycopg
 from pgvector.psycopg import register_vector
 
+from app.api.cache import trigger_corpus_invalidation
 from app.ingest.chunk import Chunk
 from app.ingest.ids import chunk_id
 from app.ingest.source import SourceDocument
@@ -360,13 +361,18 @@ def store_document(conn: psycopg.Connection[Any], prepared: PreparedDocument) ->
                     rows,
                 )
 
-            return StoreOutcome(
+            outcome = StoreOutcome(
                 url=doc.url,
                 action=action,
                 document_id=document_id,
                 version_id=version_id,
                 chunks_written=len(rows),
             )
+            if action == Action.SUPERSEDED:
+                trigger_corpus_invalidation(f"superseded: {doc.url}")
+            elif action == Action.INSERTED:
+                trigger_corpus_invalidation(f"inserted: {doc.url}")
+            return outcome
 
     except psycopg.errors.UniqueViolation as exc:
         # Another ingest stored this payload between the check and the insert. The

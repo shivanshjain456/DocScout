@@ -21,8 +21,13 @@ from __future__ import annotations
 
 import time
 from collections import OrderedDict
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from threading import Lock
+
+import structlog
+
+logger = structlog.get_logger("docscout.cache")
 
 DEFAULT_RESULT_TTL_SECONDS = 300.0
 
@@ -105,3 +110,39 @@ class TTLCache[K, V]:
     def __len__(self) -> int:
         with self._lock:
             return len(self._data)
+
+
+InvalidationCallback = Callable[[str | None], None]
+
+_INVALIDATION_LISTENERS: list[InvalidationCallback] = []
+_LISTENERS_LOCK: Lock = Lock()
+
+
+def register_invalidation_listener(callback: InvalidationCallback) -> None:
+    """Register a callback to be invoked when corpus data is superseded or changed."""
+    with _LISTENERS_LOCK:
+        if callback not in _INVALIDATION_LISTENERS:
+            _INVALIDATION_LISTENERS.append(callback)
+
+
+def unregister_invalidation_listener(callback: InvalidationCallback) -> None:
+    """Unregister an invalidation callback."""
+    with _LISTENERS_LOCK:
+        if callback in _INVALIDATION_LISTENERS:
+            _INVALIDATION_LISTENERS.remove(callback)
+
+
+def trigger_corpus_invalidation(reason: str | None = None) -> int:
+    """Notify all registered listeners that corpus content has changed.
+
+    Returns the number of listeners notified.
+    Any exception in an individual listener is caught and does not abort others.
+    """
+    with _LISTENERS_LOCK:
+        listeners = list(_INVALIDATION_LISTENERS)
+    for listener in listeners:
+        try:
+            listener(reason)
+        except Exception:
+            logger.warning("cache.listener_failed", reason=reason, exc_info=True)
+    return len(listeners)

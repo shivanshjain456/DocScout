@@ -287,30 +287,34 @@ with their own decision record (see ADR-0010 rejected alternative A). The
 30–90 second demo video the brief asks for also does not exist.
 
 **The serving process is single-worker, and its cache and rate limiter live in memory.**
-Neither survives a restart and neither coordinates across processes. `/healthz` reports
-`single_process: true` so these counters are never mistaken for cluster-wide figures. A
-multi-worker deployment needs Redis — `REDIS_URL` is already in `.env.example` — and the
-in-process versions should be replaced rather than scaled.
+Neither survives a restart and neither coordinates across processes. `GET /healthz` reports
+`single_process: true` so these counters are never mistaken for cluster-wide figures. Liveness
+and readiness are cleanly separated: `GET /healthz` performs zero database I/O to prevent
+pod restart storms during database blips, while `GET /readyz` checks connection pooling,
+chunk availability, and corpus staleness budgets (ADR-0014). A multi-worker deployment needs
+Redis — `REDIS_URL` is already in `.env.example` — and the in-process versions should be
+replaced rather than scaled.
 
 **The cost figure is compute only, and its price is a third-party listing.** $0.08 per
 million queries covers one t4g.small serving retrieval; it is not an AWS quotation and does
 not include storage, egress or the LLM that does not exist yet. Re-check the price before
 anyone acts on it.
 
-**There are nine ADRs, one more than the eight the brief suggests as an upper bound.** Every
-topic it names has one — pgvector over the alternatives (0004), hybrid over dense-only (0006),
-the embedding arm (0002), chunk size (0003), the reranker and why-not-HyDE (0009) — plus three
-that earned their place by being decisions the project actually had to make and defend:
-content-derived chunk ids (0005), arm-anchored fusion (0007), and serving evidence rather than
-generated answers (0008). None is filler; each has a Rejected Alternatives section with measured
-reasons.
+**There are 14 ADRs documenting the full decision lineage.** Every major architectural choice
+has a dedicated record in `docs/decisions/` with rejected alternatives and measured reasons:
+pgvector over alternatives (0004), hybrid over dense-only (0006), embedding model (0002),
+chunk geometry (0003), reranker trade-offs (0009), content-derived chunk IDs (0005),
+arm-anchored fusion (0007), serving evidence rather than ungrounded prose (0008), local deployment
+artifact (0010), calibrated generation (0011), corpus scale expansion (0012), scheduled corpus
+refresh (0013), and cache invalidation on supersession with liveness/readiness split (0014).
 
-**Superseded document versions are retained but never retrieved.** RBI and SEBI amend and
-withdraw circulars routinely. Retrieval filters to the current version of each document;
-superseded rows stay in the database because FR-4 makes retention a guarantee and the
-application role holds no DELETE. The corpus currently has exactly one version per
-document, so this path is proven by tests rather than exercised by the live corpus — which
-is precisely how the defect stayed invisible until it was looked for.
+**Superseded document versions are retained but never retrieved or cached.** RBI and SEBI amend and
+withdraw circulars routinely. Retrieval strictly filters to the current version of each document;
+superseded rows stay in PostgreSQL because FR-4 makes retention an audit guarantee and the
+application role holds no DELETE. When a version is superseded, in-memory caches are purged
+immediately via event-driven hooks, the BM25 term index is reloaded, and generation counters are
+bumped (ADR-0014, tested by `tests/test_supersession_cache_invalidation.py`), guaranteeing that
+stale passages are never served.
 
 **Reranking is implemented but disabled, and that verdict is corpus-specific.** On 170 chunks
 retrieval already returns every piece of required evidence (recall@10 = 1.000), so a reranker

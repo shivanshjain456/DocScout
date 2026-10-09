@@ -108,8 +108,8 @@ def test_refresh_detects_and_alerts_on_manifest_hash_change(
 # 2. Staleness budgeting and API degradation
 # --------------------------------------------------------------------------------------
 def test_healthz_and_metrics_reflect_freshness_signals(client: TestClient) -> None:
-    """GET /healthz and /metrics surface stale_hours, staleness_budget, and gauges."""
-    res = client.get("/healthz")
+    """GET /readyz and /metrics surface stale_hours, staleness_budget, and gauges."""
+    res = client.get("/readyz")
     assert res.status_code == 200
     data = res.json()
 
@@ -130,7 +130,7 @@ def test_healthz_degrades_when_corpus_exceeds_staleness_budget(
     client: TestClient,
     owner_conn: psycopg.Connection[Any],
 ) -> None:
-    """If last_checked_at is older than the staleness budget, /healthz reports degraded."""
+    """If last_checked_at is older than the staleness budget, /readyz reports degraded."""
     stale_time = datetime.now(UTC) - timedelta(hours=250)
 
     # Artificially set an old last_checked_at and COMMIT immediately so connection pool does not block
@@ -141,14 +141,20 @@ def test_healthz_degrades_when_corpus_exceeds_staleness_budget(
     owner_conn.commit()
 
     try:
-        res = client.get("/healthz")
+        res = client.get("/readyz")
         data = res.json()
 
-        assert data["status"] == "degraded", "healthz must report degraded when corpus is stale"
+        assert data["status"] == "degraded", "readyz must report degraded when corpus is stale"
         assert data["is_stale"] is True
         assert data["stale_hours"] >= 249.0
         assert data["database"] is True
         assert data["corpus_chunks"] > 0
+
+        # Liveness check /healthz remains OK even when readiness is degraded
+        liveness = client.get("/healthz").json()
+        assert liveness["status"] == "ok", (
+            "healthz liveness probe must remain ok during stale state"
+        )
 
         # Verify metric gauge reflects stale state
         metrics_res = client.get("/metrics").text
@@ -161,7 +167,7 @@ def test_healthz_degrades_when_corpus_exceeds_staleness_budget(
         )
         owner_conn.commit()
 
-    recovered = client.get("/healthz").json()
+    recovered = client.get("/readyz").json()
     assert recovered["status"] == "ok"
     assert recovered["is_stale"] is False
 

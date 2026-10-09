@@ -77,6 +77,7 @@ class Provenance(BaseModel):
     corpus_manifest_digest: str
     corpus_chunks: int
     retrieval: dict[str, object]
+    corpus_generation: int = 1
 
 
 class Confidence(BaseModel):
@@ -113,22 +114,60 @@ class SearchResponse(BaseModel):
     answer: GeneratedAnswer | None = None
 
 
-class HealthResponse(BaseModel):
-    status: Literal["ok", "degraded"]
+class LivenessResponse(BaseModel):
+    """Process liveness probe for orchestrators (GET /healthz).
+
+    Reflects whether the application process is alive, the event loop is responsive,
+    and memory-resident components are intact. Never performs DB I/O.
+    """
+
+    status: Literal["ok"]
+    uptime_seconds: float
+    model_loaded: bool
+    single_process: bool
+    corpus_generation: int
+
+
+class ReadinessResponse(BaseModel):
+    """Traffic readiness probe for load balancers (GET /readyz).
+
+    Reflects whether the service can currently execute retrieval queries:
+    database connection pool is healthy, corpus chunks are available (> 0),
+    embedding model and BM25 index are ready, and staleness budget status.
+    """
+
+    status: Literal["ok", "degraded", "unready"]
     database: bool
     corpus_chunks: int
     embedding_model: str
     model_loaded: bool
+    bm25_ready: bool
     cache: dict[str, int]
     rate_limit_per_minute: int
-    # Stated so a reader of /healthz is not misled into thinking this is a clustered
-    # deployment: the limiter and the cache live in this process only.
     single_process: bool
-    # Operational freshness (P0-2)
+    corpus_generation: int
     last_checked_at: datetime | None = None
     stale_hours: float | None = None
     staleness_budget_hours: float = 168.0
     is_stale: bool = False
+
+
+# Retained for backward-compatibility with callers/tests expecting HealthResponse
+HealthResponse = ReadinessResponse
+
+
+class CacheInvalidateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    reason: str = "manual_admin"
+
+
+class CacheInvalidateResponse(BaseModel):
+    status: Literal["ok"]
+    previous_generation: int
+    new_generation: int
+    entries_cleared: int
+    corpus_chunks: int
 
 
 class ErrorResponse(BaseModel):
