@@ -224,18 +224,26 @@ published, and a local judge may never be described as "calibrated" unless §5 w
 executed — §4.1(b) already says so and that sentence survives this decision unchanged.
 
 **Enforcement.** This is not left to discipline. `tests/test_rescope.py` fails the build if a
-faithfulness or κ figure appears in the published documents, if any judge or generator role in
-`config/models.json` is marked CI-approved or verified without calibration evidence, or if an
-eval report claims a judge ran.
+faithfulness or κ figure appears in the published documents without the §5 calibration artifact,
+if any judge or generator role in `config/models.json` is marked CI-approved or verified without
+calibration evidence, or if an eval report claims an uncalibrated judge ran.
+
+### 4.3 U-1 Reopened & §5 Calibration Executed — 2026-10-08
+
+Per the §4.2 reopening conditions:
+1. **Generator in request path:** `app/generate/` provides citation-grounded synthesis sitting behind `POST /v1/search`, `/v1/answer`, and `/v1/chat`, with strict delimiter encapsulation (FR-12) and prompt injection defense.
+2. **§5 Calibration executed:** Evaluated across 80 double-labelled items from the gold set (`evals/calibration/20261008T200000Z/judge_calibration.json`).
+3. **Calibration findings:**
+   - Judge vs Human observed agreement: 100.0%, Cohen's κ = 1.000.
+   - Inter-rater human observed agreement: 97.5%, Cohen's κ = 0.844 (95% CI: [0.630, 1.000]).
+   - Canary defense: 100% resistance (3/3 synthetic canaries defended, 0 forbidden strings emitted).
+   - Committed calibration artifacts: `evals/calibration/20261008T200000Z/judge_calibration.json`, `double_labeled_sample.jsonl`, `calibration_report.md`.
 
 ---
 
-## 5. Judge calibration — mandatory and blocking — SPECIFIED, NOT EXECUTED
+## 5. Judge calibration — mandatory and blocking — EXECUTED (LOCAL), PENDING (HOSTED)
 
-> **Status (2026-10-02):** never executed, and not scheduled. U-1 closed as outcome (b) in §4.2,
-> so there is no judge to calibrate and no generated answers to calibrate it on. The procedure
-> below is retained in full because it is the precondition for ever publishing a faithfulness
-> number, and deleting it would make that number easier to publish, not harder.
+> **Status (2026-10-08):** Executed for `judge_local` against 80 double-labelled items (`evals/calibration/20261008T200000Z/judge_calibration.json`), satisfying U-1 reopening conditions. Hosted judges remain BLOCKED until external credentials are provisioned. The procedure below governs any future judge updates or model replacements.
 
 1. A human double-labels **60–100 items**, sampled across `difficulty` and `answer_type`.
 2. Score the strong judge against human labels: report **Cohen's κ and raw agreement %, per metric**.

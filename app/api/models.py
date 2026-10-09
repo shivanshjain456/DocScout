@@ -18,6 +18,8 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
+from app.generate.models import GeneratedAnswer
+
 # A ceiling on query length. The embedding model truncates at 512 tokens, so anything
 # beyond roughly this is silently discarded by the encoder -- better to reject it than to
 # answer a question the system only partly read.
@@ -42,6 +44,8 @@ class SearchRequest(BaseModel):
     mode: Literal["hybrid", "dense", "bm25"] = "hybrid"
     # Lets a caller measure the cache rather than take its effect on trust (artifact 3).
     use_cache: bool = True
+    # Whether to construct a citation-grounded answer behind the retrieved passages.
+    generate_answer: bool = False
 
 
 class Passage(BaseModel):
@@ -93,6 +97,7 @@ class Timings(BaseModel):
 
     total_ms: float
     retrieval_ms: float
+    generation_ms: float = 0.0
     cache_hit: bool
 
 
@@ -104,6 +109,7 @@ class SearchResponse(BaseModel):
     confidence: Confidence
     provenance: Provenance
     timings: Timings
+    answer: GeneratedAnswer | None = None
 
 
 class HealthResponse(BaseModel):

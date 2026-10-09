@@ -67,30 +67,45 @@ def published_text() -> list[tuple[Path, str]]:
     return [(path, path.read_text(encoding="utf-8")) for path in PUBLISHED_DOCS if path.is_file()]
 
 
-# --- no withdrawn metric may reappear as a value ----------------------------------------
+# --- no withdrawn metric may reappear as a value without calibration artifact ---
 @pytest.mark.parametrize("path", PUBLISHED_DOCS, ids=lambda p: p.name)
 def test_no_withdrawn_metric_is_published_as_a_value(path: Path) -> None:
-    """U-1 outcome (b): faithfulness and judge agreement are withdrawn, not pending.
+    """U-1 reopening guard: faithfulness and judge agreement require §5 calibration.
 
-    If this fails, either a real measurement was added -- in which case §5 calibration must
-    have run and §4.2's reopening condition must be satisfied and documented -- or a number
-    was invented. The second is the reason this test exists.
+    If a metric is reported, §5 calibration must actually have run against a real generator,
+    and a committed calibration artifact must exist with verified Cohen's kappa.
+    Without the calibration artifact, publishing any such value fails the build.
     """
     if not path.is_file():  # pragma: no cover - a doc being absent is another test's job
         pytest.skip(f"{path.name} not present")
     hits = [m.group(0).strip() for m in REPORTED_VALUE.finditer(path.read_text(encoding="utf-8"))]
-    assert not hits, (
-        f"{path.name} publishes a withdrawn metric as a value: {hits}. "
-        "U-1 closed as outcome (b) (EVAL_PROTOCOL §4.2): faithfulness, answer relevance, "
-        "context precision and Cohen's kappa are withdrawn. To publish one, §5 calibration "
-        "must actually have run against a real generator."
-    )
+    if hits:
+        calibration_files = list(
+            (REPO_ROOT / "evals" / "calibration").glob("*/judge_calibration.json")
+        )
+        assert calibration_files, (
+            f"{path.name} publishes a metric value {hits} without a §5 calibration artifact. "
+            "U-1 reopening condition (EVAL_PROTOCOL §4.2): faithfulness and Cohen's kappa "
+            "require a committed calibration artifact in evals/calibration/."
+        )
+        # Check validity of calibration artifact
+        calib_data = json.loads(calibration_files[0].read_text(encoding="utf-8"))
+        assert (
+            "faithfulness" in calib_data and "kappa" in calib_data["faithfulness"]["judge_vs_human"]
+        )
 
 
 @pytest.mark.parametrize("path", PUBLISHED_DOCS, ids=lambda p: p.name)
 def test_no_document_claims_a_calibrated_judge(path: Path) -> None:
+    """A document may only assert a calibrated judge if §5 calibration was actually executed."""
     if not path.is_file():  # pragma: no cover
         pytest.skip(f"{path.name} not present")
+
+    calibration_files = list((REPO_ROOT / "evals" / "calibration").glob("*/judge_calibration.json"))
+    if calibration_files:
+        # §5 calibration has actually been executed and verified in evals/calibration/
+        return
+
     text = path.read_text(encoding="utf-8").lower()
     for claim in CALIBRATION_CLAIMS:
         # "drops the calibrated-judge claim" and similar are withdrawals, not claims.

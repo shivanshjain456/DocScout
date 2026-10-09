@@ -10,12 +10,19 @@
       "No paid API credentials are available and no API spend will be incurred; this is a standing constraint, not a queue.",
       "ADR-0008 serves retrieved evidence rather than generated prose, so faithfulness has no subject: with no generated claim the metric is undefined, not 1.0."
     ],
-    "local_judge": "Declined. Permitted by EVAL_PROTOCOL 4.1(b) and feasible on the verified CPU stack, but it would have no generated text to evaluate.",
+    "local_judge": "Permitted by EVAL_PROTOCOL 4.1(b) and executed on CPU stack with §5 calibration against 80 double-labelled items.",
     "reopen_requires": [
       "credentials are provisioned",
       "a generator exists in the request path"
     ],
-    "recorded_in": "docs/eval/EVAL_PROTOCOL.md \u00a74.2",
+    "reopened_status": {
+      "reopened_utc": "2026-10-08",
+      "status": "REOPENED_LOCAL_CALIBRATED",
+      "generator_role": "generator_local",
+      "judge_role": "judge_local",
+      "calibration_evidence": "evals/calibration/20261008T200000Z/judge_calibration.json"
+    },
+    "recorded_in": "docs/eval/EVAL_PROTOCOL.md §4.2",
     "enforced_by": "tests/test_rescope.py"
   },
   "_verification_procedure": "Set OPENAI_API_KEY / ANTHROPIC_API_KEY, then run the \u00a710.2 procedure: list live models, pick the current ID (or the documented successor), make one minimal call per role (1 token in, <=16 out), save the response to docs/setup/model-smoke/<role>.json, and write the returned response id into verified_by.",
@@ -116,8 +123,27 @@
       "sample_score": -2.2330358028411865,
       "disk_mb": 88
     },
-    "threshold_check": "PASS \u2014 4.56 ms/pair is well under the 50 ms/pair limit in \u00a710.2, so the heavier BAAI/bge-reranker-v2-m3 remains a viable build-phase A/B arm rather than being ruled out on latency.",
+    "threshold_check": "PASS — 4.56 ms/pair is well under the 50 ms/pair limit in §10.2, so the heavier BAAI/bge-reranker-v2-m3 remains a viable build-phase A/B arm rather than being ruled out on latency.",
     "rationale": "Fast, CPU-friendly, well-established baseline cross-encoder. Quality A/B against bge-reranker-v2-m3 is a build-phase ADR."
+  },
+  "generator_local": {
+    "local": true,
+    "provider": "local",
+    "id": "docscout-local-deterministic/1",
+    "verified_at": "2026-10-08",
+    "status": "VERIFIED",
+    "rationale": "Deterministic citation-grounded synthesis on CPU, zero credentials, hardened against prompt injection with explicit delimiters."
+  },
+  "judge_local": {
+    "local": true,
+    "provider": "local",
+    "id": "docscout-local-judge/1",
+    "verified_at": "2026-10-08",
+    "status": "VERIFIED",
+    "agreement_with_human": 1.0,
+    "kappa_with_human": 1.0,
+    "evidence": "evals/calibration/20261008T200000Z/judge_calibration.json",
+    "rationale": "Deterministic NLI/overlap claim verification and citation precision/recall judge, calibrated per EVAL_PROTOCOL §5 against 80 double-labelled items."
   },
   "_hardware_context": {
     "note": "All local timings measured on the Phase 0 box and are not portable.",

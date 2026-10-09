@@ -108,13 +108,23 @@ def load_queries(limit: int) -> list[str]:
 
 
 def post(client: httpx.Client, query: str, *, use_cache: bool) -> tuple[float, bool, int]:
-    """One request. Returns (elapsed_ms, cache_hit, status)."""
+    """One retrieval request. Returns (elapsed_ms, cache_hit, status)."""
     started = time.perf_counter()
     response = client.post("/v1/search", json={"query": query, "k": 10, "use_cache": use_cache})
     elapsed = (time.perf_counter() - started) * 1000.0
     if response.status_code != 200:
         return elapsed, False, response.status_code
     return elapsed, bool(response.json()["timings"]["cache_hit"]), 200
+
+
+def post_answer(client: httpx.Client, query: str) -> tuple[float, bool, int]:
+    """One end-to-end answer generation request (retrieval + synthesis)."""
+    started = time.perf_counter()
+    response = client.post("/v1/answer", json={"query": query, "k": 10, "use_cache": False})
+    elapsed = (time.perf_counter() - started) * 1000.0
+    if response.status_code != 200:
+        return elapsed, False, response.status_code
+    return elapsed, False, 200
 
 
 def phase(
@@ -131,6 +141,18 @@ def phase(
         latencies.append(elapsed)
         hits += int(hit)
     return latencies, hits, statuses
+
+
+def phase_answer(client: httpx.Client, queries: list[str]) -> tuple[list[float], dict[int, int]]:
+    latencies: list[float] = []
+    statuses: dict[int, int] = {}
+    for query in queries:
+        elapsed, _, status = post_answer(client, query)
+        statuses[status] = statuses.get(status, 0) + 1
+        if status != 200:
+            continue
+        latencies.append(elapsed)
+    return latencies, statuses
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -172,6 +194,13 @@ def main(argv: list[str] | None = None) -> int:
         phase(client, queries, use_cache=True)  # populate
         warm, warm_hits, warm_status = phase(client, queries, use_cache=True)
 
+        print(
+            f"  generation phase: {min(args.n, 50)} requests, end-to-end answer construction...",
+            flush=True,
+        )
+        gen_queries = queries[: min(args.n, 50)]
+        gen_latencies, gen_status = phase_answer(client, gen_queries)
+
         print(f"  throughput: {args.n} requests at concurrency {args.concurrency}...", flush=True)
         started = time.perf_counter()
         with ThreadPoolExecutor(max_workers=args.concurrency) as pool:
@@ -183,6 +212,7 @@ def main(argv: list[str] | None = None) -> int:
 
     cold_summary = summarise(cold, label="cold")
     warm_summary = summarise(warm, label="warm")
+    gen_summary = summarise(gen_latencies, label="generation")
 
     # Cost model, stated explicitly so it can be argued with: one instance serving
     # continuously at the measured concurrent throughput. Hours for 1,000 queries is
@@ -211,6 +241,7 @@ def main(argv: list[str] | None = None) -> int:
         },
         "cold_cache_bypassed": {**cold_summary, "cache_hits": cold_hits, "statuses": cold_status},
         "warm_cache_enabled": {**warm_summary, "cache_hits": warm_hits, "statuses": warm_status},
+        "generation_end_to_end": {**gen_summary, "statuses": gen_status},
         "cache_effect": {
             "p95_speedup_x": round(cold_summary["p95_ms"] / warm_summary["p95_ms"], 1)
             if warm_summary["p95_ms"]
@@ -236,7 +267,7 @@ def main(argv: list[str] | None = None) -> int:
                 (1000.0 / warm_qps / 3600.0) * INSTANCE_USD_PER_HOUR if warm_qps else 0.0, 6
             ),
             "llm_cost_usd": 0.0,
-            "llm_note": "no model is called in the request path; this is compute only",
+            "llm_note": "deterministic local generator on CPU; zero hosted API spend",
             "usd_per_million_queries_uncached": round(cost_per_1k * 1000, 4),
         },
     }
@@ -251,6 +282,7 @@ def main(argv: list[str] | None = None) -> int:
     for label, summary in (
         ("cold (cache bypassed)", cold_summary),
         ("warm (cache hit)", warm_summary),
+        ("generation (e2e)", gen_summary),
     ):
         print(
             f"  {label:<22} {summary['mean_ms']:>8.2f}ms {summary['p50_ms']:>8.2f}ms "

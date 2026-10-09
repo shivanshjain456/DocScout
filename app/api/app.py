@@ -52,6 +52,7 @@ from app.api.models import (
 )
 from app.api.security import RATE_LIMIT_REQUESTS, load_keys, require_api_key
 from app.config import database_url, sha256_file
+from app.generate import GeneratedAnswer, get_generator
 from app.ingest.chunk import CHUNK_OVERLAP, CHUNK_SIZE
 from app.ingest.embed import EMBEDDING_DIM, MODEL_ID, Embedder
 from app.observability import configure_logging, get_logger, normalise_request_id
@@ -81,6 +82,7 @@ class CachedResult:
     passages: list[Passage]
     confidence: Confidence
     provenance: Provenance
+    answer: GeneratedAnswer | None = None
 
 
 @asynccontextmanager
@@ -111,11 +113,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         row = conn.execute("SELECT count(*) FROM chunks").fetchone()
         app.state.corpus_chunks = as_int(row[0]) if row else 0
 
-    app.state.result_cache = TTLCache[tuple[str, str, int], CachedResult](
+    app.state.result_cache = TTLCache[tuple[str, str, int, bool], CachedResult](
         maxsize=RESULT_CACHE_SIZE, ttl=DEFAULT_RESULT_TTL_SECONDS
     )
     app.state.embedding_cache = TTLCache[str, Any](maxsize=EMBEDDING_CACHE_SIZE, ttl=None)
     app.state.manifest_digest = sha256_file(REPO_ROOT / "corpus" / "raw" / "manifest.json")
+    app.state.generator = get_generator()
 
     metrics.CORPUS_CHUNKS.set(app.state.corpus_chunks)
     logger.info(
@@ -331,10 +334,11 @@ def search(
     request: Request,
     fingerprint: str = Depends(require_api_key),
 ) -> SearchResponse:
-    """Retrieve the passages that answer a question, with checkable citations."""
+    """Retrieve the passages that answer a question, with checkable citations,
+    and optional citation-grounded answer generation sitting behind them."""
     started = time.perf_counter()
     state = request.app.state
-    cache_key = (payload.query, payload.mode, payload.k)
+    cache_key = (payload.query, payload.mode, payload.k, payload.generate_answer)
 
     cached: CachedResult | None = state.result_cache.get(cache_key) if payload.use_cache else None
     if cached is not None:
@@ -354,7 +358,13 @@ def search(
             passages=cached.passages,
             confidence=cached.confidence,
             provenance=cached.provenance,
-            timings=Timings(total_ms=round(total_ms, 2), retrieval_ms=0.0, cache_hit=True),
+            timings=Timings(
+                total_ms=round(total_ms, 2),
+                retrieval_ms=0.0,
+                generation_ms=0.0,
+                cache_hit=True,
+            ),
+            answer=cached.answer,
         )
 
     # A bypassed cache is not a miss: counting it as one would make the hit ratio depend
@@ -372,32 +382,45 @@ def search(
     metrics.RETRIEVAL_DURATION.labels(payload.mode).observe(retrieval_seconds)
     retrieval_ms = retrieval_seconds * 1000.0
 
+    passages = [
+        Passage(
+            rank=hit.rank,
+            chunk_id=hit.chunk_id,
+            document_id=hit.document_id,
+            source=hit.source,
+            canonical_url=hit.canonical_url,
+            score=round(hit.score, 6),
+            arm_ranks=hit.arm_ranks,
+            char_start=hit.char_start,
+            char_end=hit.char_end,
+            text=hit.text,
+        )
+        for hit in hits
+    ]
+    confidence = Confidence(**assessed.as_dict())  # type: ignore[arg-type]
+    provenance = Provenance(
+        embedding_model=MODEL_ID,
+        embedding_dim=EMBEDDING_DIM,
+        chunk_size=CHUNK_SIZE,
+        chunk_overlap=CHUNK_OVERLAP,
+        corpus_manifest_digest=state.manifest_digest,
+        corpus_chunks=state.corpus_chunks,
+        retrieval=config.as_dict(),
+    )
+
+    generated_answer: GeneratedAnswer | None = None
+    generation_ms = 0.0
+    if payload.generate_answer:
+        gen_start = time.perf_counter()
+        generator = getattr(state, "generator", None) or get_generator()
+        generated_answer = generator.generate(payload.query, passages)
+        generation_ms = (time.perf_counter() - gen_start) * 1000.0
+
     result = CachedResult(
-        passages=[
-            Passage(
-                rank=hit.rank,
-                chunk_id=hit.chunk_id,
-                document_id=hit.document_id,
-                source=hit.source,
-                canonical_url=hit.canonical_url,
-                score=round(hit.score, 6),
-                arm_ranks=hit.arm_ranks,
-                char_start=hit.char_start,
-                char_end=hit.char_end,
-                text=hit.text,
-            )
-            for hit in hits
-        ],
-        confidence=Confidence(**assessed.as_dict()),  # type: ignore[arg-type]
-        provenance=Provenance(
-            embedding_model=MODEL_ID,
-            embedding_dim=EMBEDDING_DIM,
-            chunk_size=CHUNK_SIZE,
-            chunk_overlap=CHUNK_OVERLAP,
-            corpus_manifest_digest=state.manifest_digest,
-            corpus_chunks=state.corpus_chunks,
-            retrieval=config.as_dict(),
-        ),
+        passages=passages,
+        confidence=confidence,
+        provenance=provenance,
+        answer=generated_answer,
     )
     if payload.use_cache:
         state.result_cache.put(cache_key, result)
@@ -410,7 +433,9 @@ def search(
         k=payload.k,
         duration_ms=round(total_ms, 2),
         retrieval_ms=round(retrieval_ms, 2),
+        generation_ms=round(generation_ms, 2),
         passages=len(result.passages),
+        generated_answer=generated_answer is not None,
     )
     return SearchResponse(
         query=payload.query,
@@ -420,6 +445,50 @@ def search(
         confidence=result.confidence,
         provenance=result.provenance,
         timings=Timings(
-            total_ms=round(total_ms, 2), retrieval_ms=round(retrieval_ms, 2), cache_hit=False
+            total_ms=round(total_ms, 2),
+            retrieval_ms=round(retrieval_ms, 2),
+            generation_ms=round(generation_ms, 2),
+            cache_hit=False,
         ),
+        answer=result.answer,
     )
+
+
+@app.post(
+    "/v1/answer",
+    response_model=SearchResponse,
+    tags=["generation"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "invalid request"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def answer_endpoint(
+    payload: SearchRequest,
+    request: Request,
+    fingerprint: str = Depends(require_api_key),
+) -> SearchResponse:
+    """Retrieve passages and construct a citation-grounded answer sitting behind them."""
+    req = payload.model_copy(update={"generate_answer": True})
+    return search(req, request, fingerprint)
+
+
+@app.post(
+    "/v1/chat",
+    response_model=SearchResponse,
+    tags=["generation"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "invalid request"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def chat_endpoint(
+    payload: SearchRequest,
+    request: Request,
+    fingerprint: str = Depends(require_api_key),
+) -> SearchResponse:
+    """Chat-compatible endpoint returning citation-grounded answers behind retrieved passages."""
+    req = payload.model_copy(update={"generate_answer": True})
+    return search(req, request, fingerprint)

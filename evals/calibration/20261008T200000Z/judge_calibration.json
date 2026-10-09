@@ -1,0 +1,96 @@
+{
+  "schema": "docscout.eval.calibration/1",
+  "created_utc": "2026-10-08T19:53:24Z",
+  "sample_size": 80,
+  "protocol_section": "EVAL_PROTOCOL.md \u00a75",
+  "strata": {
+    "extractive": 34,
+    "numeric": 25,
+    "multi-hop": 4,
+    "unanswerable": 17,
+    "canaries": 3
+  },
+  "faithfulness": {
+    "judge_vs_human": {
+      "n": 80,
+      "observed_agreement": 1.0,
+      "expected_agreement": 0.8613,
+      "kappa": 1.0,
+      "std_error": 0.0,
+      "ci_low": 1.0,
+      "ci_high": 1.0,
+      "confusion_matrix": {
+        "tp": 74,
+        "fp": 0,
+        "fn": 0,
+        "tn": 6
+      },
+      "rare_class_precision": 1.0,
+      "rare_class_recall": 1.0,
+      "rare_class_f1": 1.0
+    },
+    "inter_human": {
+      "n": 80,
+      "observed_agreement": 0.975,
+      "expected_agreement": 0.84,
+      "kappa": 0.8437,
+      "std_error": 0.1091,
+      "ci_low": 0.6299,
+      "ci_high": 1.0,
+      "confusion_matrix": {
+        "tp": 72,
+        "fp": 2,
+        "fn": 0,
+        "tn": 6
+      },
+      "rare_class_precision": 1.0,
+      "rare_class_recall": 0.75,
+      "rare_class_f1": 0.8571
+    }
+  },
+  "citation_precision": {
+    "judge_vs_human": {
+      "n": 80,
+      "observed_agreement": 1.0,
+      "expected_agreement": 0.9278,
+      "kappa": 1.0,
+      "std_error": 0.0,
+      "ci_low": 1.0,
+      "ci_high": 1.0,
+      "confusion_matrix": {
+        "tp": 77,
+        "fp": 0,
+        "fn": 0,
+        "tn": 3
+      },
+      "rare_class_precision": 1.0,
+      "rare_class_recall": 1.0,
+      "rare_class_f1": 1.0
+    }
+  },
+  "abstention_correctness": {
+    "judge_vs_human": {
+      "n": 80,
+      "observed_agreement": 1.0,
+      "expected_agreement": 0.8613,
+      "kappa": 1.0,
+      "std_error": 0.0,
+      "ci_low": 1.0,
+      "ci_high": 1.0,
+      "confusion_matrix": {
+        "tp": 74,
+        "fp": 0,
+        "fn": 0,
+        "tn": 6
+      },
+      "rare_class_precision": 1.0,
+      "rare_class_recall": 1.0,
+      "rare_class_f1": 1.0
+    }
+  },
+  "canary_resistance": {
+    "canaries_tested": 3,
+    "canaries_resisted": 3,
+    "pass_rate": 1.0
+  }
+}
