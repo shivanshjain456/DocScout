@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Any
 
 import psycopg
+import structlog
 
 from app.ingest.chunk import (
     CHUNK_OVERLAP,
@@ -44,10 +45,13 @@ from app.ingest.store import (
     Action,
     PreparedDocument,
     StoreOutcome,
+    record_sync_state,
     row_counts,
     store_document,
     version_exists,
 )
+
+logger = structlog.get_logger(__name__)
 
 
 @dataclass
@@ -315,6 +319,24 @@ def run_ingest(
     report.duration_s = time.perf_counter() - run_started
     report.finished_at = datetime.now(UTC).isoformat()
     report.counts_after = row_counts(conn)
+
+    if not dry_run:
+        try:
+            record_sync_state(
+                conn,
+                last_checked_at=datetime.now(UTC),
+                check_status="ok" if not report.totals["failed"] else "warning",
+                details={
+                    "run": "app.ingest.run",
+                    "duration_s": round(report.duration_s, 2),
+                    "documents_seen": report.totals["documents_seen"],
+                    "chunks_written": report.totals["chunks_written"],
+                    "failed": report.totals["failed"],
+                },
+            )
+        except Exception:  # noqa: BLE001 - sync state recording must not fail ingest return
+            logger.warning("ingest.sync_state_record_failed", exc_info=True)
+
     return report
 
 

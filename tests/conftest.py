@@ -79,6 +79,7 @@ def owner_conn() -> Iterator[psycopg.Connection[Any]]:
     """The migration/owner role. Skips if the schema has not been applied."""
     conn = connect_or_skip(database_url("MIGRATION_DATABASE_URL", "DATABASE_URL"))
     try:
+        register_vector(conn)
         applied = conn.execute(
             "SELECT count(*) FROM information_schema.tables "
             "WHERE table_schema='public' AND table_name='chunks'"
@@ -105,6 +106,7 @@ def app_conn() -> Iterator[psycopg.Connection[Any]]:
         pytest.skip("DATABASE_URL is not the least-privilege application role")
     conn = connect_or_skip(url)
     try:
+        register_vector(conn)
         yield conn
     finally:
         conn.close()

@@ -6,7 +6,8 @@ TS := $(shell date -u +%Y%m%dT%H%M%SZ)
 	gold-lint gold-pin gold-review gold-stats eval-quick eval-gate eval-baseline \
 	mutation mutation-clean audit-deps \
 	serve bench \
-        migrate migrate-status migrate-down ingest ingest-dry ingest-status ingest-verify
+        migrate migrate-status migrate-down ingest ingest-dry ingest-status ingest-verify \
+        refresh refresh-check
 
 help:  ## show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-14s\033[0m %s\n",$$1,$$2}'
@@ -53,6 +54,13 @@ gold-stats:  ## gold set composition, without touching the corpus or the model
 
 ingest-verify:  ## re-check every stored chunk's offsets against its source document (FR-7)
 	uv run python -m app.ingest verify
+
+refresh:  ## check corpus freshness against manifest and update sync state (P0-2)
+	uv run python -m app.ingest refresh
+
+refresh-check:  ## check corpus freshness without writing to database (dry run)
+	uv run python -m app.ingest refresh --dry-run
+
 
 test:  ## run the test suite
 	uv run pytest -q

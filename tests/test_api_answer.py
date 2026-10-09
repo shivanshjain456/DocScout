@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+import pytest
 from fastapi import Request
 
 from app.api.app import app, search
@@ -95,7 +96,9 @@ def test_openapi_documents_answer_and_chat_endpoints() -> None:
             assert code in responses
 
 
-def test_search_handler_executes_generation_when_requested() -> None:
+def test_search_handler_executes_generation_when_requested(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     mock_request = MagicMock(spec=Request)
     mock_state = MagicMock()
     mock_request.app.state = mock_state
@@ -151,17 +154,13 @@ def test_search_handler_executes_generation_when_requested() -> None:
 
     import app.api.app as app_mod
 
-    orig_retriever = app_mod.Retriever
-    app_mod.Retriever = MagicMock(return_value=mock_retriever)
-    try:
-        req = SearchRequest(query="What is the capital adequacy ratio?", generate_answer=True)
-        res = search(req, mock_request, fingerprint="test-fingerprint")
+    monkeypatch.setattr(app_mod, "Retriever", MagicMock(return_value=mock_retriever))
+    req = SearchRequest(query="What is the capital adequacy ratio?", generate_answer=True)
+    res = search(req, mock_request, fingerprint="test-fingerprint")
 
-        assert len(res.passages) == 1
-        assert res.passages[0].chunk_id == "chunk-test-1"
-        assert res.answer is not None
-        assert "nine percent minimum" in res.answer.text
-        assert res.answer.citations == ["chunk-test-1"]
-        mock_generator.generate.assert_called_once()
-    finally:
-        app_mod.Retriever = orig_retriever
+    assert len(res.passages) == 1
+    assert res.passages[0].chunk_id == "chunk-test-1"
+    assert res.answer is not None
+    assert "nine percent minimum" in res.answer.text
+    assert res.answer.citations == ["chunk-test-1"]
+    mock_generator.generate.assert_called_once()

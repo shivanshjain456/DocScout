@@ -88,3 +88,25 @@ def sha256_file(path: Path) -> str:
     optional input is absent -- it should say so.
     """
     return hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else "absent"
+
+
+DEFAULT_STALENESS_BUDGET_HOURS: float = 168.0  # 7 days
+
+
+def staleness_budget_hours() -> float:
+    """The allowed staleness window in hours before /healthz reports degraded (P0-2).
+
+    Configured via `DOCSCOUT_STALENESS_BUDGET_HOURS` or `STALENESS_BUDGET_HOURS`. Defaults
+    to 168 hours (7 days) for the weekly regulatory publishing cycle.
+    """
+    load_dotenv()
+    for name in ("DOCSCOUT_STALENESS_BUDGET_HOURS", "STALENESS_BUDGET_HOURS"):
+        raw = os.environ.get(name, "").strip()
+        if raw:
+            try:
+                val = float(raw)
+                if val > 0:
+                    return val
+            except ValueError:
+                pass
+    return DEFAULT_STALENESS_BUDGET_HOURS

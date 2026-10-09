@@ -243,6 +243,13 @@ def test_healthz_is_unauthenticated_and_reports_readiness(client: TestClient) ->
     assert body["model_loaded"] is True
     # Stated so nobody reads these numbers as cluster-wide.
     assert body["single_process"] is True
+    # P0-2: operational freshness
+    assert "last_checked_at" in body
+    assert body["last_checked_at"] is not None
+    assert "stale_hours" in body
+    assert body["stale_hours"] is not None
+    assert body["staleness_budget_hours"] > 0
+    assert body["is_stale"] is False
 
 
 def test_demo_page_loads_no_external_assets(client: TestClient) -> None:

@@ -465,3 +465,31 @@ def test_application_role_can_read_and_write_rows(app_conn: psycopg.Connection[A
             "('https://rbi.example/app-role', 'RBI') RETURNING document_id"
         ).fetchone()
         assert row is not None, "application role cannot insert, which breaks ingestion"
+
+
+# --------------------------------------------------------------------------------------
+# corpus_sync_state (Migration 0003, P0-2)
+# --------------------------------------------------------------------------------------
+def test_corpus_sync_state_enforces_single_row(app_conn: psycopg.Connection[Any]) -> None:
+    """The table is a singleton (id = 1). Inserting a second row is rejected."""
+    with app_conn.transaction(force_rollback=True):
+        with rejects(app_conn, psycopg.errors.CheckViolation):
+            app_conn.execute(
+                "INSERT INTO corpus_sync_state (id, last_checked_at) VALUES (2, now())"
+            )
+
+
+def test_corpus_sync_state_validates_status(app_conn: psycopg.Connection[Any]) -> None:
+    """Check constraint restricts check_status to known values."""
+    with app_conn.transaction(force_rollback=True):
+        with rejects(app_conn, psycopg.errors.CheckViolation):
+            app_conn.execute(
+                "UPDATE corpus_sync_state SET check_status = 'invalid_status' WHERE id = 1"
+            )
+
+
+def test_application_role_cannot_delete_sync_state(app_conn: psycopg.Connection[Any]) -> None:
+    """The application role cannot delete the sync state singleton."""
+    with app_conn.transaction(force_rollback=True):
+        with rejects(app_conn, psycopg.errors.InsufficientPrivilege):
+            app_conn.execute("DELETE FROM corpus_sync_state")

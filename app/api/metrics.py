@@ -107,6 +107,41 @@ CORPUS_CHUNKS = Gauge(
     "Chunks currently retrievable, i.e. belonging to a current document version.",
 )
 
+CORPUS_LAST_CHECKED = Gauge(
+    "docscout_corpus_last_checked_timestamp_seconds",
+    "Unix timestamp when the regulatory corpus was last checked or refreshed.",
+)
+
+CORPUS_STALE_HOURS = Gauge(
+    "docscout_corpus_stale_hours",
+    "Hours elapsed since the regulatory corpus was last checked or refreshed.",
+)
+
+CORPUS_STALENESS_BUDGET_HOURS = Gauge(
+    "docscout_corpus_staleness_budget_hours",
+    "Configured staleness budget in hours before corpus health is degraded.",
+)
+
+CORPUS_IS_STALE = Gauge(
+    "docscout_corpus_is_stale",
+    "1 if elapsed stale hours exceeds the staleness budget, 0 otherwise.",
+)
+
+CORPUS_VERSIONS_CURRENT = Gauge(
+    "docscout_corpus_versions_current",
+    "Count of currently active document versions in the corpus.",
+)
+
+CORPUS_VERSIONS_SUPERSEDED = Gauge(
+    "docscout_corpus_versions_superseded",
+    "Count of superseded document versions retained in the corpus (FR-4).",
+)
+
+MANIFEST_CHANGED = Counter(
+    "docscout_manifest_changed_total",
+    "Count of detected manifest or document changes during corpus refresh.",
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

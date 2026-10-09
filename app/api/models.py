@@ -14,6 +14,7 @@ deliberate:
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
@@ -123,6 +124,11 @@ class HealthResponse(BaseModel):
     # Stated so a reader of /healthz is not misled into thinking this is a clustered
     # deployment: the limiter and the cache live in this process only.
     single_process: bool
+    # Operational freshness (P0-2)
+    last_checked_at: datetime | None = None
+    stale_hours: float | None = None
+    staleness_budget_hours: float = 168.0
+    is_stale: bool = False
 
 
 class ErrorResponse(BaseModel):

@@ -69,7 +69,7 @@ characters.
 | ID | Rule | Tag |
 |---|---|---|
 | C-3 | v1 corpus scope is RBI and SEBI documents published in a date window fixed by ADR before the first full ingest | RESOLVED (ADR-0012) — expanded to 35 documents (18 RBI notifications, 16 SEBI circulars, 1 synthetic canary) spanning major regulatory frameworks in 2024–2026. |
-| C-4 | Selection MUST be reproducible: the ingester records the listing URL and page it harvested each document from | SPECIFIED (the manifest already carries `detail_page`, VERIFIED) |
+| C-4 | Selection MUST be reproducible: the ingester records the listing URL and page it harvested each document from | RESOLVED (ADR-0013) — the manifest records `detail_page`, and the scheduled refresh engine (`app.ingest refresh`, `make refresh`, `corpus-refresh.yml`) audits provenance into `corpus/reports/refresh/` and singleton `corpus_sync_state`. |
 | C-5 | Target corpus size for v1 | RESOLVED (ADR-0012) — scaled from 21 to 35 documents (230 chunks, ~190k chars). Unsaturates depth-10 retrieval (recall@10 < 1.000) and lowers paired bootstrap gate noise floor to <= 1.0pp over 365 answerable gold items. |
 
 No claim is made here about how many documents RBI and SEBI publish, or about corpus completeness.
@@ -83,12 +83,13 @@ Nothing in the repository establishes it.
 |---|---|---|
 | C-6 | Each document is identified by **(URL, fetch date, SHA-256)**, recorded in `corpus/raw/manifest.json` | VERIFIED — the manifest schema already carries `url`, `source`, `detail_page`, `fetch_ts`, `http_status`, `bytes`, `sha256`, `pages`, `extractor`, `char_count`, `ok`, `n`, `local_path` |
 | C-7 | Deduplication is by **content hash first**, then canonical URL. The same circular is often reachable from several index pages under different URLs | SPECIFIED |
-| C-8 | A changed SHA-256 at a known URL is a **new version, never an update in place**. Both versions are retained; the newer becomes current; chunk IDs of the superseded version remain resolvable | SPECIFIED (= `SPEC.md` FR-4) |
+| C-8 | A changed SHA-256 at a known URL is a **new version, never an update in place**. Both versions are retained; the newer becomes current; chunk IDs of the superseded version remain resolvable | RESOLVED (ADR-0013) — verified in `tests/test_refresh_lifecycle.py` (`test_supersession_lifecycle_at_known_url`): old version demoted (`is_current = false`), old chunks retained for auditability (FR-4), and superseded chunks excluded from retrieval. |
 | C-9 | **Supersession between documents** (a master circular replacing earlier circulars) is document metadata that materially affects correctness — the right answer to "what is the current rule" depends on what is in force | UNRESOLVED (U-12) |
 
 **Why C-8 is strict:** regulators reissue circulars and silently replace the PDF at the same URL. If
 versions were overwritten, every historical evaluation report would reference text that no longer
-exists, and reproducibility (`EVAL_PROTOCOL.md` §7) would be fiction.
+exists, and reproducibility (`EVAL_PROTOCOL.md` §7) would be fiction. ADR-0013 enforces this
+via PostgreSQL version rows and automated drift auditing.
 
 ---
 

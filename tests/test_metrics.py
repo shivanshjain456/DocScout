@@ -187,3 +187,15 @@ def test_histogram_buckets_bracket_the_measured_distribution_and_the_slo() -> No
     assert sum(1 for b in buckets if b <= 0.005) >= 3, "too coarse for cache-hit latency"
     assert sum(1 for b in buckets if 0.01 <= b <= 0.1) >= 3, "too coarse for cold retrieval"
     assert list(buckets) == sorted(buckets)
+
+
+def test_metrics_exposes_corpus_freshness_gauges(client: TestClient) -> None:
+    """Operational freshness gauges are exposed and populated by /healthz (P0-2)."""
+    client.get("/healthz")
+    body = scrape(client)
+    families = {family.name for family in text_string_to_metric_families(body)}
+    assert "docscout_corpus_last_checked_timestamp_seconds" in families
+    assert "docscout_corpus_stale_hours" in families
+    assert "docscout_corpus_staleness_budget_hours" in families
+    assert "docscout_corpus_is_stale" in families
+    assert "docscout_corpus_versions_current" in families

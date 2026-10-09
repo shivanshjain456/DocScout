@@ -22,7 +22,9 @@ The three rules this module implements, and where each is really enforced:
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 from uuid import UUID
@@ -118,6 +120,112 @@ def row_counts(conn: psycopg.Connection[Any]) -> dict[str, int]:
         "current_versions": int(row[2]),
         "chunks": int(row[3]),
     }
+
+
+@dataclass(frozen=True)
+class SyncState:
+    """Operational freshness and sync state of the corpus (P0-2)."""
+
+    last_checked_at: datetime
+    last_manifest_sha: str | None
+    check_status: str
+    documents_checked: int
+    documents_current: int
+    documents_superseded: int
+    details: dict[str, Any]
+    updated_at: datetime
+
+
+def get_sync_state(conn: psycopg.Connection[Any]) -> SyncState | None:
+    """Read the singleton corpus sync state, or None if uninitialised."""
+    try:
+        row = conn.execute(
+            """
+            SELECT last_checked_at, last_manifest_sha, check_status,
+                   documents_checked, documents_current, documents_superseded,
+                   details, updated_at
+              FROM corpus_sync_state
+             WHERE id = 1
+            """
+        ).fetchone()
+        if row is None:
+            return None
+        return SyncState(
+            last_checked_at=row[0],
+            last_manifest_sha=str(row[1]) if row[1] is not None else None,
+            check_status=str(row[2]),
+            documents_checked=int(row[3]),
+            documents_current=int(row[4]),
+            documents_superseded=int(row[5]),
+            details=row[6] if isinstance(row[6], dict) else {},
+            updated_at=row[7],
+        )
+    except Exception:  # noqa: BLE001 - if table is missing or query fails, return None
+        return None
+
+
+def record_sync_state(
+    conn: psycopg.Connection[Any],
+    *,
+    last_checked_at: datetime | None = None,
+    last_manifest_sha: str | None = None,
+    check_status: str = "ok",
+    details: dict[str, Any] | None = None,
+) -> SyncState:
+    """Upsert the singleton sync state with current document and version counts."""
+    checked_at = last_checked_at or datetime.now(UTC)
+    meta = details or {}
+
+    with conn.transaction():
+        counts = row_counts(conn)
+        docs_checked = counts["documents"]
+        docs_current = counts["current_versions"]
+        docs_superseded = counts["document_versions"] - counts["current_versions"]
+
+        row = conn.execute(
+            """
+            INSERT INTO corpus_sync_state
+                (id, last_checked_at, last_manifest_sha, check_status,
+                 documents_checked, documents_current, documents_superseded,
+                 details, updated_at)
+            VALUES (1, %s, %s, %s, %s, %s, %s, %s::jsonb, now())
+            ON CONFLICT (id) DO UPDATE SET
+                last_checked_at = EXCLUDED.last_checked_at,
+                last_manifest_sha = COALESCE(EXCLUDED.last_manifest_sha, corpus_sync_state.last_manifest_sha),
+                check_status = EXCLUDED.check_status,
+                documents_checked = EXCLUDED.documents_checked,
+                documents_current = EXCLUDED.documents_current,
+                documents_superseded = EXCLUDED.documents_superseded,
+                details = EXCLUDED.details,
+                updated_at = now()
+            RETURNING last_checked_at, last_manifest_sha, check_status,
+                      documents_checked, documents_current, documents_superseded,
+                      details, updated_at
+            """,
+            (
+                checked_at,
+                last_manifest_sha,
+                check_status,
+                docs_checked,
+                docs_current,
+                docs_superseded,
+                json.dumps(meta),
+            ),
+        ).fetchone()
+
+    if row is None:
+        raise RuntimeError("failed to record corpus sync state")
+
+    return SyncState(
+        last_checked_at=row[0],
+        last_manifest_sha=str(row[1]) if row[1] is not None else None,
+        check_status=str(row[2]),
+        documents_checked=int(row[3]),
+        documents_current=int(row[4]),
+        documents_superseded=int(row[5]),
+        details=row[6] if isinstance(row[6], dict) else {},
+        updated_at=row[7],
+    )
 
 
 def _existing_version_for_hash(

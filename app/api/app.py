@@ -29,6 +29,7 @@ import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -51,12 +52,14 @@ from app.api.models import (
     Timings,
 )
 from app.api.security import RATE_LIMIT_REQUESTS, load_keys, require_api_key
-from app.config import database_url, sha256_file
+from app.config import database_url, sha256_file, staleness_budget_hours
 from app.generate import GeneratedAnswer, get_generator
 from app.ingest.chunk import CHUNK_OVERLAP, CHUNK_SIZE
 from app.ingest.embed import EMBEDDING_DIM, MODEL_ID, Embedder
+from app.ingest.store import get_sync_state
 from app.observability import configure_logging, get_logger, normalise_request_id
-from app.retrieval import SERVING_CONFIG, RetrievalConfig, Retriever
+from app.retrieval import SERVING_CONFIG, RetrievalConfig
+from app.retrieval import Retriever as Retriever
 from app.retrieval.lexical import BM25Index
 from app.rowtypes import as_int
 
@@ -265,24 +268,56 @@ def prometheus_metrics() -> Response:
 
 @app.get("/healthz", response_model=HealthResponse, tags=["ops"])
 def healthz(request: Request) -> HealthResponse:
-    """Liveness and readiness in one place, deliberately unauthenticated.
+    """Liveness, readiness, and operational freshness in one place, unauthenticated.
 
     A health check behind auth cannot be used by the thing that needs it most -- a load
-    balancer -- and this endpoint reveals only counts and configuration names.
+    balancer or orchestrator -- and this endpoint reveals only operational health,
+    freshness state, and configuration names.
     """
     state = request.app.state
     database_ok = True
     chunks = state.corpus_chunks
+    sync_state = None
     try:
         with state.pool.connection() as conn:
             row = conn.execute("SELECT count(*) FROM chunks").fetchone()
             chunks = as_int(row[0]) if row else 0
+            sync_state = get_sync_state(conn)
     except Exception:  # noqa: BLE001 - health must report, never raise
         logger.warning("healthz.database_probe_failed", exc_info=True)
         database_ok = False
 
+    budget = staleness_budget_hours()
+    last_checked_at: datetime | None = None
+    stale_hours: float | None = None
+    is_stale = False
+
+    if sync_state is not None:
+        last_checked_at = sync_state.last_checked_at
+        if last_checked_at.tzinfo is None:
+            last_checked_at = last_checked_at.replace(tzinfo=UTC)
+        stale_hours = max(0.0, (datetime.now(UTC) - last_checked_at).total_seconds() / 3600.0)
+        is_stale = stale_hours > budget
+
+        # Update Prometheus operational freshness gauges
+        metrics.CORPUS_LAST_CHECKED.set(last_checked_at.timestamp())
+        metrics.CORPUS_STALE_HOURS.set(stale_hours)
+        metrics.CORPUS_STALENESS_BUDGET_HOURS.set(budget)
+        metrics.CORPUS_IS_STALE.set(1.0 if is_stale else 0.0)
+        metrics.CORPUS_VERSIONS_CURRENT.set(sync_state.documents_current)
+        metrics.CORPUS_VERSIONS_SUPERSEDED.set(sync_state.documents_superseded)
+
+    is_healthy = database_ok and chunks > 0 and not is_stale
+    if is_stale:
+        logger.warning(
+            "healthz.corpus_stale",
+            stale_hours=stale_hours,
+            staleness_budget_hours=budget,
+            last_checked_at=last_checked_at.isoformat() if last_checked_at else None,
+        )
+
     return HealthResponse(
-        status="ok" if database_ok and chunks > 0 else "degraded",
+        status="ok" if is_healthy else "degraded",
         database=database_ok,
         corpus_chunks=chunks,
         embedding_model=MODEL_ID,
@@ -293,6 +328,10 @@ def healthz(request: Request) -> HealthResponse:
         },
         rate_limit_per_minute=RATE_LIMIT_REQUESTS,
         single_process=True,
+        last_checked_at=last_checked_at,
+        stale_hours=round(stale_hours, 2) if stale_hours is not None else None,
+        staleness_budget_hours=budget,
+        is_stale=is_stale,
     )
 
 

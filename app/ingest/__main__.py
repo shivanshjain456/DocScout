@@ -24,6 +24,7 @@ from app.ingest.pipeline import (
     run_ingest,
     verify_stored_chunks,
 )
+from app.ingest.refresh import DEFAULT_REFRESH_REPORT_ROOT, run_corpus_refresh
 from app.ingest.source import DEFAULT_MANIFEST, iter_manifest_documents
 from app.ingest.store import connect, row_counts
 
@@ -66,8 +67,8 @@ def _build_parser() -> argparse.ArgumentParser:
         "command",
         nargs="?",
         default="run",
-        choices=("run", "verify", "status"),
-        help="run: ingest. verify: re-check stored offsets. status: row counts only.",
+        choices=("run", "verify", "status", "refresh"),
+        help="run: ingest. verify: re-check stored offsets. status: row counts only. refresh: verify corpus freshness and update sync state.",
     )
     parser.add_argument(
         "--manifest", type=Path, default=DEFAULT_MANIFEST, help="corpus manifest to read"
@@ -76,13 +77,23 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="extract, chunk and embed but write nothing",
+        help="extract, chunk and embed but write nothing (or test refresh without DB write)",
+    )
+    parser.add_argument(
+        "--check-live",
+        action="store_true",
+        help="probe remote HTTP endpoints for freshness/updates (default false for offline determinism)",
+    )
+    parser.add_argument(
+        "--no-alert",
+        action="store_true",
+        help="suppress alert logs on detected changes during refresh",
     )
     parser.add_argument(
         "--report-dir",
         type=Path,
         default=None,
-        help="where to write ingest.json (default: corpus/reports/<UTC timestamp>/)",
+        help="where to write report (default: corpus/reports/<UTC timestamp>/ or reports/refresh/<UTC timestamp>/)",
     )
     return parser
 
@@ -108,6 +119,43 @@ def main(argv: list[str] | None = None) -> int:
             for name, count in row_counts(conn).items():
                 print(f"  {name:<20} {count}")
             return 0
+
+        if args.command == "refresh":
+            print(f"checking corpus freshness for manifest at {display_path(args.manifest)}...")
+            refresh_report = run_corpus_refresh(
+                args.manifest,
+                conn,
+                check_live=args.check_live,
+                dry_run=args.dry_run,
+                alert_on_change=not args.no_alert,
+            )
+            report_dir = args.report_dir or (
+                DEFAULT_REFRESH_REPORT_ROOT / datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+            )
+            report_path = refresh_report.write(report_dir)
+
+            print()
+            print(f"  status           {refresh_report.check_status}")
+            print(f"  documents checked{refresh_report.documents_checked}")
+            print(f"  documents ok     {refresh_report.documents_ok}")
+            if refresh_report.documents_changed:
+                print(f"  CHANGED          {len(refresh_report.documents_changed)}")
+                for chg in refresh_report.documents_changed:
+                    print(f"    {chg['canonical_url']}: {chg.get('detail', '')}")
+            if refresh_report.documents_missing:
+                print(f"  MISSING          {len(refresh_report.documents_missing)}")
+                for mis in refresh_report.documents_missing:
+                    print(f"    {mis['canonical_url']}: {mis.get('detail', '')}")
+            print(
+                f"  stale hours      {refresh_report.stale_hours:.1f}h "
+                f"(budget: {refresh_report.staleness_budget_hours:.1f}h)"
+            )
+            print(f"  is stale         {refresh_report.is_stale}")
+            print(f"  alert triggered  {refresh_report.alert_triggered}")
+            print(f"  duration         {refresh_report.duration_s:.3f}s")
+            print(f"  report           {display_path(report_path)}")
+
+            return 1 if refresh_report.check_status in ("warning", "error") else 0
 
         try:
             documents = list(iter_manifest_documents(args.manifest, limit=args.limit))

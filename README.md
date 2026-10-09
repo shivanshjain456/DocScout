@@ -502,6 +502,13 @@ duration) plus the two signals that actually explain this service's latency:
 | `docscout_cache_events_total` | counter | `result` (hit/miss) |
 | `docscout_rate_limited_total` | counter | — |
 | `docscout_corpus_chunks` | gauge | — |
+| `docscout_corpus_last_checked_timestamp_seconds` | gauge | — |
+| `docscout_corpus_stale_hours` | gauge | — |
+| `docscout_corpus_staleness_budget_hours` | gauge | — |
+| `docscout_corpus_is_stale` | gauge | — |
+| `docscout_corpus_versions_current` | gauge | — |
+| `docscout_corpus_versions_superseded` | gauge | — |
+| `docscout_manifest_changed_total` | counter | — |
 
 ```promql
 histogram_quantile(0.95, sum(rate(docscout_http_request_duration_seconds_bucket[5m])) by (le))
@@ -528,10 +535,30 @@ for one worker and wrong for several — a multi-process deployment needs
 `PROMETHEUS_MULTIPROC_DIR`, consistent with the `single_process: true` that `/healthz`
 reports.
 
+### Corpus freshness and scheduled refresh
+
+Regulatory circulars are living legal artifacts. To prevent silent staleness, DocScout tracks
+corpus audit state in a singleton Postgres table (`corpus_sync_state`) and provides both
+offline manifest drift detection and live HTTP change checking:
+
+```bash
+# Offline manifest audit and disk hash validation (default in CI/CD)
+make refresh
+
+# Optional live check with HTTP conditional probes against regulatory hosts
+make refresh-check
+```
+
+* **Staleness budgeting:** Configured via `DOCSCOUT_CORPUS_STALENESS_BUDGET_HOURS` (default: 168.0 hours / 7 days).
+* **Operational `/healthz`:** Surfaces `last_checked_at`, `stale_hours`, `staleness_budget_hours`, and `is_stale`.
+  When staleness exceeds the configured budget, `/healthz` automatically reports `status: "degraded"` (with HTTP 200) to alert operators before outages occur.
+* **Scheduled workflow:** Automated via `.github/workflows/corpus-refresh.yml` running weekly on Mondays at 03:00 UTC.
+* **Audit provenance:** Writes JSON audit reports to `corpus/reports/refresh/<UTC timestamp>/refresh.json`.
+
 ### Rebuilding derived data
 
 Ingestion skips any document whose source `sha256` is unchanged, which is what makes
-re-running it cheap (21 documents skipped in 0.013 s). The consequence: a change to
+re-running it cheap (35 documents skipped in 0.015 s). The consequence: a change to
 **cleaning, chunking or the embedding model** is not picked up by `make ingest`, because
 the source bytes did not move. Those changes require a deliberate rebuild:
 
@@ -542,7 +569,7 @@ make ingest && python -m app.ingest verify && make eval && make eval-gate
 
 Chunk ids are derived from content offsets (ADR-0005), so a length-preserving cleaning
 change leaves every id — and every pinned gold citation — intact. The gate is what proves
-the rebuild did not move the numbers.
+the rebuild did not move the numbers. Tested end-to-end in `tests/test_refresh_lifecycle.py`.
 
 ## Security posture
 
