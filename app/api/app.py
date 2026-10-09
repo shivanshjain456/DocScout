@@ -440,6 +440,8 @@ def _config_for(payload: SearchRequest) -> RetrievalConfig:
             rrf_k=SERVING_CONFIG.rrf_k,
             anchor_arm_top1=SERVING_CONFIG.anchor_arm_top1,
             filter=payload.filter,
+            expand_query=payload.expand_query,
+            expansion_mode=payload.expansion_mode,
         )
     # Single-arm modes are the documented ADR-0006 ablation, reachable so the A/B can be
     # reproduced against the running service.
@@ -450,6 +452,8 @@ def _config_for(payload: SearchRequest) -> RetrievalConfig:
         k_lexical=SERVING_CONFIG.k_lexical,
         k_final=payload.k,
         filter=payload.filter,
+        expand_query=payload.expand_query,
+        expansion_mode=payload.expansion_mode,
     )
 
 
@@ -474,7 +478,15 @@ def search(
     state = request.app.state
     req_generation = getattr(state, "corpus_generation", 1)
     filter_key = payload.filter.canonical_tuple() if payload.filter else None
-    cache_key = (payload.query, payload.mode, payload.k, payload.generate_answer, filter_key)
+    cache_key = (
+        payload.query,
+        payload.mode,
+        payload.k,
+        payload.generate_answer,
+        filter_key,
+        payload.expand_query,
+        payload.expansion_mode,
+    )
 
     cached: CachedResult | None = state.result_cache.get(cache_key) if payload.use_cache else None
     if cached is not None:

@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict
 from app.retrieval.rerank import MODEL_ID as RERANK_MODEL_ID
 
 Mode = Literal["dense", "bm25", "hybrid"]
+ExpansionMode = Literal["none", "synonym", "hyde", "combined"]
 
 # Reciprocal Rank Fusion's smoothing constant. 60 is the value from Cormack et al. (2009),
 # which is also what every mainstream implementation defaults to. It is not tuned here: it
@@ -171,6 +172,8 @@ class RetrievalConfig:
     # quietly degrades to "no reranking" while still charging for the model.
     rerank_top_n: int = 20
     filter: MetadataFilter | None = None
+    expand_query: bool = False
+    expansion_mode: ExpansionMode = "none"
 
     def __post_init__(self) -> None:
         if self.rerank and self.rerank_top_n < self.k_final:
@@ -179,6 +182,10 @@ class RetrievalConfig:
                 "reranking fewer candidates than are returned pays for the model without "
                 "giving it anything to reorder"
             )
+        if self.expand_query and self.expansion_mode == "none":
+            object.__setattr__(self, "expansion_mode", "synonym")
+        elif self.expansion_mode != "none" and not self.expand_query:
+            object.__setattr__(self, "expand_query", True)
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -195,6 +202,8 @@ class RetrievalConfig:
             "rerank_top_n": self.rerank_top_n if self.rerank else None,
             "rerank_model": RERANK_MODEL_ID if self.rerank else None,
             "filter": self.filter.as_dict() if self.filter else None,
+            "expand_query": self.expand_query,
+            "expansion_mode": self.expansion_mode,
         }
 
 

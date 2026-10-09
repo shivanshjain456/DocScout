@@ -59,10 +59,24 @@ AB_CUTOFF = 5
 
 # The A/B that ADR-0006 rests on. Both single-arm configurations are run, not just the
 # winner, because the brief requires the loser's numbers and why it lost.
+# P1-3 adds hybrid-expanded to evaluate domain query understanding across leakage bands.
+EXPANDED_CONFIG = RetrievalConfig(
+    name="hybrid-expanded",
+    mode="hybrid",
+    k_dense=50,
+    k_lexical=50,
+    k_final=10,
+    rrf_k=SERVING_CONFIG.rrf_k,
+    anchor_arm_top1=True,
+    expand_query=True,
+    expansion_mode="synonym",
+)
+
 BASELINE_CONFIGS: tuple[RetrievalConfig, ...] = (
     RetrievalConfig(name="dense-only", mode="dense", k_dense=50, k_final=10),
     RetrievalConfig(name="bm25-only", mode="bm25", k_lexical=50, k_final=10),
     SERVING_CONFIG,
+    EXPANDED_CONFIG,
 )
 
 

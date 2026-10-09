@@ -50,6 +50,9 @@ class SearchRequest(BaseModel):
     generate_answer: bool = False
     # Declarative metadata filter for in-query pruning (P1-2).
     filter: MetadataFilter | None = None
+    # Domain query understanding and expansion (P1-3).
+    expand_query: bool = False
+    expansion_mode: Literal["none", "synonym", "hyde", "combined"] = "none"
 
 
 class Passage(BaseModel):

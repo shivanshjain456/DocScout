@@ -108,7 +108,7 @@ Order rationale (assessment §5): P0-4 first (unblocks reviewability) → P0-1 (
 - **WHAT SUCCESS LOOKS LIKE:** `POST /v1/search` accepts a filter parameter; integration tests show a date-bounded question correctly excludes superseded-era passages; `explain` or equivalent shows index use.
 
 
-### P1-3 — Query Understanding Expansion | Status: TODO
+### P1-3 — Query Understanding Expansion | Status: VERIFIED (DomainQueryExpander in app/retrieval/expansion.py, bidirectional acronym/synonym expansion across 36+ regulatory concepts, HyDE formulation, RetrievalConfig & API wiring with cache partitioning, BASELINE_CONFIGS evaluated over 365 items in evals/reports/20261009T111050Z, leakage low-band 0.889 measured, paired bootstrap CI [-0.0082, +0.0082], 14 tests in tests/test_query_expansion.py, ADR-0017 defending serving default)
 
 - **Dimension:** Retrieval (§3.6).
 - **Current evidenced state:** Literal query after BM25 analyzer; no HyDE/synonym/decomposition; no `openai`/`anthropic` import in `app/retrieval/`; hybrid ties dense in low-leakage band (dense 0.875, bm25 0.750, hybrid 0.875, n=8) and indistinguishable overall (bm25 leads hybrid by one item, all CIs include zero).

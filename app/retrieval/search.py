@@ -21,6 +21,7 @@ import psycopg
 from app.ingest.embed import Embedder
 from app.retrieval import confidence as confidence_module
 from app.retrieval import dense, fusion
+from app.retrieval.expansion import DomainQueryExpander, get_default_expander
 from app.retrieval.lexical import BM25Index
 from app.retrieval.rerank import Candidate, CrossEncoderReranker
 from app.retrieval.types import RetrievalConfig, Retrieved
@@ -47,6 +48,7 @@ class Retriever:
         embedder: Embedder | None = None,
         bm25: BM25Index | None = None,
         reranker: CrossEncoderReranker | None = None,
+        expander: DomainQueryExpander | None = None,
     ) -> None:
         self._conn = conn
         self._embedder = embedder if embedder is not None else Embedder()
@@ -57,6 +59,7 @@ class Retriever:
         # Injectable and lazily constructed for the same reason as the BM25 index: the
         # cross-encoder weights take ~11 s to load and must be shared, not per request.
         self._reranker = reranker
+        self._expander = expander
         self._meta: dict[str, _ChunkRow] = {}
 
     @property
@@ -70,6 +73,12 @@ class Retriever:
         if self._reranker is None:
             self._reranker = CrossEncoderReranker()
         return self._reranker
+
+    @property
+    def expander(self) -> DomainQueryExpander:
+        if self._expander is None:
+            self._expander = get_default_expander()
+        return self._expander
 
     def _rerank(
         self,
@@ -163,14 +172,21 @@ class Retriever:
         raw_scores: dict[str, float] = {}
         filter_spec = config.filter
 
+        dense_query = query
+        lexical_query = query
+        if config.expand_query:
+            expanded = self.expander.expand(query, mode=config.expansion_mode)
+            dense_query = expanded.dense_query
+            lexical_query = expanded.lexical_query
+
         if config.mode in ("dense", "hybrid"):
-            vector = self._embedder.encode_query(query)
+            vector = self._embedder.encode_query(dense_query)
             hits = dense.search(self._conn, vector, config.k_dense, filter=filter_spec)
             arms["dense"] = [cid for cid, _ in hits]
             raw_scores.update({cid: score for cid, score in hits})
 
         if config.mode in ("bm25", "hybrid"):
-            hits = self.bm25.search(self._conn, query, config.k_lexical, filter=filter_spec)
+            hits = self.bm25.search(self._conn, lexical_query, config.k_lexical, filter=filter_spec)
             arms["lexical"] = [cid for cid, _ in hits]
             for cid, score in hits:
                 raw_scores.setdefault(cid, score)
