@@ -300,21 +300,31 @@ million queries covers one t4g.small serving retrieval; it is not an AWS quotati
 not include storage, egress or the LLM that does not exist yet. Re-check the price before
 anyone acts on it.
 
-**There are 14 ADRs documenting the full decision lineage.** Every major architectural choice
+**There are 16 ADRs documenting the full decision lineage.** Every major architectural choice
 has a dedicated record in `docs/decisions/` with rejected alternatives and measured reasons:
 pgvector over alternatives (0004), hybrid over dense-only (0006), embedding model (0002),
 chunk geometry (0003), reranker trade-offs (0009), content-derived chunk IDs (0005),
 arm-anchored fusion (0007), serving evidence rather than ungrounded prose (0008), local deployment
 artifact (0010), calibrated generation (0011), corpus scale expansion (0012), scheduled corpus
-refresh (0013), and cache invalidation on supersession with liveness/readiness split (0014).
+refresh (0013), cache invalidation on supersession with liveness/readiness split (0014),
+append-only retrieval audit log and PII scanning (0015), and declarative metadata filtering with in-query index pruning (0016).
 
-**Superseded document versions are retained but never retrieved or cached.** RBI and SEBI amend and
-withdraw circulars routinely. Retrieval strictly filters to the current version of each document;
+**Declarative metadata filtering is supported in-query across all retrieval arms.** `POST /v1/search`
+accepts an optional `filter` specification supporting regulatory authority bounding (`source`: `"RBI"`, `"SEBI"`),
+issuance and fetch date windows (`date_from`, `date_to`), version currency (`is_current`: default `true`, or `false`
+for legal archaeology into superseded directives), and target UUIDs / canonical URLs. Filtering is executed strictly
+in-query in PostgreSQL (`dense.py`) backed by B-tree indices on `documents` and `document_versions` (Migration 0005),
+and in-index in BM25 (`lexical.py`), preventing top-k candidate starvation. The LRU cache key partitions on
+`filter.canonical_tuple()`, preventing cross-filter cache collisions.
+
+**Superseded document versions are retained but never retrieved or cached by default.** RBI and SEBI amend and
+withdraw circulars routinely. Retrieval strictly filters to the current version of each document by default;
 superseded rows stay in PostgreSQL because FR-4 makes retention an audit guarantee and the
 application role holds no DELETE. When a version is superseded, in-memory caches are purged
 immediately via event-driven hooks, the BM25 term index is reloaded, and generation counters are
 bumped (ADR-0014, tested by `tests/test_supersession_cache_invalidation.py`), guaranteeing that
 stale passages are never served.
+
 
 **Reranking is implemented but disabled, and that verdict is corpus-specific.** On 170 chunks
 retrieval already returns every piece of required evidence (recall@10 = 1.000), so a reranker

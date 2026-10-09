@@ -10,7 +10,10 @@ with the lexical arm entirely absent from the call graph.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
+from datetime import date, datetime
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict
 
 from app.retrieval.rerank import MODEL_ID as RERANK_MODEL_ID
 
@@ -20,6 +23,94 @@ Mode = Literal["dense", "bm25", "hybrid"]
 # which is also what every mainstream implementation defaults to. It is not tuned here: it
 # is held fixed so the dense/lexical/hybrid comparison varies one thing at a time.
 DEFAULT_RRF_K = 60
+
+
+@dataclass(frozen=True)
+class ChunkMeta:
+    """Core metadata stored alongside chunks for filtering and attribution."""
+
+    chunk_id: str
+    document_id: str
+    source: str
+    published_date: date | None
+    fetch_ts: datetime | None
+    is_current: bool
+    canonical_url: str | None = None
+
+
+class MetadataFilter(BaseModel):
+    """Declarative metadata filter specification for in-query pruning (P1-2).
+
+    Enables bounding regulatory retrieval by authority (RBI, SEBI), issuance
+    date windows (date_from, date_to), version status (is_current), or specific
+    document UUIDs / canonical URLs.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    source: str | list[str] | None = None
+    date_from: date | None = None
+    date_to: date | None = None
+    is_current: bool | None = True
+    document_ids: list[str] | None = None
+    canonical_url: str | None = None
+
+    def canonical_tuple(self) -> tuple[Any, ...]:
+        """Deterministic hashable representation for query caching."""
+        src: tuple[str, ...] | None = None
+        if isinstance(self.source, str):
+            src = (self.source,)
+        elif isinstance(self.source, (list, tuple, set)):
+            src = tuple(sorted(self.source))
+
+        doc_ids: tuple[str, ...] | None = None
+        if self.document_ids:
+            doc_ids = tuple(sorted(self.document_ids))
+
+        return (
+            src,
+            self.date_from.isoformat() if self.date_from else None,
+            self.date_to.isoformat() if self.date_to else None,
+            self.is_current,
+            doc_ids,
+            self.canonical_url,
+        )
+
+    def as_dict(self) -> dict[str, Any]:
+        return self.model_dump(mode="json", exclude_none=True)
+
+    def matches(self, meta: ChunkMeta | None) -> bool:
+        """Predicate evaluation against in-memory chunk metadata for BM25 pruning."""
+        if meta is None:
+            return False
+
+        if self.is_current is not None and meta.is_current != self.is_current:
+            return False
+
+        if self.source is not None:
+            allowed = {self.source} if isinstance(self.source, str) else set(self.source)
+            if meta.source not in allowed:
+                return False
+
+        doc_date = meta.published_date
+        if doc_date is None and meta.fetch_ts is not None:
+            doc_date = meta.fetch_ts.date()
+
+        if doc_date is not None:
+            if self.date_from is not None and doc_date < self.date_from:
+                return False
+            if self.date_to is not None and doc_date > self.date_to:
+                return False
+        elif self.date_from is not None or self.date_to is not None:
+            return False
+
+        if self.document_ids is not None and meta.document_id not in self.document_ids:
+            return False
+
+        if self.canonical_url is not None and meta.canonical_url != self.canonical_url:
+            return False
+
+        return True
 
 
 @dataclass(frozen=True)
@@ -79,6 +170,7 @@ class RetrievalConfig:
     # reranker would be asked to choose the top k from fewer than k candidates, which
     # quietly degrades to "no reranking" while still charging for the model.
     rerank_top_n: int = 20
+    filter: MetadataFilter | None = None
 
     def __post_init__(self) -> None:
         if self.rerank and self.rerank_top_n < self.k_final:
@@ -102,6 +194,7 @@ class RetrievalConfig:
             "rerank": self.rerank,
             "rerank_top_n": self.rerank_top_n if self.rerank else None,
             "rerank_model": RERANK_MODEL_ID if self.rerank else None,
+            "filter": self.filter.as_dict() if self.filter else None,
         }
 
 

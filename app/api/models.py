@@ -20,6 +20,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from app.generate.models import GeneratedAnswer
+from app.retrieval.types import MetadataFilter
 
 # A ceiling on query length. The embedding model truncates at 512 tokens, so anything
 # beyond roughly this is silently discarded by the encoder -- better to reject it than to
@@ -47,6 +48,8 @@ class SearchRequest(BaseModel):
     use_cache: bool = True
     # Whether to construct a citation-grounded answer behind the retrieved passages.
     generate_answer: bool = False
+    # Declarative metadata filter for in-query pruning (P1-2).
+    filter: MetadataFilter | None = None
 
 
 class Passage(BaseModel):
@@ -112,6 +115,7 @@ class SearchResponse(BaseModel):
     provenance: Provenance
     timings: Timings
     answer: GeneratedAnswer | None = None
+    filter: MetadataFilter | None = None
 
 
 class LivenessResponse(BaseModel):

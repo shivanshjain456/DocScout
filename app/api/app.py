@@ -439,6 +439,7 @@ def _config_for(payload: SearchRequest) -> RetrievalConfig:
             k_final=payload.k,
             rrf_k=SERVING_CONFIG.rrf_k,
             anchor_arm_top1=SERVING_CONFIG.anchor_arm_top1,
+            filter=payload.filter,
         )
     # Single-arm modes are the documented ADR-0006 ablation, reachable so the A/B can be
     # reproduced against the running service.
@@ -448,6 +449,7 @@ def _config_for(payload: SearchRequest) -> RetrievalConfig:
         k_dense=SERVING_CONFIG.k_dense,
         k_lexical=SERVING_CONFIG.k_lexical,
         k_final=payload.k,
+        filter=payload.filter,
     )
 
 
@@ -471,7 +473,8 @@ def search(
     started = time.perf_counter()
     state = request.app.state
     req_generation = getattr(state, "corpus_generation", 1)
-    cache_key = (payload.query, payload.mode, payload.k, payload.generate_answer)
+    filter_key = payload.filter.canonical_tuple() if payload.filter else None
+    cache_key = (payload.query, payload.mode, payload.k, payload.generate_answer, filter_key)
 
     cached: CachedResult | None = state.result_cache.get(cache_key) if payload.use_cache else None
     if cached is not None:
@@ -499,6 +502,7 @@ def search(
             key_fingerprint=fingerprint,
             mode=payload.mode,
             k=payload.k,
+            filter=payload.filter.as_dict() if payload.filter else None,
             duration_ms=round(total_ms, 2),
         )
         return SearchResponse(
@@ -515,6 +519,7 @@ def search(
                 cache_hit=True,
             ),
             answer=cached.answer,
+            filter=payload.filter,
         )
 
     # A bypassed cache is not a miss: counting it as one would make the hit ratio depend
@@ -624,6 +629,7 @@ def search(
         key_fingerprint=fingerprint,
         mode=payload.mode,
         k=payload.k,
+        filter=payload.filter.as_dict() if payload.filter else None,
         duration_ms=round(total_ms, 2),
         retrieval_ms=round(retrieval_ms, 2),
         generation_ms=round(generation_ms, 2),
@@ -644,6 +650,7 @@ def search(
             cache_hit=False,
         ),
         answer=result.answer,
+        filter=payload.filter,
     )
 
 

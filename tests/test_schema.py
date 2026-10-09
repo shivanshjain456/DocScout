@@ -581,3 +581,32 @@ def test_application_role_cannot_delete_or_update_audit_records(
                 "DELETE FROM retrieval_audit_log WHERE id = %s",
                 (row[0],),
             )
+
+
+# --------------------------------------------------------------------------------------
+# 0005: metadata filtering indices (P1-2)
+# --------------------------------------------------------------------------------------
+def test_metadata_filtering_indices_exist(app_conn: psycopg.Connection[Any]) -> None:
+    """Indices created by migration 0005 must exist in pg_indexes."""
+    rows = app_conn.execute(
+        """
+        SELECT indexname FROM pg_indexes
+        WHERE schemaname = 'public'
+          AND indexname IN (
+            'idx_documents_source',
+            'idx_documents_published_date',
+            'idx_documents_source_published_date',
+            'idx_document_versions_fetch_ts',
+            'idx_document_versions_current'
+          )
+        """
+    ).fetchall()
+    found = {r[0] for r in rows}
+    expected = {
+        "idx_documents_source",
+        "idx_documents_published_date",
+        "idx_documents_source_published_date",
+        "idx_document_versions_fetch_ts",
+        "idx_document_versions_current",
+    }
+    assert expected.issubset(found), f"missing indices: {expected - found}"

@@ -93,7 +93,10 @@ class Retriever:
                 seen.add(arm_ids[0])
                 pool_ids.append(arm_ids[0])
 
-        meta = self._metadata(pool_ids)
+        meta = self._metadata(
+            pool_ids,
+            is_current=config.filter.is_current if config.filter is not None else True,
+        )
         candidates = [
             Candidate(chunk_id=chunk_id, text=meta[chunk_id].text if chunk_id in meta else "")
             for chunk_id in pool_ids
@@ -109,21 +112,28 @@ class Retriever:
         tail = [entry for entry in fused if entry[0] not in seen]
         return ordered + tail
 
-    def _metadata(self, chunk_ids: list[str]) -> dict[str, _ChunkRow]:
+    def _metadata(
+        self, chunk_ids: list[str], is_current: bool | None = True
+    ) -> dict[str, _ChunkRow]:
         """Fetch display metadata for ids not already cached."""
         missing = [c for c in chunk_ids if c not in self._meta]
         if missing:
-            rows = self._conn.execute(
-                """
+            where_condition = "AND v.is_current"
+            if is_current is False:
+                where_condition = "AND NOT v.is_current"
+            elif is_current is None:
+                where_condition = ""
+
+            query = f"""
                 SELECT c.chunk_id::text, c.document_id::text, d.source, c.text,
                        d.canonical_url, c.char_start, c.char_end
                 FROM chunks AS c
                 JOIN documents AS d ON d.document_id = c.document_id
                 JOIN document_versions AS v ON v.version_id = c.version_id
-                WHERE c.chunk_id = ANY(%s::uuid[]) AND v.is_current
-                """,
-                (missing,),
-            ).fetchall()
+                WHERE c.chunk_id = ANY(%s::uuid[]) {where_condition}
+            """  # noqa: S608 - where_condition is fixed literal template; missing ids are parameterized
+            rows = self._conn.execute(query, (missing,)).fetchall()
+
             for chunk_id, document_id, source, text, url, start, end in rows:
                 self._meta[as_str(chunk_id)] = _ChunkRow(
                     document_id=as_str(document_id),
@@ -151,15 +161,16 @@ class Retriever:
     def retrieve(self, query: str, config: RetrievalConfig) -> list[Retrieved]:
         arms: dict[str, list[str]] = {}
         raw_scores: dict[str, float] = {}
+        filter_spec = config.filter
 
         if config.mode in ("dense", "hybrid"):
             vector = self._embedder.encode_query(query)
-            hits = dense.search(self._conn, vector, config.k_dense)
+            hits = dense.search(self._conn, vector, config.k_dense, filter=filter_spec)
             arms["dense"] = [cid for cid, _ in hits]
             raw_scores.update({cid: score for cid, score in hits})
 
         if config.mode in ("bm25", "hybrid"):
-            hits = self.bm25.search(self._conn, query, config.k_lexical)
+            hits = self.bm25.search(self._conn, query, config.k_lexical, filter=filter_spec)
             arms["lexical"] = [cid for cid, _ in hits]
             for cid, score in hits:
                 raw_scores.setdefault(cid, score)
@@ -182,7 +193,9 @@ class Retriever:
         top = fused[: config.k_final]
         if config.anchor_arm_top1 and config.mode == "hybrid":
             top = _anchor_arm_leaders(top, arms, fused, config.k_final)
-        meta = self._metadata([cid for cid, _, _ in top])
+        is_curr = filter_spec.is_current if filter_spec is not None else True
+        meta = self._metadata([cid for cid, _, _ in top], is_current=is_curr)
+
         results: list[Retrieved] = []
         for index, (chunk_id, score, arm_ranks) in enumerate(top):
             row = meta.get(chunk_id)

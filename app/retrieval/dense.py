@@ -24,9 +24,12 @@ the only one that uses the index.
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import psycopg
 
+from app.retrieval.types import MetadataFilter
 from app.rowtypes import as_float, as_str
 
 
@@ -34,23 +37,64 @@ def search(
     conn: psycopg.Connection[tuple[object, ...]],
     query_vector: np.ndarray,
     k: int,
+    filter: MetadataFilter | None = None,
 ) -> list[tuple[str, float]]:
     """Return the top-k (chunk_id, similarity), highest similarity first.
 
     Similarity is 1 - cosine distance, so it rises with relevance like the BM25 score
     does. Fusion is rank-based and does not care, but a report that prints raw scores
     should not print one column where bigger is better next to one where it is not.
+
+    Filtering (P1-2) is executed in-query so Postgres can leverage index scans on
+    documents (source, published_date) and document_versions (is_current, fetch_ts).
     """
     vector = np.asarray(query_vector, dtype=np.float32).tolist()
-    rows = conn.execute(
-        """
-        SELECT c.chunk_id::text, 1.0 - (c.embedding <=> %s::vector) AS similarity
+    params: dict[str, Any] = {"vector": vector, "k": k}
+    where_clauses: list[str] = []
+
+    # Version currency filter
+    is_curr = filter.is_current if filter is not None else True
+    if is_curr is True:
+        where_clauses.append("v.is_current")
+    elif is_curr is False:
+        where_clauses.append("NOT v.is_current")
+
+    if filter is not None:
+        if filter.source is not None:
+            if isinstance(filter.source, str):
+                where_clauses.append("d.source = %(source)s")
+                params["source"] = filter.source
+            else:
+                where_clauses.append("d.source = ANY(%(sources)s)")
+                params["sources"] = list(filter.source)
+
+        if filter.date_from is not None:
+            where_clauses.append("COALESCE(d.published_date, v.fetch_ts::date) >= %(date_from)s")
+            params["date_from"] = filter.date_from
+
+        if filter.date_to is not None:
+            where_clauses.append("COALESCE(d.published_date, v.fetch_ts::date) <= %(date_to)s")
+            params["date_to"] = filter.date_to
+
+        if filter.document_ids is not None:
+            where_clauses.append("c.document_id = ANY(%(document_ids)s::uuid[])")
+            params["document_ids"] = filter.document_ids
+
+        if filter.canonical_url is not None:
+            where_clauses.append("d.canonical_url = %(canonical_url)s")
+            params["canonical_url"] = filter.canonical_url
+
+    where_sql = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+
+    query = f"""
+        SELECT c.chunk_id::text, 1.0 - (c.embedding <=> %(vector)s::vector) AS similarity
         FROM chunks AS c
         JOIN document_versions AS v ON v.version_id = c.version_id
-        WHERE v.is_current
-        ORDER BY c.embedding <=> %s::vector
-        LIMIT %s
-        """,
-        (vector, vector, k),
-    ).fetchall()
+        JOIN documents AS d ON d.document_id = c.document_id
+        {where_sql}
+        ORDER BY c.embedding <=> %(vector)s::vector
+        LIMIT %(k)s
+    """  # noqa: S608 - predicate templates are fixed literals; all dynamic values are securely bound in params
+    rows = conn.execute(query, params).fetchall()
+
     return [(as_str(r[0]), as_float(r[1])) for r in rows]

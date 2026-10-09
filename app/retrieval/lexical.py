@@ -37,6 +37,7 @@ from dataclasses import dataclass
 
 import psycopg
 
+from app.retrieval.types import ChunkMeta, MetadataFilter
 from app.rowtypes import as_int, as_str
 
 # Okapi BM25's standard parameters. k1 controls term-frequency saturation, b controls how
@@ -58,6 +59,7 @@ class BM25Index:
     def __init__(self, conn: psycopg.Connection[tuple[object, ...]]) -> None:
         self._postings: dict[str, list[_Posting]] = defaultdict(list)
         self._doc_len: dict[str, int] = defaultdict(int)
+        self._chunk_meta: dict[str, ChunkMeta] = {}
         self._lexemes_by_chunk: dict[str, set[str]] | None = None
         self._build(conn)
         self._n = len(self._doc_len)
@@ -74,18 +76,46 @@ class BM25Index:
         rows = conn.execute(
             """
             SELECT c.chunk_id::text,
+                   c.document_id::text,
+                   d.source,
+                   d.published_date,
+                   v.fetch_ts,
+                   v.is_current,
+                   d.canonical_url,
                    u.lexeme,
                    COALESCE(array_length(u.positions, 1), 1) AS tf
             FROM chunks AS c
-            JOIN document_versions AS v ON v.version_id = c.version_id,
+            JOIN document_versions AS v ON v.version_id = c.version_id
+            JOIN documents AS d ON d.document_id = c.document_id,
                  unnest(c.tsv) AS u(lexeme, positions, weights)
             WHERE v.is_current
             """
         ).fetchall()
-        for chunk_id, lexeme, tf in rows:
+        for (
+            chunk_id,
+            document_id,
+            source,
+            pub_date,
+            fetch_ts,
+            is_current,
+            canon_url,
+            lexeme,
+            tf,
+        ) in rows:
+            cid = as_str(chunk_id)
+            if cid not in self._chunk_meta:
+                self._chunk_meta[cid] = ChunkMeta(
+                    chunk_id=cid,
+                    document_id=as_str(document_id),
+                    source=as_str(source),
+                    published_date=pub_date,  # type: ignore[arg-type]
+                    fetch_ts=fetch_ts,  # type: ignore[arg-type]
+                    is_current=bool(is_current),
+                    canonical_url=as_str(canon_url) if canon_url is not None else None,
+                )
             count = as_int(tf)
-            self._postings[as_str(lexeme)].append(_Posting(as_str(chunk_id), count))
-            self._doc_len[as_str(chunk_id)] += count
+            self._postings[as_str(lexeme)].append(_Posting(cid, count))
+            self._doc_len[cid] += count
 
     def lexemes_of(self, chunk_id: str) -> set[str]:
         """The analyzed terms of one chunk.
@@ -130,15 +160,27 @@ class BM25Index:
         return [as_str(r[0]) for r in rows]
 
     def search(
-        self, conn: psycopg.Connection[tuple[object, ...]], query: str, k: int
+        self,
+        conn: psycopg.Connection[tuple[object, ...]],
+        query: str,
+        k: int,
+        filter: MetadataFilter | None = None,
     ) -> list[tuple[str, float]]:
-        """Return the top-k (chunk_id, score), highest first."""
+        """Return the top-k (chunk_id, score), highest first.
+
+        If a filter is provided, candidate chunks are checked against its metadata
+        during posting iteration, skipping disqualified candidates before accumulation.
+        """
         scores: dict[str, float] = defaultdict(float)
         for term in self.query_terms(conn, query):
             idf = self._idf(term)
             if idf == 0.0:
                 continue
             for posting in self._postings[term]:
+                if filter is not None and not filter.matches(
+                    self._chunk_meta.get(posting.chunk_id)
+                ):
+                    continue
                 dl = self._doc_len[posting.chunk_id]
                 denom = posting.tf + K1 * (1.0 - B + B * dl / self._avgdl)
                 scores[posting.chunk_id] += idf * posting.tf * (K1 + 1.0) / denom
