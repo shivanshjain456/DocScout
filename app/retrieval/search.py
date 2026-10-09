@@ -36,6 +36,8 @@ class _ChunkRow:
     canonical_url: str | None
     char_start: int
     char_end: int
+    title: str | None = None
+    published_date: str | None = None
 
 
 class Retriever:
@@ -135,7 +137,8 @@ class Retriever:
 
             query = f"""
                 SELECT c.chunk_id::text, c.document_id::text, d.source, c.text,
-                       d.canonical_url, c.char_start, c.char_end
+                       d.canonical_url, c.char_start, c.char_end,
+                       d.title, d.published_date::text
                 FROM chunks AS c
                 JOIN documents AS d ON d.document_id = c.document_id
                 JOIN document_versions AS v ON v.version_id = c.version_id
@@ -143,7 +146,7 @@ class Retriever:
             """  # noqa: S608 - where_condition is fixed literal template; missing ids are parameterized
             rows = self._conn.execute(query, (missing,)).fetchall()
 
-            for chunk_id, document_id, source, text, url, start, end in rows:
+            for chunk_id, document_id, source, text, url, start, end, title, pub_date in rows:
                 self._meta[as_str(chunk_id)] = _ChunkRow(
                     document_id=as_str(document_id),
                     source=as_str(source),
@@ -151,6 +154,8 @@ class Retriever:
                     canonical_url=None if url is None else as_str(url),
                     char_start=as_int(start),
                     char_end=as_int(end),
+                    title=as_str(title) if title is not None else None,
+                    published_date=as_str(pub_date) if pub_date is not None else None,
                 )
         return self._meta
 
@@ -227,6 +232,8 @@ class Retriever:
                     canonical_url=row.canonical_url if row else None,
                     char_start=row.char_start if row else 0,
                     char_end=row.char_end if row else 0,
+                    title=row.title if row else None,
+                    published_date=row.published_date if row else None,
                 )
             )
         return results

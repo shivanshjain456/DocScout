@@ -29,12 +29,13 @@ import hashlib
 import json
 from collections.abc import Iterator
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 from app.config import REPO_ROOT
 from app.ingest.allowlist import assert_allowed, is_synthetic
 from app.ingest.errors import IngestError
+from app.ingest.metadata import CANONICAL_DOCUMENT_METADATA
 
 DEFAULT_MANIFEST = REPO_ROOT / "corpus" / "raw" / "manifest.json"
 
@@ -72,6 +73,8 @@ class SourceDocument:
     detail_page: str | None
     authority: str
     is_injection_canary: bool
+    title: str | None = None
+    published_date: date | None = None
 
     @property
     def bytes_len(self) -> int:
@@ -139,6 +142,15 @@ def iter_manifest_documents(
                 "attach recorded provenance to different content."
             )
 
+        meta = CANONICAL_DOCUMENT_METADATA.get(url)
+        raw_title = record.get("title") or (meta["title"] if meta else None)
+        title = str(raw_title) if raw_title is not None else None
+
+        raw_date = record.get("published_date") or (meta["published_date"] if meta else None)
+        pub_date: date | None = None
+        if raw_date is not None:
+            pub_date = date.fromisoformat(str(raw_date)) if isinstance(raw_date, str) else raw_date  # type: ignore[assignment]
+
         yield SourceDocument(
             url=url,
             source=source,
@@ -154,5 +166,7 @@ def iter_manifest_documents(
             ),
             authority=AUTHORITY_BY_SOURCE.get(source, source),
             is_injection_canary=bool(record.get("is_injection_canary", False)),
+            title=title,
+            published_date=pub_date,
         )
         yielded += 1

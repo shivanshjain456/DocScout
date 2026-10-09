@@ -300,14 +300,15 @@ million queries covers one t4g.small serving retrieval; it is not an AWS quotati
 not include storage, egress or the LLM that does not exist yet. Re-check the price before
 anyone acts on it.
 
-**There are 16 ADRs documenting the full decision lineage.** Every major architectural choice
+**There are 18 ADRs documenting the full decision lineage.** Every major architectural choice
 has a dedicated record in `docs/decisions/` with rejected alternatives and measured reasons:
 pgvector over alternatives (0004), hybrid over dense-only (0006), embedding model (0002),
 chunk geometry (0003), reranker trade-offs (0009), content-derived chunk IDs (0005),
 arm-anchored fusion (0007), serving evidence rather than ungrounded prose (0008), local deployment
 artifact (0010), calibrated generation (0011), corpus scale expansion (0012), scheduled corpus
 refresh (0013), cache invalidation on supersession with liveness/readiness split (0014),
-append-only retrieval audit log and PII scanning (0015), and declarative metadata filtering with in-query index pruning (0016).
+append-only retrieval audit log and PII scanning (0015), declarative metadata filtering with in-query index pruning (0016),
+domain query understanding and bidirectional expansion (0017), and authoritative human-readable citation rendering and document resolution (0018).
 
 **Declarative metadata filtering is supported in-query across all retrieval arms.** `POST /v1/search`
 accepts an optional `filter` specification supporting regulatory authority bounding (`source`: `"RBI"`, `"SEBI"`),
@@ -362,9 +363,11 @@ at `docs/setup/verify/m4-eval-gate.txt`.
 size. Correct now, wrong at a million chunks, where the lexical arm should move to a real BM25
 index (ParadeDB `pg_search`, OpenSearch). The interface does not change when it does.
 
-**Citations are chunk IDs, not human-readable references.** `title` and `published_date` are
-NULL for the current corpus, so FR-14's "cite the document title and date" cannot be satisfied
-and citations resolve to `chunk_id` instead.
+**Citations carry authoritative document titles, publication dates, and canonical URLs (FR-14).**
+Every retrieved `Passage` carries its official regulator circular `title`, `published_date`,
+and `canonical_url`, alongside stable content-derived `chunk_id` and character spans (ADR-0018, Migration 0006).
+Dedicated endpoint `GET /v1/documents/{document_id}` resolves any document ID to its full metadata,
+version count, current version ID, chunk count, and creation timestamp.
 
 **Latency figures are retrieval only, on 2 vCPU / 1.9 GiB.** The embedding model is loaded once
 per run and excluded. They are not end-to-end numbers and must not be read as a service SLO.

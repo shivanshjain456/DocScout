@@ -152,11 +152,16 @@ async function run() {
         .map(([a, r]) => '<span class="tag">' + esc(a) + ' #' + r + '</span>').join(' ');
       const url = p.canonical_url
         ? ' <a href="' + esc(p.canonical_url) + '" target="_blank" rel="noopener noreferrer">source</a>' : '';
+      const docHeader = p.title
+        ? '<div style="margin:4px 0 8px;font-weight:600;color:var(--ink);font-size:14px;">' + esc(p.title) +
+          (p.published_date ? ' <span style="font-weight:normal;color:var(--dim);font-size:12px;">(' + esc(p.published_date) + ')</span>' : '') +
+          '</div>' : '';
       return '<div class="hit"><h3><span class="rank">' + p.rank + '</span>' +
         '<span class="tag">' + esc(p.source) + '</span>' + arms +
         '<span class="tag">score ' + p.score.toFixed(4) + '</span>' +
         '<span class="tag">chars ' + p.char_start + '\\u2013' + p.char_end + '</span>' +
         url + '</h3>' +
+        docHeader +
         '<div class="cid">' + esc(p.chunk_id) + '</div>' +
         '<div class="txt">' + esc(p.text) + '</div></div>';
     }).join('');

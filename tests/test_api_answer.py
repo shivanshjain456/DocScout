@@ -118,6 +118,8 @@ def test_search_handler_executes_generation_when_requested(
     mock_hit.char_start = 0
     mock_hit.char_end = 50
     mock_hit.text = "Capital adequacy ratio must be maintained at nine percent minimum."
+    mock_hit.title = "Master Direction on Capital Adequacy"
+    mock_hit.published_date = "2024-09-01"
 
     mock_retriever = MagicMock()
     mock_retriever.retrieve.return_value = [mock_hit]

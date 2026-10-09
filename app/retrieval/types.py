@@ -37,6 +37,7 @@ class ChunkMeta:
     fetch_ts: datetime | None
     is_current: bool
     canonical_url: str | None = None
+    title: str | None = None
 
 
 class MetadataFilter(BaseModel):
@@ -135,6 +136,8 @@ class Retrieved:
     canonical_url: str | None = None
     char_start: int = 0
     char_end: int = 0
+    title: str | None = None
+    published_date: str | None = None
 
 
 @dataclass(frozen=True)

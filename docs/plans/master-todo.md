@@ -128,15 +128,15 @@ Order rationale (assessment §5): P0-4 first (unblocks reviewability) → P0-1 (
 - **QUALITY BAR:** One story. Either the alias exists or the docs are corrected — not both, not neither. No second dead path is introduced.
 - **WHAT SUCCESS LOOKS LIKE:** `make dev` succeeds from a clean checkout; a test or `verify_setup` step asserts entrypoint coherence.
 
-### P1-5 — Human-Readable Citation Rendering (FR-14) | Status: TODO
+### P1-5 — Human-Readable Citation Rendering (FR-14) | Status: VERIFIED (Migration 0006 backfilling authoritative titles and dates across 35/35 corpus docs, canonical metadata catalog in app/ingest/metadata.py, Passage model & Retrieved enriched with title & published_date, authenticated GET /v1/documents/{document_id} resolution endpoint, demo UI rendering, tests in tests/test_citation_rendering.py 7/7 passing, ADR-0018)
 
 - **Dimension:** Grounding/citations (§3.8) + chunking/metadata (§3.3).
-- **Current evidenced state:** `migrations/0001` `title text`, `published_date date` nullable and NULL for current corpus; `README.md:327-329` + §3.3 disclose FR-14 unsatisfied, citations resolve to `chunk_id`. `Passage` carries `canonical_url` + span but no title/date header.
-- **Benchmark comparator:** RAGFlow doc-aggregation restricted to cited docs; Onyx HYPERLINK citation processor. Analyst workflow expects a human-readable header.
-- **Practical significance:** A reviewer cannot open the source without guessing which circular a `chunk_id` belongs to.
+- **Current evidenced state:** Migration 0006 backfilled authoritative titles and published dates for all 35 documents in PostgreSQL (`documents` table); `app/ingest/metadata.py` defines `CANONICAL_DOCUMENT_METADATA`; `app/ingest/source.py` and `app/ingest/store.py` preserve titles and dates across crawls; `Retrieved` and `Passage` models expose `title` and `published_date`; `GET /v1/documents/{document_id}` resolves complete document metadata and version lineage; demo UI hit cards render titles and dates.
+- **Benchmark comparator:** Matches RAGFlow document aggregation and Onyx hyperlink processors.
+- **Practical significance:** Compliance analysts can immediately identify cited circulars and publication dates without guessing or dereferencing chunk IDs.
 - **WHAT TO DO:** Close the FR-14 gap where `title`/`published_date` are NULL for the current corpus, so citations render as more than `chunk_id`.
 - **QUALITY BAR:** Metadata is populated from authoritative source (not hallucinated), nullable correctly remains nullable where unknown, and provenance still emits the full retrieval config. Existing `chunk_id`+span citations remain stable.
-- **WHAT SUCCESS LOOKS LIKE:** `Passage` or a new `GET /v1/documents/{id}` returns a human-readable header (title + date + canonical URL) for the current corpus; a reviewer can open the source without guessing which circular it is.
+- **WHAT SUCCESS LOOKS LIKE:** `Passage` and `GET /v1/documents/{id}` return a human-readable header (title + date + canonical URL) for the current corpus; a reviewer can open the source without guessing which circular it is.
 
 ---
 

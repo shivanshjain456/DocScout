@@ -610,3 +610,23 @@ def test_metadata_filtering_indices_exist(app_conn: psycopg.Connection[Any]) -> 
         "idx_document_versions_current",
     }
     assert expected.issubset(found), f"missing indices: {expected - found}"
+
+
+# --------------------------------------------------------------------------------------
+# 0006: populate document metadata (P1-5 / FR-14)
+# --------------------------------------------------------------------------------------
+def test_document_metadata_populated_by_migration_0006(
+    app_conn: psycopg.Connection[Any],
+) -> None:
+    """All 35 corpus documents must have authoritative title and published_date populated (FR-14)."""
+    row = app_conn.execute(
+        """
+        SELECT count(*), count(title), count(published_date)
+        FROM documents
+        """
+    ).fetchone()
+    assert row is not None
+    total_docs, titled_docs, dated_docs = int(row[0]), int(row[1]), int(row[2])
+    assert total_docs == 35, f"expected 35 documents, found {total_docs}"
+    assert titled_docs == 35, f"expected 35 titled documents, found {titled_docs}"
+    assert dated_docs == 35, f"expected 35 dated documents, found {dated_docs}"

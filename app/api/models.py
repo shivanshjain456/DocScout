@@ -71,6 +71,8 @@ class Passage(BaseModel):
     char_start: int
     char_end: int
     text: str
+    title: str | None = None
+    published_date: str | None = None
 
 
 class Provenance(BaseModel):
@@ -175,6 +177,22 @@ class CacheInvalidateResponse(BaseModel):
     new_generation: int
     entries_cleared: int
     corpus_chunks: int
+
+
+class DocumentResponse(BaseModel):
+    """Authoritative document metadata resolving an ingested circular (FR-14)."""
+
+    document_id: str
+    canonical_url: str
+    source: str
+    authority: str
+    title: str | None = None
+    published_date: str | None = None
+    detail_page: str | None = None
+    version_count: int = 1
+    current_version_id: str | None = None
+    chunk_count: int = 0
+    created_at: datetime | None = None
 
 
 class ErrorResponse(BaseModel):

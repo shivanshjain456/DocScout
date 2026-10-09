@@ -54,6 +54,7 @@ from app.api.models import (
     CacheInvalidateRequest,
     CacheInvalidateResponse,
     Confidence,
+    DocumentResponse,
     LivenessResponse,
     Passage,
     Provenance,
@@ -574,6 +575,12 @@ def search(
             char_start=hit.char_start,
             char_end=hit.char_end,
             text=hit.text,
+            title=hit.title if isinstance(getattr(hit, "title", None), str) else None,
+            published_date=(
+                hit.published_date
+                if isinstance(getattr(hit, "published_date", None), str)
+                else None
+            ),
         )
         for hit in hits
     ]
@@ -756,4 +763,69 @@ def admin_invalidate_cache(
         new_generation=state.corpus_generation,
         entries_cleared=cleared,
         corpus_chunks=state.corpus_chunks,
+    )
+
+
+@app.get(
+    "/v1/documents/{document_id}",
+    response_model=DocumentResponse,
+    tags=["documents"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "document not found"},
+    },
+)
+def get_document(
+    document_id: str,
+    request: Request,
+    fingerprint: str = Depends(require_api_key),
+) -> DocumentResponse:
+    """Resolve authoritative document metadata, title, date and lineage (FR-14)."""
+    try:
+        doc_uuid = uuid.UUID(document_id)
+    except ValueError:
+        raise StarletteHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"document {document_id!r} not found (invalid UUID format)",
+        ) from None
+
+    state = request.app.state
+    with state.pool.connection() as conn:
+        row = conn.execute(
+            """
+            SELECT d.document_id::text,
+                   d.canonical_url,
+                   d.source,
+                   d.authority,
+                   d.title,
+                   d.published_date::text,
+                   d.detail_page,
+                   d.created_at,
+                   (SELECT count(*) FROM document_versions v WHERE v.document_id = d.document_id) AS version_count,
+                   (SELECT v.version_id::text FROM document_versions v WHERE v.document_id = d.document_id AND v.is_current LIMIT 1) AS current_version_id,
+                   (SELECT count(*) FROM chunks c WHERE c.document_id = d.document_id) AS chunk_count
+              FROM documents d
+             WHERE d.document_id = %s
+            """,
+            (doc_uuid,),
+        ).fetchone()
+
+    if row is None:
+        raise StarletteHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"document {document_id} not found",
+        )
+
+    return DocumentResponse(
+        document_id=str(row[0]),
+        canonical_url=str(row[1]),
+        source=str(row[2]),
+        authority=str(row[3]) if row[3] is not None else str(row[2]),
+        title=str(row[4]) if row[4] is not None else None,
+        published_date=str(row[5]) if row[5] is not None else None,
+        detail_page=str(row[6]) if row[6] is not None else None,
+        created_at=row[7],
+        version_count=as_int(row[8]),
+        current_version_id=str(row[9]) if row[9] is not None else None,
+        chunk_count=as_int(row[10]),
     )
