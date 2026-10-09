@@ -14,30 +14,19 @@ from different code than the hybrid number, and the comparison would not be clea
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 import psycopg
 
 from app.ingest.embed import Embedder
 from app.retrieval import confidence as confidence_module
-from app.retrieval import dense, fusion
+from app.retrieval import fusion
 from app.retrieval.expansion import DomainQueryExpander, get_default_expander
 from app.retrieval.lexical import BM25Index
+from app.retrieval.port import ChunkRow, VectorStore, get_vector_store
 from app.retrieval.rerank import Candidate, CrossEncoderReranker
 from app.retrieval.types import RetrievalConfig, Retrieved
-from app.rowtypes import as_int, as_str
 
-
-@dataclass
-class _ChunkRow:
-    document_id: str
-    source: str
-    text: str
-    canonical_url: str | None
-    char_start: int
-    char_end: int
-    title: str | None = None
-    published_date: str | None = None
+# Backwards compatibility alias
+_ChunkRow = ChunkRow
 
 
 class Retriever:
@@ -45,13 +34,18 @@ class Retriever:
 
     def __init__(
         self,
-        conn: psycopg.Connection[tuple[object, ...]],
+        conn: psycopg.Connection[tuple[object, ...]] | None = None,
         *,
         embedder: Embedder | None = None,
         bm25: BM25Index | None = None,
         reranker: CrossEncoderReranker | None = None,
         expander: DomainQueryExpander | None = None,
+        vector_store: VectorStore | None = None,
     ) -> None:
+        if conn is None and vector_store is None:
+            raise ValueError(
+                "Retriever requires either an active database connection or a VectorStore adapter"
+            )
         self._conn = conn
         self._embedder = embedder if embedder is not None else Embedder()
         # Injectable because building the term table costs a full scan of chunks. A server
@@ -62,11 +56,20 @@ class Retriever:
         # cross-encoder weights take ~11 s to load and must be shared, not per request.
         self._reranker = reranker
         self._expander = expander
-        self._meta: dict[str, _ChunkRow] = {}
+        self._vector_store = vector_store
+        self._meta: dict[str, ChunkRow] = {}
+
+    def get_vector_store(self, adapter_name: str = "pgvector") -> VectorStore:
+        """Resolve vector store adapter from direct injection or registry."""
+        if self._vector_store is not None:
+            return self._vector_store
+        return get_vector_store(adapter_name, conn=self._conn)
 
     @property
     def bm25(self) -> BM25Index:
         if self._bm25 is None:
+            if self._conn is None:
+                raise RuntimeError("BM25Index requires an active database connection")
             self._bm25 = BM25Index(self._conn)
         return self._bm25
 
@@ -107,6 +110,7 @@ class Retriever:
         meta = self._metadata(
             pool_ids,
             is_current=config.filter.is_current if config.filter is not None else True,
+            adapter_name=config.vector_store_adapter,
         )
         candidates = [
             Candidate(chunk_id=chunk_id, text=meta[chunk_id].text if chunk_id in meta else "")
@@ -124,39 +128,17 @@ class Retriever:
         return ordered + tail
 
     def _metadata(
-        self, chunk_ids: list[str], is_current: bool | None = True
-    ) -> dict[str, _ChunkRow]:
-        """Fetch display metadata for ids not already cached."""
+        self,
+        chunk_ids: list[str],
+        is_current: bool | None = True,
+        adapter_name: str = "pgvector",
+    ) -> dict[str, ChunkRow]:
+        """Fetch display metadata for ids not already cached via the vector store port."""
         missing = [c for c in chunk_ids if c not in self._meta]
         if missing:
-            where_condition = "AND v.is_current"
-            if is_current is False:
-                where_condition = "AND NOT v.is_current"
-            elif is_current is None:
-                where_condition = ""
-
-            query = f"""
-                SELECT c.chunk_id::text, c.document_id::text, d.source, c.text,
-                       d.canonical_url, c.char_start, c.char_end,
-                       d.title, d.published_date::text
-                FROM chunks AS c
-                JOIN documents AS d ON d.document_id = c.document_id
-                JOIN document_versions AS v ON v.version_id = c.version_id
-                WHERE c.chunk_id = ANY(%s::uuid[]) {where_condition}
-            """  # noqa: S608 - where_condition is fixed literal template; missing ids are parameterized
-            rows = self._conn.execute(query, (missing,)).fetchall()
-
-            for chunk_id, document_id, source, text, url, start, end, title, pub_date in rows:
-                self._meta[as_str(chunk_id)] = _ChunkRow(
-                    document_id=as_str(document_id),
-                    source=as_str(source),
-                    text=as_str(text),
-                    canonical_url=None if url is None else as_str(url),
-                    char_start=as_int(start),
-                    char_end=as_int(end),
-                    title=as_str(title) if title is not None else None,
-                    published_date=as_str(pub_date) if pub_date is not None else None,
-                )
+            store = self.get_vector_store(adapter_name)
+            fetched = store.fetch_metadata(missing, is_current=is_current)
+            self._meta.update(fetched)
         return self._meta
 
     def assess_confidence(
@@ -168,7 +150,10 @@ class Retriever:
         threshold over the whole gold set and needs the raw coverage, and a caller that
         does not want the extra BM25 lookups should not pay for them.
         """
-        terms = self.bm25.query_terms(self._conn, query)
+        if self._conn is not None:
+            terms = self.bm25.query_terms(self._conn, query)
+        else:
+            terms = [t for t in query.lower().split() if len(t) > 2]
         passage_terms = [self.bm25.lexemes_of(hit.chunk_id) for hit in results]
         return confidence_module.assess(terms, passage_terms)
 
@@ -184,13 +169,17 @@ class Retriever:
             dense_query = expanded.dense_query
             lexical_query = expanded.lexical_query
 
+        store = self.get_vector_store(config.vector_store_adapter)
+
         if config.mode in ("dense", "hybrid"):
             vector = self._embedder.encode_query(dense_query)
-            hits = dense.search(self._conn, vector, config.k_dense, filter=filter_spec)
+            hits = store.search(vector, config.k_dense, filter=filter_spec)
             arms["dense"] = [cid for cid, _ in hits]
             raw_scores.update({cid: score for cid, score in hits})
 
         if config.mode in ("bm25", "hybrid"):
+            if self._conn is None:
+                raise RuntimeError("BM25 lexical search requires an active database connection")
             hits = self.bm25.search(self._conn, lexical_query, config.k_lexical, filter=filter_spec)
             arms["lexical"] = [cid for cid, _ in hits]
             for cid, score in hits:
@@ -215,7 +204,11 @@ class Retriever:
         if config.anchor_arm_top1 and config.mode == "hybrid":
             top = _anchor_arm_leaders(top, arms, fused, config.k_final)
         is_curr = filter_spec.is_current if filter_spec is not None else True
-        meta = self._metadata([cid for cid, _, _ in top], is_current=is_curr)
+        meta = self._metadata(
+            [cid for cid, _, _ in top],
+            is_current=is_curr,
+            adapter_name=config.vector_store_adapter,
+        )
 
         results: list[Retrieved] = []
         for index, (chunk_id, score, arm_ranks) in enumerate(top):

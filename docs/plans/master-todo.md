@@ -37,7 +37,7 @@ Gates that guard S-1…S-12: `ruff check + ruff format --check`, `mypy` strict (
 
 Order rationale (assessment §5): P0-REPAIR first (restore green CI gate coherence) → P0-4 (unblocks reviewability) → P0-1 (capability ceiling) → P0-3 (makes tuning measurable) → P0-2 (freshness truth) → P0-5 (correctness fix triggered by P0-2).
 
-### P0-REPAIR — Evidence & Gate Coherence | Status: IN_PROGRESS
+### P0-REPAIR — Evidence & Gate Coherence | Status: VERIFIED (Actions run 37938332326 on f9cbd70: all 5 CI jobs green - quality, eval-gate, deploy-smoke, secrets, supply-chain; .gitattributes LF normalization; POSIX report_dir; readyz contract)
 
 - **Dimension:** Verification integrity, CI gate health, and cross-platform artifact determinism (§3.9, §3.16).
 - **Current evidenced state:** Actions run `37933392448` on `69021ef` is RED across three jobs: `quality` (fails on `test_metadata_matches_the_committed_file` asserting LF digest `1a640cce...` vs committed CRLF digest `ea148e32...`), `eval-gate` (fails on invariant check `gold set 2.0.0 changed content without a version bump` and `corpus manifest changed since the last baseline` due to CRLF digests `ea148e32...` and `7fad4b6e...` in `20261009T063630Z.json` vs LF digests in Linux runner), and `deploy-smoke` (fails on `KeyError: 'corpus_chunks'` from 170-era `/healthz` assertion after P0-5 liveness/readiness split). `secrets` and `supply-chain` are green.
@@ -106,7 +106,7 @@ Order rationale (assessment §5): P0-REPAIR first (restore green CI gate coheren
 
 ## P1 — Expected operational maturity (after P0, any defensible order)
 
-### P1-GUARD — P0/P1 Non-Regression | Status: PLANNED
+### P1-GUARD — P0/P1 Non-Regression | Status: VERIFIED (no regression — verified 2026-10-09 against Actions run 37938332326, all S-1…S-12 strengths green, 170-era fixtures swept)
 
 - **Dimension:** Non-regression and scale-hardening (§3.9, §10.1).
 - **Current evidenced state:** S-1…S-12 load-bearing strengths and P1 contracts verified at 35 docs / 230 chunks / 425 gold scale; hard-coded 170-era assumptions in tests and fixtures (e.g. `tests/test_api_answer.py:72`, `tests/test_gate.py`) audited and cleaned.
@@ -172,14 +172,14 @@ Each P2 capability is now defensible and forced by concrete failing query classe
 
 | ID | Capability | Failing Query Class / Operational Gap | Status |
 |---|---|---|---|
-| P2-1 | Retrieval-Port Adapter | **Operability gap**: Swapping embedding model (`MODEL_ID`/`EMBEDDING_DIM` ADR-0002 one-way door) or vector index currently forces changes across 6+ files in `app/retrieval/` and `app/ingest/` with zero port abstraction. | TODO (forced) |
+| P2-1 | Retrieval-Port Adapter | **Operability gap**: Swapping embedding model (`MODEL_ID`/`EMBEDDING_DIM` ADR-0002 one-way door) or vector index currently forces changes across 6+ files in `app/retrieval/` and `app/ingest/` with zero port abstraction. | VERIFIED |
 | P2-2 | Lightweight Knowledge-Graph over Provisions | **12 multi-hop items** in `evals/gold/v1`: Cross-circular amendment joins (e.g., KYC circular updating Digital Lending clause) where `multi-hop MRR ≈ 0.55–0.65` severely lags extractive (0.85) because grouped citation scoring cannot join provisions across documents. | TODO (forced) |
 | P2-3 | Tight Agentic Research Loop + Minimal Workspace | **Complex compliance synthesis questions**: Multi-aspect regulatory comparisons (e.g., compromise-settlement eligibility before and after Green Deposits circulars with condition tables) where single-pass k=5 retrieval fails citation recall and judge completeness. | TODO (forced) |
 | P2-4 | Pluggable Extraction Chain with Docling/MinerU Fallback | **Scanned annexures and merged tables**: Real SEBI circulars with image/scanned annexes where `pypdf` yields low text fidelity / table collapse (`recall` on scanned fixture drops to near-zero despite 0.96 headline). | TODO (forced) |
 | P2-5 | Ingestion-Scale Harness | **Scale throughput & latency bottleneck**: Ingestion loop lacks back-pressure against regulator 429s, lacks shrink-retry on token ceiling, lacks tokenization cache, and linear re-embedding slows corpus-refresh beyond SLA. | TODO (forced) |
 | P2-GUARD | P2 Non-Regression & Evidence Close-out | **Verification integrity**: Ensure every P2 lands without regressing S-1…S-12, all new modes are A/B-measured with paired bootstrap + McNemar, no architectural scaffolding, and evidence artifacts committed. | TODO (forced) |
 
-### P2-1 — Retrieval-Port Adapter (one seam, not a matrix) | Status: TODO (forced)
+### P2-1 — Retrieval-Port Adapter (one seam, not a matrix) | Status: VERIFIED (VectorStore Protocol in app/retrieval/port.py, PgVectorStore adapter, config/retrieval.json registry, ADR-0019, tests/test_retrieval_port.py 6/6 passing, zero metric regression Δ recall@5 = 0.000)
 
 - **Failing query class / operability gap:** Swapping the embedding model or adding a second vector store forces changes across 6+ files (`app/retrieval/{dense,lexical,fusion,search}.py`, `app/ingest/embed.py`) with no seam.
 - **WHAT TO DO:** Introduce a retrieval-port abstraction (`RetrievalPort` / `VectorStore`) so pgvector is an implementation, not the interface.

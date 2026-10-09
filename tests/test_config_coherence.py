@@ -190,3 +190,18 @@ def test_entrypoint_addresses_are_coherent() -> None:
     assert "app.main:app" not in makefile, "Makefile must not reference dead app.main:app"
     assert "app.api.app:app" in agents, "AGENTS.md must reference app.api.app:app"
     assert "app.main:app" not in agents, "AGENTS.md must not reference dead app.main:app"
+
+
+def test_retrieval_adapter_registry_coherent() -> None:
+    """The declared retrieval adapter registry must match code and config (P2-1)."""
+    import json
+
+    from app.retrieval.port import ADAPTER_REGISTRY, PgVectorStore
+
+    cfg_raw = read("config/retrieval.json")
+    cfg = json.loads(cfg_raw)
+    assert cfg["active_vector_store"] == "pgvector"
+    assert "pgvector" in cfg["available_vector_stores"]
+    for store_name in cfg["available_vector_stores"]:
+        assert store_name in ADAPTER_REGISTRY, f"store {store_name} not in ADAPTER_REGISTRY"
+    assert ADAPTER_REGISTRY["pgvector"] is PgVectorStore

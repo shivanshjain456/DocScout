@@ -177,6 +177,7 @@ class RetrievalConfig:
     filter: MetadataFilter | None = None
     expand_query: bool = False
     expansion_mode: ExpansionMode = "none"
+    vector_store_adapter: str = "pgvector"
 
     def __post_init__(self) -> None:
         if self.rerank and self.rerank_top_n < self.k_final:
@@ -207,6 +208,7 @@ class RetrievalConfig:
             "filter": self.filter.as_dict() if self.filter else None,
             "expand_query": self.expand_query,
             "expansion_mode": self.expansion_mode,
+            "vector_store_adapter": self.vector_store_adapter,
         }
 
 

@@ -1,0 +1,8 @@
+{
+  "_doc": "Active retrieval configuration and vector store adapter registry (P2-1, ADR-0019).",
+  "active_vector_store": "pgvector",
+  "available_vector_stores": [
+    "pgvector"
+  ],
+  "note": "DocScout maintains a single production adapter (pgvector) behind the VectorStore / RetrievalPort interface. Full multi-engine matrix is rejected per ADR-0019 in favor of one system done well."
+}
