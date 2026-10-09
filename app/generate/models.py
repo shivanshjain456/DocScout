@@ -52,3 +52,46 @@ class GenerationConfig(BaseModel):
     max_tokens: Annotated[int, Field(ge=16, le=2048)] = 512
     abstain_on_low_evidence: bool = True
     low_evidence_threshold: float = 0.65
+
+
+class ResearchStep(BaseModel):
+    """A discrete, auditable step in the research agent loop."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    step_index: int
+    phase: str
+    thought: str
+    tool_name: str | None = None
+    tool_args: dict[str, str | int | float | bool | list[str]] | None = None
+    observation: str = ""
+    duration_ms: float = 0.0
+
+
+class StructuredTable(BaseModel):
+    """Tabular comparison artifact extracted during research synthesis."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    headers: list[str]
+    rows: list[list[str]]
+
+
+class ResearchArtifact(BaseModel):
+    """Full research report produced by the agentic research loop."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    artifact_id: str
+    workspace_id: str
+    query: str
+    title: str
+    markdown: str
+    table_data: StructuredTable | None = None
+    steps: list[ResearchStep] = Field(default_factory=list)
+    citations: list[str] = Field(default_factory=list)
+    citation_spans: list[CitationSpan] = Field(default_factory=list)
+    timings: dict[str, float] = Field(default_factory=dict)
+    grounded: bool = True
+    abstained: bool = False
+    created_at: str = ""

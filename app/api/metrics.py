@@ -148,6 +148,18 @@ CACHE_INVALIDATIONS = Counter(
     ("reason",),
 )
 
+AGENT_RESEARCH_TOTAL = Counter(
+    "docscout_agent_research_total",
+    "Research requests executed by the agent loop.",
+    ("status",),
+)
+
+AGENT_RESEARCH_DURATION = Histogram(
+    "docscout_agent_research_duration_seconds",
+    "End-to-end research agent execution time in seconds.",
+    buckets=LATENCY_BUCKETS,
+)
+
 CORPUS_GENERATION = Gauge(
     "docscout_corpus_generation",
     "Monotonically increasing corpus generation counter for the in-memory cache and indices.",

@@ -59,13 +59,25 @@ from app.api.models import (
     Passage,
     Provenance,
     ReadinessResponse,
+    ResearchArtifactSummary,
+    ResearchRequest,
+    ResearchResponse,
     SearchRequest,
     SearchResponse,
     Timings,
+    WorkspaceCreateRequest,
+    WorkspaceResponse,
 )
 from app.api.security import RATE_LIMIT_REQUESTS, load_keys, require_api_key
 from app.config import database_url, sha256_file, staleness_budget_hours
 from app.generate import GeneratedAnswer, get_generator
+from app.generate.agent import (
+    ResearchAgent,
+    ensure_workspace,
+    get_research_artifact,
+    list_workspace_artifacts,
+    save_research_artifact,
+)
 from app.ingest.chunk import CHUNK_OVERLAP, CHUNK_SIZE
 from app.ingest.embed import EMBEDDING_DIM, MODEL_ID, Embedder
 from app.ingest.store import get_sync_state
@@ -828,4 +840,143 @@ def get_document(
         version_count=as_int(row[8]),
         current_version_id=str(row[9]) if row[9] is not None else None,
         chunk_count=as_int(row[10]),
+    )
+
+
+@app.post(
+    "/v1/research",
+    response_model=ResearchResponse,
+    tags=["research"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "invalid request"},
+    },
+)
+def research_endpoint(
+    payload: ResearchRequest,
+    request: Request,
+    fingerprint: str = Depends(require_api_key),
+) -> ResearchResponse:
+    """Execute the deterministic agentic research loop to produce a structured, citation-grounded report."""
+    start_t = time.perf_counter()
+    state = request.app.state
+    with state.pool.connection() as conn:
+        retriever = Retriever(conn, embedder=state.embedder, bm25=state.bm25)
+        agent = ResearchAgent(retriever)
+        artifact = agent.research(
+            query=payload.query,
+            workspace_id=payload.workspace_id,
+            k=payload.k,
+            mode=payload.mode,
+            max_aspects=payload.max_aspects,
+        )
+        save_research_artifact(conn, artifact)
+
+    dur_s = time.perf_counter() - start_t
+    metrics.AGENT_RESEARCH_TOTAL.labels("success").inc()
+    metrics.AGENT_RESEARCH_DURATION.observe(dur_s)
+
+    logger.info(
+        "research.completed",
+        key_fingerprint=fingerprint,
+        workspace_id=payload.workspace_id,
+        aspects=payload.max_aspects,
+        claims=len(artifact.citations),
+        duration_ms=round(dur_s * 1000.0, 2),
+        abstained=artifact.abstained,
+        grounded=artifact.grounded,
+    )
+
+    return ResearchResponse(
+        artifact=artifact,
+        workspace_id=payload.workspace_id,
+    )
+
+
+@app.post(
+    "/v1/workspaces",
+    response_model=WorkspaceResponse,
+    tags=["research"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+    },
+)
+def create_workspace_endpoint(
+    payload: WorkspaceCreateRequest,
+    request: Request,
+    fingerprint: str = Depends(require_api_key),
+) -> WorkspaceResponse:
+    """Create or register a research workspace for persisting analyst reports."""
+    ws_id = str(uuid.uuid4())
+    state = request.app.state
+    with state.pool.connection() as conn:
+        ensure_workspace(conn, ws_id, name=payload.name)
+
+    logger.info(
+        "workspace.created", key_fingerprint=fingerprint, workspace_id=ws_id, name=payload.name
+    )
+    return WorkspaceResponse(
+        workspace_id=ws_id,
+        name=payload.name,
+        created_at=datetime.now(UTC).isoformat(),
+    )
+
+
+@app.get(
+    "/v1/workspaces/{workspace_id}/artifacts",
+    response_model=list[ResearchArtifactSummary],
+    tags=["research"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+    },
+)
+def list_artifacts_endpoint(
+    workspace_id: str,
+    request: Request,
+    fingerprint: str = Depends(require_api_key),
+) -> list[ResearchArtifactSummary]:
+    """List research artifacts saved in a specific workspace."""
+    state = request.app.state
+    with state.pool.connection() as conn:
+        items = list_workspace_artifacts(conn, workspace_id)
+
+    return [ResearchArtifactSummary(**item) for item in items]
+
+
+@app.get(
+    "/v1/research/artifacts/{artifact_id}",
+    response_model=ResearchResponse,
+    tags=["research"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "artifact not found"},
+    },
+)
+def get_artifact_endpoint(
+    artifact_id: str,
+    request: Request,
+    fingerprint: str = Depends(require_api_key),
+) -> ResearchResponse:
+    """Retrieve a previously generated research artifact with full step execution trace."""
+    try:
+        _ = uuid.UUID(artifact_id)
+    except ValueError:
+        raise StarletteHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"artifact {artifact_id!r} not found (invalid UUID format)",
+        ) from None
+
+    state = request.app.state
+    with state.pool.connection() as conn:
+        artifact = get_research_artifact(conn, artifact_id)
+
+    if artifact is None:
+        raise StarletteHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"research artifact {artifact_id} not found",
+        )
+
+    return ResearchResponse(
+        artifact=artifact,
+        workspace_id=artifact.workspace_id,
     )

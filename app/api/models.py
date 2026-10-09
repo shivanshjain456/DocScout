@@ -19,7 +19,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-from app.generate.models import GeneratedAnswer
+from app.generate.models import GeneratedAnswer, ResearchArtifact
 from app.retrieval.types import MetadataFilter
 
 # A ceiling on query length. The embedding model truncates at 512 tokens, so anything
@@ -197,3 +197,47 @@ class DocumentResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     detail: str
+
+
+class ResearchRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    query: Annotated[
+        str,
+        StringConstraints(min_length=3, max_length=1024, strip_whitespace=True),
+    ]
+    workspace_id: str = "00000000-0000-0000-0000-000000000000"
+    k: Annotated[int, Field(default=5, ge=1, le=20)] = 5
+    mode: Literal["dense", "bm25", "hybrid", "graph-hybrid"] = "graph-hybrid"
+    max_aspects: Annotated[int, Field(default=3, ge=1, le=5)] = 3
+
+
+class WorkspaceCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: Annotated[
+        str,
+        StringConstraints(min_length=1, max_length=200, strip_whitespace=True),
+    ] = "Default Regulatory Workspace"
+
+
+class WorkspaceResponse(BaseModel):
+    workspace_id: str
+    name: str
+    created_at: str
+
+
+class ResearchArtifactSummary(BaseModel):
+    artifact_id: str
+    query: str
+    title: str
+    grounded: bool
+    abstained: bool
+    created_at: str
+
+
+class ResearchResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    artifact: ResearchArtifact
+    workspace_id: str
