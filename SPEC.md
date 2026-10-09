@@ -51,23 +51,17 @@ than trusted blindly.
 
 ### 2.2 Current position: VERIFIED
 
-All core capabilities across P0 (blocking operational maturity) and P1 (expected operational maturity)
-are implemented, verified, committed, and pushed to `origin/master`:
+All core and forced operational capabilities across P0 (blocking operational maturity), P1 (expected operational maturity),
+and P2 (forced operational capabilities) are implemented, verified, committed, and pushed to `origin/master`:
 
-- `app/ingest/`: Offline ingestion pipeline with host allowlists, PDF/HTML extraction, text cleaning,
-  fixed-width chunking with overlap, BGE-small embeddings, PostgreSQL storage, secret/PII scanner, and scheduled refresh.
-- `app/retrieval/`: Hybrid retrieval combining BM25 (`tsvector`) and dense vector search (pgvector HNSW),
-  Reciprocal Rank Fusion (RRF), domain query expansion (`DomainQueryExpander`), metadata filtering (`MetadataFilter`),
-  and cross-encoder reranking (built and measured, disabled in serving per ADR-0009).
-- `app/generate/`: Prompt assembly with delimiter discipline, prompt injection defense, grounded answer generation,
-  and citation validation (`POST /v1/answer`, ADR-0011).
-- `app/api/`: FastAPI service exposing `POST /v1/search`, `POST /v1/answer`, `GET /v1/documents/{document_id}`,
-  `GET /healthz` (liveness), `GET /readyz` (readiness), `POST /v1/admin/cache/invalidate`, `GET /metrics`, and demo UI at `/`.
-- `app/evals/`: Versioned evaluation harness over gold set v2.0.0 (425 items, 35 documents, 230 chunks), deterministic scorers,
-  regression gate (`make eval-gate`), and cross-judge calibration report (`evals/calibration/20261008T200000Z/calibration_report.md`).
-- Test suite: **511 tests passing** (`uv run pytest`), strict mypy clean over 51 source files, ruff lint/format clean.
+- `app/ingest/`: Offline ingestion pipeline with host allowlists, pluggable extraction chain (fast `pypdf` + deep OCR/layout parser fallback, ADR-0022), text cleaning, fixed-width chunking with overlap, BGE-small embeddings, PostgreSQL storage, secret/PII scanner, scheduled refresh, and scale harness with token rate governance, adaptive retry bisection, and chunk embedding cache (ADR-0023).
+- `app/retrieval/`: Retrieval-port protocol (`VectorStore`, ADR-0019) with `PgVectorStore` adapter, hybrid retrieval combining BM25 (`tsvector`) and dense vector search (pgvector HNSW), Reciprocal Rank Fusion (RRF), domain query expansion (`DomainQueryExpander`, ADR-0017), in-query metadata filtering (`MetadataFilter`, ADR-0016), provision-level knowledge graph (`mode=graph-hybrid`, ADR-0020), and cross-encoder reranking (built and measured, disabled in serving per ADR-0009).
+- `app/generate/`: Prompt assembly with delimiter discipline, prompt injection defense, grounded answer generation with citation validation (`POST /v1/answer`, ADR-0011), and deterministic agentic research loop with workspace persistence (`POST /v1/research`, `POST /v1/workspaces`, ADR-0021).
+- `app/api/`: FastAPI service exposing `POST /v1/search`, `POST /v1/answer`, `POST /v1/research`, `POST /v1/workspaces`, `GET /v1/workspaces/{id}/artifacts`, `GET /v1/documents/{document_id}`, `GET /healthz` (liveness), `GET /readyz` (readiness), `POST /v1/admin/cache/invalidate`, `GET /metrics`, and demo UI at `/`.
+- `app/evals/`: Versioned evaluation harness over gold set v2.0.0 (425 items, 35 documents, 230 chunks), deterministic scorers, regression gate (`make eval-gate`), cross-judge calibration report (`evals/calibration/20261008T200000Z/calibration_report.md`), and double-labelled research calibration (`evals/calibration/20261009T200000Z/research_report.md`).
+- Test suite: **555 tests passing** (`uv run pytest`), strict mypy clean over all source files, ruff lint/format clean.
 - Deployment: Containerized production deployment artifact (`Dockerfile`, `docker-compose.yml`, `make deploy`, `make destroy`).
-- Decision lineage: 18 ADRs in `docs/decisions/`.
+- Decision lineage: 23 ADRs in `docs/decisions/` (ADR-0001 through ADR-0023).
 
 ---
 

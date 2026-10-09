@@ -6,6 +6,37 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 ## [Unreleased]
 
 ### Added
+- **P2 Non-Regression & Operational Close-Out (P2-GUARD).** Comprehensive verification of all 12
+  architectural strengths (S-1…S-12), 100% green status across all 5 GitHub Actions CI workflows,
+  strict type clean, zero regression in retrieval accuracy or latency, and detailed close-out
+  dossier in `docs/plans/p2-guard-closeout.md`.
+- **Ingestion-Scale Harness & Rate Limiting (P2-5, ADR-0023).** Built `app/ingest/harness.py`
+  providing `DomainRateGovernor` with token-bucket rate limits and domain isolation, adaptive
+  `shrink_retry` bisection with jittered exponential backoff, bounded LRU `ChunkEmbeddingCache`
+  indexed by content hash, `IngestionStateMachine` with checkpoint recovery, and
+  `ConcurrentIngestionHarness`. Benchmarked 200-document simulated regulatory ingest achieving
+  340.3 docs/s throughput and 89.6% warm embedding cache hit ratio (`loadtests/reports/20261009T164315Z/ingest-scale.json`).
+- **Pluggable Extraction Chain with Heuristic Deep-Parser Fallback (P2-4, ADR-0022).** Built
+  `app/ingest/extract_chain.py` with multi-tier extraction pipeline: ultra-fast clean path (`pypdf`)
+  with heuristic quality gate (`evaluate_fidelity`) triggering automatic fallback to layout/OCR deep
+  parsers for scanned circular annexures and merged tables. Added SEBI scanned annexure PDF fixture
+  (`tests/fixtures/sebi_scanned_annexure.pdf`) and verified zero text degradation on clean documents.
+- **Deterministic Agentic Research Loop & Minimal Workspace (P2-3, ADR-0021).** Implemented
+  `ResearchAgent` in `app/generate/agent.py` executing deterministic `plan -> retrieve -> synthesize -> critique -> final`
+  loops for complex multi-aspect regulatory synthesis. Added PostgreSQL Migration 0008 for research
+  workspace and artifact persistence, authenticated endpoints `POST /v1/research`, `POST /v1/workspaces`,
+  and `GET /v1/workspaces/{id}/artifacts`, and double-labelled 40-task calibration report
+  (`evals/calibration/20261009T200000Z/research_report.md`) verifying 100% citation grounding and 100% canary defense.
+- **Lightweight Regulatory Provision Knowledge Graph (P2-2, ADR-0020).** Added PostgreSQL
+  Migration 0007 creating `provision_nodes` and `provision_edges` with span provenance, implemented
+  deterministic regulatory provision parser (`§` markers, section hierarchies, citations, amendments),
+  and wired graph-expansion fusion into `mode=graph-hybrid` (`app/retrieval/graph.py`), closing
+  the operational gap on multi-hop cross-circular queries.
+- **Retrieval-Port Adapter Protocol & VectorStore Abstraction (P2-1, ADR-0019).** Decoupled
+  retrieval engines from direct PostgreSQL SQL via `VectorStore` protocol in `app/retrieval/port.py`,
+  providing single production adapter `PgVectorStore`, pluggable backend registry in
+  `config/retrieval.json`, and proved exact numerical equivalence ($\Delta \text{recall@5} = 0.000$)
+  against raw SQL baseline across 365 gold queries.
 - **Human-Readable Citation Rendering (P1-5, ADR-0018, FR-14).** Populated authoritative
   titles and publication dates across all 35 documents in PostgreSQL (Migration 0006),
   added canonical metadata catalog in pp/ingest/metadata.py, enriched Passage and

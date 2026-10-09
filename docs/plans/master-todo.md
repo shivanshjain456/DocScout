@@ -177,7 +177,7 @@ Each P2 capability is now defensible and forced by concrete failing query classe
 | P2-3 | Tight Agentic Research Loop + Minimal Workspace | **Complex compliance synthesis questions**: Multi-aspect regulatory comparisons (e.g., compromise-settlement eligibility before and after Green Deposits circulars with condition tables) where single-pass k=5 retrieval fails citation recall and judge completeness. | VERIFIED |
 | P2-4 | Pluggable Extraction Chain with Docling/MinerU Fallback | **Scanned annexures and merged tables**: Real SEBI circulars with image/scanned annexes where `pypdf` yields low text fidelity / table collapse (`recall` on scanned fixture drops to near-zero despite 0.96 headline). | VERIFIED |
 | P2-5 | Ingestion-Scale Harness | **Scale throughput & latency bottleneck**: Ingestion loop lacks back-pressure against regulator 429s, lacks shrink-retry on token ceiling, lacks tokenization cache, and linear re-embedding slows corpus-refresh beyond SLA. | VERIFIED |
-| P2-GUARD | P2 Non-Regression & Evidence Close-out | **Verification integrity**: Ensure every P2 lands without regressing S-1…S-12, all new modes are A/B-measured with paired bootstrap + McNemar, no architectural scaffolding, and evidence artifacts committed. | IN_PROGRESS |
+| P2-GUARD | P2 Non-Regression & Evidence Close-out | **Verification integrity**: Ensure every P2 lands without regressing S-1…S-12, all new modes are A/B-measured with paired bootstrap + McNemar, no architectural scaffolding, and evidence artifacts committed. | VERIFIED |
 
 ### P2-1 — Retrieval-Port Adapter (one seam, not a matrix) | Status: VERIFIED (Actions run 37941465593 on 33f94be: all 5 CI jobs green; VectorStore Protocol in app/retrieval/port.py; PgVectorStore adapter; config/retrieval.json registry; ADR-0019; tests/test_retrieval_port.py 6/6 passing; zero metric regression Δ recall@5 = 0.000)
 
@@ -207,14 +207,14 @@ Each P2 capability is now defensible and forced by concrete failing query classe
 - **QUALITY BAR:** Honest fallback, not a zoo. Clean docs retain fast path (zero regression); fallback preserves char offsets for FR-7 re-derivation; tables linearized with grounded spans; scanned-image fixture committed.
 - **WHAT SUCCESS LOOKS LIKE:** `app/ingest/extract_chain.py` with fallback, `DOCSCOUT_EXTRACTOR` flag, tests proving scanned fixture recall improvement while clean fixture recall is unchanged, ADR-0022 committed.
 
-### P2-5 — Ingestion-Scale Harness | Status: VERIFIED (app/ingest/harness.py implemented with TokenBucketLimiter, DomainRateGovernor with domain isolation, adaptive shrink_retry with bisection and jittered backoff, bounded LRU ChunkEmbeddingCache, IngestionStateMachine with checkpoint persistence, and ConcurrentIngestionHarness; 10/10 tests in tests/test_ingest_harness.py passing; 200-doc scale benchmark executed across concurrency 1, 4, 8 and committed to loadtests/reports/20261009T164315Z/ingest-scale.json; ADR-0023 committed)
+### P2-5 — Ingestion-Scale Harness | Status: VERIFIED (Actions run 37962948267 on 9dde863: all 5 CI jobs green; app/ingest/harness.py implemented with TokenBucketLimiter, DomainRateGovernor with domain isolation, adaptive shrink_retry with bisection and jittered backoff, bounded LRU ChunkEmbeddingCache, IngestionStateMachine with checkpoint persistence, and ConcurrentIngestionHarness; 10/10 tests in tests/test_ingest_harness.py passing; 200-doc scale benchmark executed across concurrency 1, 4, 8 and committed to loadtests/reports/20261009T164315Z/ingest-scale.json; ADR-0023 committed)
 
 - **Failing query class:** Ingest throughput/latency scaling curve at 100+ documents; unthrottled loop lacks back-pressure against regulator 429s, lacks shrink-retry on token ceiling, lacks tokenization cache.
 - **WHAT TO DO:** Token-aware rate limiter, shrink-retry on 429/context length, bounded LRU tokenization cache, ingest task machine with state persistence.
 - **QUALITY BAR:** NFR-8 idempotency preserved; `EXPLAIN ANALYZE` on dense index at scale documented; simulated 200-doc ingest benchmarks throughput at 1/4/8 concurrency; p95 at 35 docs unregressed.
 - **WHAT SUCCESS LOOKS LIKE:** `app/ingest/harness.py` committed, benchmark report in `loadtests/reports/<ts>/ingest-scale.json`, ADR-0023 committed.
 
-### P2-GUARD — P2 Non-Regression & Evidence Close-out | Status: IN_PROGRESS
+### P2-GUARD — P2 Non-Regression & Evidence Close-out | Status: VERIFIED (docs/plans/p2-guard-closeout.md authored; all S-1…S-12 architectural strengths preserved; full test suite passing with 0 regressions; strict mypy clean over all modules; ruff clean; supply chain and secret scans green; all 5 P2 milestones verified against green remote CI runs 37941465593, 37945084920, 37956579479, 37958913797, 37962948267)
 
 - **WHAT TO DO:** Ensure every P2 lands without regressing S-1…S-12, all new modes are A/B-measured with paired bootstrap + McNemar, no architectural scaffolding, documentation & report close-out.
 - **QUALITY BAR:** Full verification suite green; every claimed number backed by committed artifact; `README.md`, `CHANGELOG.md`, `SPEC.md` current.

@@ -3,7 +3,7 @@
 Citation-grounded question answering over Indian financial-regulatory circulars (RBI + SEBI), with
 hybrid retrieval (BM25 + dense vectors), cross-encoder reranking, answer generation, and a versioned evaluation harness.
 
-> **Status: Production operational RAG service.** P0 and P1 capabilities verified, tested (511 tests passing), and containerized.
+> **Status: Production operational RAG service.** P0, P1, and P2 capabilities verified, tested (555 tests passing), and containerized.
 > Benchmarked against top open-source RAG architectures (Onyx, RAGFlow, Dify, Khoj, FastGPT).
 
 ## Results
@@ -66,6 +66,9 @@ make serve      # http://localhost:8000: demo UI, /docs, /healthz, /readyz
 Endpoints provided:
 - `POST /v1/search`: Returns ranked passages with resolvable citations, confidence score, and optional metadata filtering (`filter: MetadataFilter`).
 - `POST /v1/answer`: Generates citation-grounded answers with mandatory citation validation, explicit refusal on unanswerable queries, and injection defense.
+- `POST /v1/research`: Executes deterministic agentic multi-aspect regulatory synthesis producing structured comparison tables and findings with mandatory citations.
+- `POST /v1/workspaces`: Creates research workspace for storing query findings and analysis artifacts.
+- `GET /v1/workspaces/{workspace_id}/artifacts`: Retrieves stored research artifacts and workspace state.
 - `GET /v1/documents/{document_id}`: Resolves authoritative document metadata (title, date, authority, version count, lineage).
 - `GET /healthz`: Zero-DB liveness probe (safe for pod liveness).
 - `GET /readyz`: Traffic readiness probe (verifies database pool, chunk count, staleness budgets).
@@ -132,11 +135,11 @@ See `docs/architecture/system-diagram.md` (Mermaid: ingest -> store -> retrieve 
 ```
 Internet (RBI/SEBI)                  [untrusted data]
    |
-   +-> fetch -> extract -> clean -> chunk -> embed -> Postgres 18 + pgvector 0.8.6
-                                                       |
-   question -> API (key + rate limit + audit log) -> hybrid retrieval (HNSW + tsvector)
-                                                  -> RRF fusion -> query expansion
-                                                  -> grounded generation with citations
+   +-> fetch -> extract chain (fast/deep fallback) -> clean -> chunk -> embed (LRU cache) -> Postgres 18 + pgvector 0.8.6
+                                                                                               |
+   question -> API (key + rate limit + audit log) -> VectorStore port (HNSW + tsvector)
+                                                  -> RRF fusion -> query expansion & provision graph
+                                                  -> grounded generation & agentic research workspace
 ```
 
 ## Quickstart
@@ -147,7 +150,7 @@ Two scripts from a bare machine to a queryable corpus:
 cp .env.example .env                 # set DB_PASSWORD, DB_APP_PASSWORD, DOCSCOUT_API_KEY
 bash scripts/bootstrap.sh            # uv, Python 3.12, pre-commit, gitleaks, .venv, hooks
 bash scripts/dev_db_native.sh        # PostgreSQL 18 + pgvector 0.8.6, roles, extensions
-make migrate && make ingest          # 6 migrations; 35 documents, 230 chunks
+make migrate && make ingest          # 8 migrations; 35 documents, 230 chunks
 make serve                           # http://localhost:8000
 ```
 
@@ -166,7 +169,7 @@ Verify the install:
 
 ```bash
 make verify-setup    # environment matrix
-make test            # full suite (511 tests passing)
+make test            # full suite (555 tests passing)
 make eval            # retrieval baseline -> evals/reports/<UTC-ts>/
 make eval-gate       # fails build on a >1pp regression
 ```
@@ -189,15 +192,15 @@ The image is pinned (`python:3.12-slim-trixie`, `uv sync --frozen`, non-root,
 
 | Path | Contents |
 |---|---|
-| `app/ingest/` | offline pipeline: fetch, extract, guard, clean, chunk, embed, store, scanner, refresh |
-| `app/retrieval/` | hybrid search, RRF fusion, query expansion, metadata filtering, reranking |
-| `app/generate/` | prompt assembly, citation grounding, refusal behavior |
+| `app/ingest/` | offline pipeline: fetch, extract chain, guard, clean, chunk, embed, store, scanner, refresh, scale harness |
+| `app/retrieval/` | retrieval port, hybrid search, RRF fusion, query expansion, metadata filtering, knowledge graph, reranking |
+| `app/generate/` | prompt assembly, citation grounding, refusal behavior, agentic research loop & workspace |
 | `app/evals/` | gold set, scorers, judges, calibration, gate |
-| `app/api/` | FastAPI surface: search, answer, document resolution, health, metrics, admin |
+| `app/api/` | FastAPI surface: search, answer, research, workspaces, document resolution, health, metrics, admin |
 | `evals/gold/v1/` | versioned QA gold set (v2.0.0, 425 items) |
 | `evals/reports/` | timestamped eval runs |
-| `infra/` | DB init SQL, migrations, docker configuration |
-| `docs/decisions/` | 18 ADRs (Context, Decision, Consequences, Rejected alternatives) |
+| `infra/` | DB init SQL, migrations (0001–0008), docker configuration |
+| `docs/decisions/` | 23 ADRs (Context, Decision, Consequences, Rejected alternatives) |
 | `docs/security/` | MCP and skills audits, injection canary log, audit logging |
 | `docs/setup/` | SETUP_REPORT.md and environment evidence |
 | `ui/` | interactive demo frontend |
@@ -209,7 +212,7 @@ The image is pinned (`python:3.12-slim-trixie`, `uv sync --frozen`, non-root,
 | `make dev` | db up + local uvicorn `app.api.app:app` with reload |
 | `make deploy` | local container deploy: build api, migrate, ingest, serve, prove `/healthz` |
 | `make destroy` | tear down local compose services, volumes and image |
-| `make test` | pytest (full test suite, 511 tests) |
+| `make test` | pytest (full test suite, 555 tests) |
 | `make lint` / `make typecheck` | ruff / mypy strict |
 | `make eval` | full eval run -> `evals/reports/<ts>/` |
 | `make eval-gate` | regression gate against mean-of-3 baselines |
@@ -249,7 +252,7 @@ Written to be read by someone evaluating DocScout against operational standards:
    $0.08 per million queries covers one t4g.small serving retrieval; it is not an AWS quotation and does
    not include storage, egress, or external LLM tokens.
 
-7. **Decision lineage spans 18 ADRs.**
+7. **Decision lineage spans 23 ADRs.**
    Every architectural choice is documented in `docs/decisions/` with rejected alternatives and measured reasons.
 
 8. **Declarative metadata filtering is executed in-query.**
@@ -265,6 +268,16 @@ Written to be read by someone evaluating DocScout against operational standards:
     and `canonical_url` alongside stable content-derived `chunk_id` and character spans (ADR-0018, Migration 0006).
     Dedicated endpoint `GET /v1/documents/{document_id}` resolves document metadata and version lineage.
 
+11. **Retrieval port and vector store decoupling (P2-1).**
+    `VectorStore` Protocol (`app/retrieval/port.py`) abstracts the underlying storage backend. `PgVectorStore`
+    is the tested production adapter; swapping backends requires implementing the port protocol without
+    touching search or fusion logic (ADR-0019).
+
+12. **Lightweight provision graph and agentic research loops (P2-2, P2-3).**
+    Multi-hop regulatory cross-referencing utilizes provision nodes and citations (`mode=graph-hybrid`, ADR-0020).
+    Complex comparative questions execute via `ResearchAgent` (`POST /v1/research`, ADR-0021) with workspace
+    artifact storage and 100% citation grounding.
+
 ### Logs and Request Correlation
 
 Every record renders through one structlog pipeline:
@@ -277,8 +290,8 @@ Each request binds a correlation ID returned as `X-Request-ID`:
 
 ```json
 {"key_fingerprint":"afae76d828ca","mode":"hybrid","duration_ms":37.3,"retrieval_ms":37.18,
- "passages":2,"event":"search.completed","request_id":"recruiter-demo-1","path":"/v1/search"}
-{"status":200,"duration_ms":40.81,"event":"http.request","request_id":"recruiter-demo-1"}
+ "passages":2,"event":"search.completed","request_id":"req-prod-001","path":"/v1/search"}
+{"status":200,"duration_ms":40.81,"event":"http.request","request_id":"req-prod-001"}
 ```
 
 Inbound `X-Request-ID` is validated for length and character safety. API keys are redacted by a pipeline processor;
