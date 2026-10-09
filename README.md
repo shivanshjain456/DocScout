@@ -582,6 +582,20 @@ instructions**. Ingestion runs without deploy credentials; the eval set ships a 
 canary as a graded negative test; MCP servers and agent skills are pinned and audited
 (`docs/security/`). Secrets never enter the repo — enforced by gitleaks in pre-commit.
 
+### Retrieval Audit Forensics & Corpus Scanning (P1-1, OWASP LLM09 / LLM02)
+
+* **Durable Append-Only Retrieval Audit Log:** Every search and cache hit records an immutable event
+  in PostgreSQL table `retrieval_audit_log` with `(timestamp, key_fingerprint, query_hash, mode, k, returned_chunk_ids, latency_ms, cache_hit, has_generated_answer, corpus_generation)`.
+  - **Query Privacy:** Query text is hashed with SHA-256 before storage; raw queries are never stored.
+  - **Credential Isolation:** Raw API keys are never stored; only non-reversible truncated SHA-256 fingerprints are logged.
+  - **Append-Only Tamper Resistance:** Application role `docscout_app` has INSERT/SELECT privileges only; UPDATE, DELETE, and TRUNCATE are strictly denied.
+  - **Fallback Sink:** Simultaneous thread-safe JSONL file logging via `DOCSCOUT_AUDIT_LOG_FILE`.
+  - **Retention Policy:** Standard 90-day retention documented in ADR-0015.
+* **Corpus Secret & PII Scanning at Ingestion:** Extracted text is scanned at ingestion (`app.ingest.scanner`)
+  for candidate API keys, private keys, SaaS tokens, and PII (emails, phone numbers, PAN, Aadhaar) with automatic sample masking.
+  - Policy separation prevents false-positive outages: PII yields informational warnings without halting ingestion, while candidate secrets trigger quarantine or rejection per `DOCSCOUT_CORPUS_SECRET_POLICY`.
+
+
 ## License
 
 MIT — see `LICENSE`.

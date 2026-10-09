@@ -153,6 +153,12 @@ CORPUS_GENERATION = Gauge(
     "Monotonically increasing corpus generation counter for the in-memory cache and indices.",
 )
 
+RETRIEVAL_AUDITS = Counter(
+    "docscout_retrieval_audits_total",
+    "Count of durable retrieval audit log entries recorded.",
+    ("status",),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

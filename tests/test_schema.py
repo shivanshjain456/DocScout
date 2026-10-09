@@ -493,3 +493,91 @@ def test_application_role_cannot_delete_sync_state(app_conn: psycopg.Connection[
     with app_conn.transaction(force_rollback=True):
         with rejects(app_conn, psycopg.errors.InsufficientPrivilege):
             app_conn.execute("DELETE FROM corpus_sync_state")
+
+
+# --------------------------------------------------------------------------------------
+# retrieval_audit_log (Migration 0004, P1-1)
+# --------------------------------------------------------------------------------------
+def test_retrieval_audit_log_validates_query_hash_format(app_conn: psycopg.Connection[Any]) -> None:
+    """Check constraint restricts query_hash to 64-char lowercase hex."""
+    with app_conn.transaction(force_rollback=True):
+        with rejects(app_conn, psycopg.errors.CheckViolation):
+            app_conn.execute(
+                """
+                INSERT INTO retrieval_audit_log
+                (key_fingerprint, query_hash, mode, k, latency_ms)
+                VALUES ('fp1234567890', 'invalid-non-hex-hash', 'hybrid', 5, 12.5)
+                """
+            )
+
+
+def test_retrieval_audit_log_validates_mode(app_conn: psycopg.Connection[Any]) -> None:
+    """Check constraint restricts mode to hybrid | dense | bm25."""
+    with app_conn.transaction(force_rollback=True):
+        valid_hash = "a" * 64
+        with rejects(app_conn, psycopg.errors.CheckViolation):
+            app_conn.execute(
+                """
+                INSERT INTO retrieval_audit_log
+                (key_fingerprint, query_hash, mode, k, latency_ms)
+                VALUES ('fp1234567890', %s, 'unsupported-mode', 5, 12.5)
+                """,
+                (valid_hash,),
+            )
+
+
+def test_application_role_can_insert_and_select_audit_records(
+    app_conn: psycopg.Connection[Any],
+) -> None:
+    """The application role can insert and read audit records."""
+    with app_conn.transaction(force_rollback=True):
+        valid_hash = "b" * 64
+        row = app_conn.execute(
+            """
+            INSERT INTO retrieval_audit_log
+            (key_fingerprint, query_hash, mode, k, latency_ms)
+            VALUES ('fp1234567890', %s, 'hybrid', 5, 15.2)
+            RETURNING id
+            """,
+            (valid_hash,),
+        ).fetchone()
+        assert row is not None
+        fetched = app_conn.execute(
+            "SELECT query_hash, mode FROM retrieval_audit_log WHERE id = %s",
+            (row[0],),
+        ).fetchone()
+        assert fetched is not None
+        assert fetched[0] == valid_hash
+        assert fetched[1] == "hybrid"
+
+
+def test_application_role_cannot_delete_or_update_audit_records(
+    app_conn: psycopg.Connection[Any],
+) -> None:
+    """The application role strictly CANNOT delete or update audit records (append-only)."""
+    with app_conn.transaction(force_rollback=True):
+        valid_hash = "c" * 64
+        row = app_conn.execute(
+            """
+            INSERT INTO retrieval_audit_log
+            (key_fingerprint, query_hash, mode, k, latency_ms)
+            VALUES ('fp1234567890', %s, 'hybrid', 5, 15.2)
+            RETURNING id
+            """,
+            (valid_hash,),
+        ).fetchone()
+        assert row is not None
+
+        # UPDATE rejected
+        with rejects(app_conn, psycopg.errors.InsufficientPrivilege):
+            app_conn.execute(
+                "UPDATE retrieval_audit_log SET mode = 'bm25' WHERE id = %s",
+                (row[0],),
+            )
+
+        # DELETE rejected
+        with rejects(app_conn, psycopg.errors.InsufficientPrivilege):
+            app_conn.execute(
+                "DELETE FROM retrieval_audit_log WHERE id = %s",
+                (row[0],),
+            )

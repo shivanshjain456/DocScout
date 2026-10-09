@@ -46,6 +46,7 @@ class Action(StrEnum):
     SUPERSEDED = "superseded"
     SKIPPED_UNCHANGED = "skipped_unchanged"
     SKIPPED_DUPLICATE_CONTENT = "skipped_duplicate_content"
+    QUARANTINED = "quarantined"
 
 
 @dataclass(frozen=True)
@@ -65,6 +66,8 @@ class PreparedDocument:
     #: Carried here only so the ingest report can surface it; nothing is written to the
     #: database, because the blanked text itself is the stored record.
     invisible_removed: dict[str, int] = field(default_factory=dict)
+    secret_findings: list[dict[str, Any]] = field(default_factory=list)
+    pii_findings: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

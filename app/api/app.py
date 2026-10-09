@@ -42,6 +42,7 @@ from psycopg_pool import ConnectionPool
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api import demo, metrics
+from app.api.audit import RetrievalAuditRecord, hash_query, record_retrieval_event
 from app.api.cache import (
     DEFAULT_RESULT_TTL_SECONDS,
     TTLCache,
@@ -476,6 +477,23 @@ def search(
     if cached is not None:
         metrics.CACHE_EVENTS.labels("hit").inc()
         total_ms = (time.perf_counter() - started) * 1000.0
+        try:
+            record_retrieval_event(
+                getattr(state, "pool", None),
+                RetrievalAuditRecord(
+                    key_fingerprint=fingerprint,
+                    query_hash=hash_query(payload.query),
+                    mode=payload.mode,
+                    k=payload.k,
+                    returned_chunk_ids=[p.chunk_id for p in cached.passages],
+                    latency_ms=total_ms,
+                    cache_hit=True,
+                    has_generated_answer=cached.answer is not None,
+                    corpus_generation=req_generation,
+                ),
+            )
+        except Exception:  # noqa: BLE001 - audit failure must never break search
+            logger.warning("search.audit_event_failed", exc_info=True)
         logger.info(
             "search.cache_hit",
             key_fingerprint=fingerprint,
@@ -584,6 +602,23 @@ def search(
             )
 
     total_ms = (time.perf_counter() - started) * 1000.0
+    try:
+        record_retrieval_event(
+            getattr(state, "pool", None),
+            RetrievalAuditRecord(
+                key_fingerprint=fingerprint,
+                query_hash=hash_query(payload.query),
+                mode=payload.mode,
+                k=payload.k,
+                returned_chunk_ids=[p.chunk_id for p in result.passages],
+                latency_ms=total_ms,
+                cache_hit=False,
+                has_generated_answer=generated_answer is not None,
+                corpus_generation=req_generation,
+            ),
+        )
+    except Exception:  # noqa: BLE001 - audit failure must never break search
+        logger.warning("search.audit_event_failed", exc_info=True)
     logger.info(
         "search.completed",
         key_fingerprint=fingerprint,

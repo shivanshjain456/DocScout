@@ -40,6 +40,7 @@ from app.ingest.clean import clean_preserving_offsets, find_invisible
 from app.ingest.embed import Embedder
 from app.ingest.errors import ExtractionError, ShortExtractionError
 from app.ingest.extract import assert_extraction_long_enough, extract
+from app.ingest.scanner import ScanFinding, evaluate_scan_policy, scan_text
 from app.ingest.source import SourceDocument
 from app.ingest.store import (
     Action,
@@ -77,6 +78,8 @@ class DocumentResult:
     #: Recorded per document so the removal is auditable: a corpus that silently stops
     #: matching its source is the failure this field exists to make visible (OWASP LLM09).
     invisible_removed: dict[str, int] = field(default_factory=dict)
+    secret_findings: list[dict[str, Any]] = field(default_factory=list)
+    pii_findings: list[dict[str, Any]] = field(default_factory=list)
     elapsed_ms: int = 0
     detail: str = ""
 
@@ -102,6 +105,13 @@ class IngestReport:
             "documents_seen": len(self.documents),
             "chunks_written": sum(d.chunks for d in self.documents),
             "failed": sum(1 for d in self.documents if d.status == "failed"),
+            "total_secret_findings": sum(len(d.secret_findings) for d in self.documents),
+            "total_pii_findings": sum(len(d.pii_findings) for d in self.documents),
+            "quarantined": sum(
+                1
+                for d in self.documents
+                if d.action == str(Action.QUARANTINED) or d.status == "quarantined"
+            ),
         }
         for action in Action:
             counted[str(action)] = sum(1 for d in self.documents if d.action == str(action))
@@ -153,12 +163,14 @@ class ChunkedDocument:
     extractor: str
     chunks: list[Chunk]
     invisible_removed: dict[str, int] = field(default_factory=dict)
+    secret_findings: list[dict[str, Any]] = field(default_factory=list)
+    pii_findings: list[dict[str, Any]] = field(default_factory=list)
 
 
 def chunk_source_document(
     document: SourceDocument, count_tokens: Callable[[str], int]
 ) -> ChunkedDocument:
-    """Run extract → clean → guard → chunk. No embedding, no database."""
+    """Run extract → clean → guard → scan → chunk. No embedding, no database."""
     extraction = extract(document.content, media_type=document.media_type)
     if not extraction.text.strip():
         raise ExtractionError(f"{document.url}: {extraction.extractor} produced no text")
@@ -168,6 +180,11 @@ def chunk_source_document(
     invisible_removed = find_invisible(extraction.text)
     text = clean_preserving_offsets(extraction.text)
     clean_chars = assert_extraction_long_enough(text, url=document.url)
+
+    # Ingestion secret and PII scan (OWASP LLM02, P1-1)
+    findings = scan_text(text)
+    secret_findings = [f.as_dict() for f in findings if f.category == "secret"]
+    pii_findings = [f.as_dict() for f in findings if f.category == "pii"]
 
     chunks = chunk_document(text, count_tokens)
     if not chunks:
@@ -180,6 +197,8 @@ def chunk_source_document(
         extractor=extraction.extractor,
         chunks=chunks,
         invisible_removed=invisible_removed,
+        secret_findings=secret_findings,
+        pii_findings=pii_findings,
     )
 
 
@@ -206,6 +225,8 @@ def prepare_document(document: SourceDocument, embedder: Embedder) -> PreparedDo
         chunks=cut.chunks,
         embeddings=embeddings,
         embedding_model=embedder.model_id,
+        secret_findings=cut.secret_findings,
+        pii_findings=cut.pii_findings,
     )
 
 
@@ -233,6 +254,8 @@ def _result_from_outcome(
         token_max=max(tokens),
         uncovered_chars=uncovered_characters(prepared.text, prepared.chunks),
         invisible_removed=prepared.invisible_removed,
+        secret_findings=prepared.secret_findings,
+        pii_findings=prepared.pii_findings,
         elapsed_ms=elapsed_ms,
         detail=outcome.detail,
     )
@@ -287,6 +310,56 @@ def run_ingest(
                 on_progress(result)
             continue
 
+        # Ingestion scan policy check (OWASP LLM02, P1-1)
+        if prepared.secret_findings:
+            logger.warning(
+                "ingest.secret_findings_detected",
+                url=document.url,
+                findings_count=len(prepared.secret_findings),
+                rules=[f["rule_id"] for f in prepared.secret_findings],
+            )
+        if prepared.pii_findings:
+            logger.info(
+                "ingest.pii_findings_detected",
+                url=document.url,
+                findings_count=len(prepared.pii_findings),
+            )
+
+        scan_objects = [
+            ScanFinding(
+                category=f["category"],
+                rule_id=f["rule_id"],
+                description=f["description"],
+                char_start=f["char_start"],
+                char_end=f["char_end"],
+                sample_masked=f["sample_masked"],
+                severity=f["severity"],
+                detail=f.get("detail", ""),
+            )
+            for f in prepared.secret_findings + prepared.pii_findings
+        ]
+        _, is_quarantined = evaluate_scan_policy(scan_objects)
+        if is_quarantined:
+            result = DocumentResult(
+                url=document.url,
+                source=document.source,
+                status="quarantined",
+                action=str(Action.QUARANTINED),
+                chunks=0,
+                char_count=prepared.char_count,
+                clean_chars=prepared.clean_chars,
+                pages=prepared.pages,
+                extractor=prepared.extractor,
+                secret_findings=prepared.secret_findings,
+                pii_findings=prepared.pii_findings,
+                elapsed_ms=int((time.perf_counter() - started) * 1000),
+                detail=f"quarantined by policy: {len(prepared.secret_findings)} secret finding(s) detected",
+            )
+            report.documents.append(result)
+            if on_progress:
+                on_progress(result)
+            continue
+
         if dry_run:
             tokens = [c.token_count for c in prepared.chunks]
             result = DocumentResult(
@@ -303,6 +376,9 @@ def run_ingest(
                 token_mean=round(sum(tokens) / len(tokens), 1),
                 token_max=max(tokens),
                 uncovered_chars=uncovered_characters(prepared.text, prepared.chunks),
+                invisible_removed=prepared.invisible_removed,
+                secret_findings=prepared.secret_findings,
+                pii_findings=prepared.pii_findings,
                 elapsed_ms=int((time.perf_counter() - started) * 1000),
                 detail="dry run: nothing written",
             )
