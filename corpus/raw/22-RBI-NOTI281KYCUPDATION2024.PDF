@@ -1,0 +1,161 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 4 0 R 5 0 R 6 0 R] /Count 4 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 7 0 R >> >> /Contents 8 0 R >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 7 0 R >> >> /Contents 9 0 R >>
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 7 0 R >> >> /Contents 10 0 R >>
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 7 0 R >> >> /Contents 11 0 R >>
+endobj
+7 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+8 0 obj
+<< /Length 1384 >>
+stream
+BT
+/F1 10 Tf
+50 720 Td
+13 TL
+(RESERVE BANK OF INDIA) Tj
+T*
+(DEPARTMENT OF REGULATION, CENTRAL OFFICE, MUMBAI) Tj
+T*
+(RBI/2024-25/118 DOR.AML.REC.42/14.01.001/2024-25) Tj
+T*
+(September 10, 2024) Tj
+T*
+(Master Direction - Know Your Customer \(KYC\) Direction - Periodic Updation and V-CIP) Tj
+T*
+() Tj
+T*
+(1. Periodic KYC Updation Timelines: Regulated Entities shall carry out periodic KYC updation based on customer risk categorization.) Tj
+T*
+(Periodic updation of Customer Due Diligence \(CDD\) shall be conducted at least once every two years for high-risk customers,) Tj
+T*
+(at least once every eight years for medium-risk customers, and at least once every ten years for low-risk customers.) Tj
+T*
+(2. Re-KYC for Non-Risk Customers: Where there is no change in KYC information, a self-declaration from the customer submitted) Tj
+T*
+(through internet banking, mobile app, ATM, or email shall suffice for periodic updation.) Tj
+T*
+(3. Video-based Customer Identification Process \(V-CIP\): V-CIP is an alternate method of digital customer verification.) Tj
+T*
+(The V-CIP infrastructure must ensure live, real-time audio-visual interaction conducted by an authorized official of the RE.) Tj
+T*
+(The official must verify the live photograph against the Aadhaar or OVD photograph using facial recognition algorithms with) Tj
+T*
+(a match confidence score exceeding 90 percent.) Tj
+T*
+ET
+endstream
+endobj
+9 0 obj
+<< /Length 1136 >>
+stream
+BT
+/F1 10 Tf
+50 720 Td
+13 TL
+(4. Geolocation Requirements: During the V-CIP process, the application must capture live geotagging coordinates) Tj
+T*
+(to confirm that the customer is physically present within the sovereign territory of India during the session. V-CIP sessions) Tj
+T*
+(originating from IP addresses outside India shall be immediately terminated.) Tj
+T*
+(5. Politically Exposed Persons \(PEPs\): Accounts of Politically Exposed Persons \(including foreign PEPs and domestic senior political) Tj
+T*
+(figures\) require prior approval of Senior Management \(at least at Deputy General Manager level\). Enhanced Due Diligence \(EDD\) must) Tj
+T*
+(be performed, and source of funds must be verified.) Tj
+T*
+(6. Cash Transaction Reporting \(CTR\): Under Rule 3 of the PML Rules, all cash transactions of rupees ten lakh \(INR 1,000,000\) or above,) Tj
+T*
+(or its equivalent in foreign currency, whether conducted in a single transaction or a series of integrally connected transactions,) Tj
+T*
+(shall be reported to the Financial Intelligence Unit - India \(FIU-IND\) on or before the 15th day of the succeeding month.) Tj
+T*
+ET
+endstream
+endobj
+10 0 obj
+<< /Length 926 >>
+stream
+BT
+/F1 10 Tf
+50 720 Td
+13 TL
+(7. Beneficial Ownership Identification: For corporate entities, the beneficial owner is the natural person who ultimately) Tj
+T*
+(owns or controls a controlling ownership interest, defined as holding more than ten percent of shares or capital or profits.) Tj
+T*
+(8. Threshold for Partnerships and Trusts: For partnership firms and unincorporated associations, the beneficial ownership threshold) Tj
+T*
+(is fifteen percent \(15 percent\) of capital or profits. For trusts, the author of the trust, the trustee, and beneficiaries holding) Tj
+T*
+(fifteen percent or more interest must be identified and verified.) Tj
+T*
+(9. Cross-Border Wire Transfers: All cross-border wire transfers exceeding rupees fifty thousand \(INR 50,000\) or equivalent shall) Tj
+T*
+(carry complete originator and beneficiary information, including name, account number, and unique customer identification number.) Tj
+T*
+ET
+endstream
+endobj
+11 0 obj
+<< /Length 918 >>
+stream
+BT
+/F1 10 Tf
+50 720 Td
+13 TL
+(10. Small Accounts Framework: A small account may be opened by an individual with simplified identification documentation.) Tj
+T*
+(The aggregate of all credits in a financial year in a small account shall not exceed rupees one lakh \(INR 1,00,000\).) Tj
+T*
+(11. Balance and Withdrawal Limits on Small Accounts: The aggregate of all withdrawals and transfers in a month shall not exceed) Tj
+T*
+(rupees ten thousand \(INR 10,000\), and the balance at any point in time shall not exceed rupees fifty thousand \(INR 50,000\).) Tj
+T*
+(12. Validity of Small Accounts: A small account shall remain valid initially for a period of twelve months. If the account holder) Tj
+T*
+(submits proof of having applied for an Officially Valid Document \(OVD\), validity may be extended by an additional twelve months.) Tj
+T*
+(Yours faithfully,) Tj
+T*
+(\(Sunil Kumar\)) Tj
+T*
+(Chief General Manager) Tj
+T*
+ET
+endstream
+endobj
+xref
+0 12
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000133 00000 n 
+0000000259 00000 n 
+0000000385 00000 n 
+0000000512 00000 n 
+0000000639 00000 n 
+0000000736 00000 n 
+0000002172 00000 n 
+0000003360 00000 n 
+0000004338 00000 n 
+trailer
+<< /Size 12 /Root 1 0 R >>
+startxref
+5308
+%%EOF

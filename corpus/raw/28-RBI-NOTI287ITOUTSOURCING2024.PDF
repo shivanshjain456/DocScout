@@ -1,0 +1,157 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 4 0 R 5 0 R 6 0 R] /Count 4 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 7 0 R >> >> /Contents 8 0 R >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 7 0 R >> >> /Contents 9 0 R >>
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 7 0 R >> >> /Contents 10 0 R >>
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 7 0 R >> >> /Contents 11 0 R >>
+endobj
+7 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+8 0 obj
+<< /Length 1426 >>
+stream
+BT
+/F1 10 Tf
+50 720 Td
+13 TL
+(RESERVE BANK OF INDIA) Tj
+T*
+(DEPARTMENT OF REGULATION, CENTRAL OFFICE, MUMBAI) Tj
+T*
+(RBI/2024-25/155 DoR.ORG.REC.65/21.04.158/2024-25) Tj
+T*
+(September 29, 2024) Tj
+T*
+(Master Direction on Outsourcing of Information Technology Services) Tj
+T*
+() Tj
+T*
+(1. Prohibited Outsourcing Activities: Regulated Entities shall not outsource core management functions, including the decision-making) Tj
+T*
+(authority on credit sanction, overall risk management, compliance oversight, and internal audit functions. The ultimate responsibility) Tj
+T*
+(for outsourced IT operations rests entirely with the Board and Senior Management of the RE.) Tj
+T*
+(2. Due Diligence and Concentration Risk: REs shall perform rigorous financial, operational, and cybersecurity due diligence on service) Tj
+T*
+(providers prior to signing outsourcing agreements. Material outsourcing arrangements must evaluate concentration risk and avoid sole-vendor) Tj
+T*
+(dependency across core banking modules.) Tj
+T*
+(3. Data Sovereignty and Cross-Border Storage: The primary transactional databases and financial customer records of REs must reside) Tj
+T*
+(within the territorial borders of India. Where cross-border support or analytics is permitted, the service provider contract must) Tj
+T*
+(explicitly guarantee that the Reserve Bank and its appointed auditors have unrestricted right of inspection and audit of systems.) Tj
+T*
+ET
+endstream
+endobj
+9 0 obj
+<< /Length 919 >>
+stream
+BT
+/F1 10 Tf
+50 720 Td
+13 TL
+(4. Business Continuity and Disaster Recovery: Material IT outsourcing arrangements must include defined Recovery Time Objectives) Tj
+T*
+(\(RTO\) and Recovery Point Objectives \(RPO\). For critical payment and customer-facing banking services, the RTO shall not exceed two hours) Tj
+T*
+(and RPO shall not exceed 15 minutes. Disaster recovery drills with service providers must be conducted at least once annually.) Tj
+T*
+(5. Termination and Exit Clauses: All outsourcing contracts must incorporate clear exit strategies, transitional assistance requirements,) Tj
+T*
+(and guaranteed return or destruction of proprietary data within 30 days of contract termination.) Tj
+T*
+(6. Sub-contracting Authorization: The service provider shall not sub-contract any material component of the outsourced service to a) Tj
+T*
+(third party without prior written consent from the Regulated Entity.) Tj
+T*
+ET
+endstream
+endobj
+10 0 obj
+<< /Length 877 >>
+stream
+BT
+/F1 10 Tf
+50 720 Td
+13 TL
+(7. Cloud Computing Architecture and Encryption: Regulated Entities migrating workloads to public or multi-tenant cloud service) Tj
+T*
+(providers must ensure that data at rest and data in transit is encrypted using advanced algorithms \(AES-256 minimum\). Customer-managed) Tj
+T*
+(encryption keys \(CMEK\) must be held by the RE.) Tj
+T*
+(8. Audit and Access Rights: Contracts with IT service providers must explicitly grant the Regulated Entity, its internal and external) Tj
+T*
+(auditors, and the Reserve Bank's supervisory teams unhindered physical and logical access to relevant infrastructure, logs, and staff.) Tj
+T*
+(9. Incident Notification by Vendors: IT service providers must contractually commit to notify the Regulated Entity of any security incident,) Tj
+T*
+(data breach, or unauthorized access within two hours of detection.) Tj
+T*
+ET
+endstream
+endobj
+11 0 obj
+<< /Length 858 >>
+stream
+BT
+/F1 10 Tf
+50 720 Td
+13 TL
+(10. Service Level Agreements \(SLAs\): Comprehensive metrics for system availability, response time, bug fixes, and patch management) Tj
+T*
+(must be incorporated into SLAs with predefined financial penalties for non-compliance.) Tj
+T*
+(11. Offshore Service Providers: Where the service provider is located outside India, the RE must evaluate the legal and geopolitical risks) Tj
+T*
+(of the foreign jurisdiction and ensure that regulatory actions by foreign authorities cannot block Indian bank records.) Tj
+T*
+(12. Board Review of Outsourcing: A comprehensive inventory of all material IT outsourcing arrangements and vendor performance reports) Tj
+T*
+(shall be presented to the Board of Directors at least once every financial year.) Tj
+T*
+(Yours faithfully,) Tj
+T*
+(\(Charulatha S. R.\)) Tj
+T*
+(Chief General Manager) Tj
+T*
+ET
+endstream
+endobj
+xref
+0 12
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000133 00000 n 
+0000000259 00000 n 
+0000000385 00000 n 
+0000000512 00000 n 
+0000000639 00000 n 
+0000000736 00000 n 
+0000002214 00000 n 
+0000003184 00000 n 
+0000004113 00000 n 
+trailer
+<< /Size 12 /Root 1 0 R >>
+startxref
+5023
+%%EOF

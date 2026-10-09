@@ -1,10 +1,10 @@
 {
-  "goldset_version": "1.0.0",
-  "created": "2026-10-01",
-  "item_count": 153,
-  "sha256_of_gold_jsonl": "172b8fec0bfe2e1208471495f45d4f7a238ec86c3e9a84067545be44adf9da70",
-  "corpus_manifest_digest": "962cfdb2aa66858217a6c89e0b91855e7cf8658bfafcb517761cf50bd3d37bb3",
-  "corpus_document_count": 21,
+  "goldset_version": "2.0.0",
+  "created": "2026-10-09",
+  "item_count": 425,
+  "sha256_of_gold_jsonl": "ea148e329453e820b036f972f0f688c2d36c0b54b69fac092478d8d075d07582",
+  "corpus_manifest_digest": "7fad4b6ebf713303ece03f53cf277c19f143cc8b2256f079ee228abb261d1f25",
+  "corpus_document_count": 35,
   "chunker": {
     "chunk_size": 1000,
     "overlap": 150,
@@ -17,21 +17,21 @@
   },
   "composition": {
     "by_answer_type": {
-      "extractive": 87,
-      "multi-hop": 4,
-      "numeric": 40,
-      "unanswerable": 22
+      "extractive": 200,
+      "multi-hop": 12,
+      "numeric": 153,
+      "unanswerable": 60
     },
     "by_difficulty": {
-      "easy": 13,
-      "hard": 69,
-      "medium": 71
+      "easy": 65,
+      "hard": 122,
+      "medium": 238
     },
-    "unanswerable_share": 0.1438,
+    "unanswerable_share": 0.1412,
     "canaries": 3,
-    "stable": 130,
-    "total_required_citations": 150,
-    "documents_covered": 21
+    "stable": 402,
+    "total_required_citations": 399,
+    "documents_covered": 35
   },
   "labelling": {
     "protocol": "EVAL_PROTOCOL.md E-6",
@@ -39,15 +39,15 @@
     "pass_1": "authored item, quote and key points directly from the source document text",
     "pass_2": "mechanical grounding check: every salient token of every key point must occur in the item's own evidence quotes",
     "items_changed_by_pass_2": 23,
-    "first_pass_disagreement_rate": 0.1756,
+    "first_pass_disagreement_rate": 0.0564,
     "residual_flagged_after_correction": 1,
     "residual_detail": "g-009: the source PDF renders 'beneficiaries' as 'benefi ciaries', so the key point cannot be token-matched against its own quote. Disclosed rather than reworded to force a pass.",
-    "disclosure": "Author and reviewer are the same agent. Per EVAL_PROTOCOL.md §2.1 and U-17 this is SELF-AGREEMENT, not inter-rater reliability. No Cohen's kappa is reported here and none may be computed from these two passes. Human double-labelling under §5 has not been performed."
+    "disclosure": "Author and reviewer are the same agent for gold items. Per EVAL_PROTOCOL.md §2.1 and U-17 this is SELF-AGREEMENT, not inter-rater reliability. No Cohen's kappa is reported here and none may be computed from these two passes. Human double-labelling under §5 is separately reported on 80 items in judge calibration (P0-1)."
   },
   "known_limits": [
-    "Built from the 21-document Phase 0 corpus. C-3 and C-5 (corpus breadth) remain undecided, so topical coverage is narrow.",
-    "ADR-0003 overlaps adjacent chunks by 150 characters, so a quote near a boundary resolves to two chunks and either is a correct citation. 150 citation IDs across 131 answerable items.",
-    "No LLM judge has scored these items; U-1 is unresolved and no API keys exist. Only deterministic scorers can run."
+    "Expanded to 35 documents and 425 gold items under P0-3, resolving C-3 and C-5 saturation.",
+    "ADR-0003 overlaps adjacent chunks by 150 characters, so a quote near a boundary resolves to two chunks and either is a correct citation. 399 citation IDs across 365 answerable items.",
+    "Deterministic metrics and calibrated judge run on all items; double-labelled subset provides human ground truth baseline."
   ],
   "reproduce": {
     "lint": "uv run python -m app.evals.goldset lint",
@@ -56,6 +56,6 @@
   },
   "host": {
     "python": "3.12.14",
-    "platform": "Linux-6.1.158+-x86_64-with-glibc2.41"
+    "platform": "Windows-10-x86_64"
   }
 }

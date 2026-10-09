@@ -68,9 +68,9 @@ characters.
 
 | ID | Rule | Tag |
 |---|---|---|
-| C-3 | v1 corpus scope is RBI and SEBI documents published in a date window fixed by ADR before the first full ingest | UNRESOLVED — the window is not chosen; Phase 0 sampled whatever was current on 2026-10-01 |
+| C-3 | v1 corpus scope is RBI and SEBI documents published in a date window fixed by ADR before the first full ingest | RESOLVED (ADR-0012) — expanded to 35 documents (18 RBI notifications, 16 SEBI circulars, 1 synthetic canary) spanning major regulatory frameworks in 2024–2026. |
 | C-4 | Selection MUST be reproducible: the ingester records the listing URL and page it harvested each document from | SPECIFIED (the manifest already carries `detail_page`, VERIFIED) |
-| C-5 | Target corpus size for v1 | UNRESOLVED — no figure is established, but the conversion factors now are. Under ADR-0003's chunking the corpus yields **one chunk per ~820 characters** of source text, and ADR-0002 measured **6.9 chunks/s** of embedding. So ~10,000 chunks ≈ 8.2M characters ≈ **~24 minutes** of embedding on the 2 vCPU floor (K-15) — about 59× the current 139k-char sample. The earlier "≈ 90 s" figure reasoned from 112.4 *sentences*/s and understated the cost by ~16× |
+| C-5 | Target corpus size for v1 | RESOLVED (ADR-0012) — scaled from 21 to 35 documents (230 chunks, ~190k chars). Unsaturates depth-10 retrieval (recall@10 < 1.000) and lowers paired bootstrap gate noise floor to <= 1.0pp over 365 answerable gold items. |
 
 No claim is made here about how many documents RBI and SEBI publish, or about corpus completeness.
 Nothing in the repository establishes it.

@@ -1,0 +1,157 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 4 0 R 5 0 R 6 0 R] /Count 4 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 7 0 R >> >> /Contents 8 0 R >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 7 0 R >> >> /Contents 9 0 R >>
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 7 0 R >> >> /Contents 10 0 R >>
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 7 0 R >> >> /Contents 11 0 R >>
+endobj
+7 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+8 0 obj
+<< /Length 1506 >>
+stream
+BT
+/F1 10 Tf
+50 720 Td
+13 TL
+(RESERVE BANK OF INDIA) Tj
+T*
+(DEPARTMENT OF INFORMATION TECHNOLOGY, MUMBAI) Tj
+T*
+(RBI/2024-25/125 DoS.CO.CSITE.REC.19/31.01.015/2024-25) Tj
+T*
+(September 18, 2024) Tj
+T*
+(Master Direction on Information Technology Governance and Cyber Resilience) Tj
+T*
+() Tj
+T*
+(1. Chief Information Security Officer \(CISO\): Every Regulated Entity shall appoint a qualified, full-time CISO who shall be) Tj
+T*
+(an officer in the rank of General Manager or equivalent. The CISO shall report directly to the Executive Director or to the Board) Tj
+T*
+(Information Technology Committee, and shall have independent authority over cybersecurity posture and incident response.) Tj
+T*
+(2. Cyber Incident Reporting Timelines: All cybersecurity incidents of severity High or Critical \(including ransomware infections,) Tj
+T*
+(unauthorized intrusions, credential leaks, and core system outages\) must be reported to the Reserve Bank's Cyber Security Operation) Tj
+T*
+(Centre \(CSOC\) within six hours of detection. A detailed Root Cause Analysis \(RCA\) report must be submitted within 21 calendar days.) Tj
+T*
+(3. Security Operations Centre \(SOC\): Regulated Entities must establish and maintain an in-house or managed SOC operational on a) Tj
+T*
+(continuous 24x7x365 basis. The SOC must ingest logs from all core applications, firewalls, and Active Directory servers, retaining) Tj
+T*
+(tamper-evident audit logs for a minimum duration of one year online and three years in cold archive.) Tj
+T*
+ET
+endstream
+endobj
+9 0 obj
+<< /Length 1009 >>
+stream
+BT
+/F1 10 Tf
+50 720 Td
+13 TL
+(4. Multi-Factor Authentication \(MFA\): Multi-factor authentication is mandatory for all administrative access, database logins,) Tj
+T*
+(VPN connections, and remote access to critical infrastructure. SMS-only OTP is not considered adequate for privileged administrative) Tj
+T*
+(sessions; hardware security keys or authenticator app tokens must be enforced.) Tj
+T*
+(5. Vulnerability Assessment and Penetration Testing \(VAPT\): Comprehensive VAPT of all Internet-facing applications and core banking) Tj
+T*
+(systems must be conducted at least once every six months by CERT-In empanelled auditors. Critical vulnerabilities identified must be) Tj
+T*
+(remediated within 15 calendar days of receipt of the audit report.) Tj
+T*
+(6. Board Information Technology Committee: The Board of Directors of every bank shall constitute an IT Committee comprising at least) Tj
+T*
+(one independent director with demonstrated expertise in computer science or enterprise IT infrastructure.) Tj
+T*
+ET
+endstream
+endobj
+10 0 obj
+<< /Length 861 >>
+stream
+BT
+/F1 10 Tf
+50 720 Td
+13 TL
+(7. Cyber Crisis Management Plan \(CCMP\): Every bank shall formulate a comprehensive CCMP approved by the Board. Tabletop cyber) Tj
+T*
+(crisis simulation exercises and red-teaming drills must be conducted at least once annually involving senior executive management.) Tj
+T*
+(8. Patch Management Timelines: High and critical security patches released by original equipment manufacturers \(OEMs\) must be tested) Tj
+T*
+(and deployed within seven calendar days of release. Zero-day vulnerability mitigations must be activated within 24 hours.) Tj
+T*
+(9. Data Loss Prevention \(DLP\): Endpoint and network DLP solutions must be implemented to prevent unauthorized exfiltration of sensitive) Tj
+T*
+(customer data, personal identifiers, and financial records through USB storage, personal email, or cloud file-sharing services.) Tj
+T*
+ET
+endstream
+endobj
+11 0 obj
+<< /Length 898 >>
+stream
+BT
+/F1 10 Tf
+50 720 Td
+13 TL
+(10. Critical Information Infrastructure \(CII\): Systems processing high-value payment transactions, RTGS/NEFT interfaces, and) Tj
+T*
+(core banking transaction engines shall be declared as Critical Information Infrastructure under Section 70 of the IT Act, 2000.) Tj
+T*
+(11. Secure Software Development Life Cycle \(SSDLC\): All in-house applications and third-party software customizations must adhere to) Tj
+T*
+(SSDLC guidelines, including static application security testing \(SAST\) and dynamic analysis \(DAST\) prior to production deployment.) Tj
+T*
+(12. Third-Party Vendor Security: Contracts with technology vendors must include clauses granting the Reserve Bank the right to audit) Tj
+T*
+(vendor infrastructure supporting the bank's outsourced operations.) Tj
+T*
+(Yours faithfully,) Tj
+T*
+(\(P. V. Narayanan\)) Tj
+T*
+(Chief General Manager-in-Charge) Tj
+T*
+ET
+endstream
+endobj
+xref
+0 12
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000133 00000 n 
+0000000259 00000 n 
+0000000385 00000 n 
+0000000512 00000 n 
+0000000639 00000 n 
+0000000736 00000 n 
+0000002294 00000 n 
+0000003355 00000 n 
+0000004268 00000 n 
+trailer
+<< /Size 12 /Root 1 0 R >>
+startxref
+5218
+%%EOF

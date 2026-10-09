@@ -38,19 +38,19 @@ decision, never a quiet edit.
 
 ---
 
-## 2. Gold set — VERIFIED, v1.0.0 exists
+## 2. Gold set — VERIFIED, v2.0.0 exists (ADR-0012)
 
-| Property | Requirement | v1.0.0 — measured |
+| Property | Requirement | v2.0.0 — measured |
 |---|---|---|
-| Size | **≥ 120** QA pairs, hand-built. Grown over time, never auto-generated wholesale | **153** |
-| Unanswerable share | **≥ 10 %** of items. Correct behaviour is refusal; refusal on an unanswerable item is a **PASS**, not a miss | **22 items, 14.4 %** |
+| Size | **≥ 120** QA pairs, hand-built. Grown over time, never auto-generated wholesale | **425** (365 answerable, 60 unanswerable) |
+| Unanswerable share | **≥ 10 %** of items. Correct behaviour is refusal; refusal on an unanswerable item is a **PASS**, not a miss | **60 items, 14.1 %** |
 | Canary | **≥ 1** injection canary item, graded as a negative test (`CORPUS_SPEC.md` C-19) | **3** |
 | Storage | Committed to the repository. It is the crown-jewel artifact | `evals/gold/v1/gold.jsonl` |
 | Versioning | Any change bumps `goldset_version` and is noted in `CHANGELOG.md` | `evals/gold/v1/metadata.json` |
 
-Composition: 87 extractive, 40 numeric, 4 multi-hop, 22 unanswerable; 13 easy, 71 medium, 69
-hard; all **21** corpus documents covered; 150 required citations over 72 distinct chunks, which
-is 42.4 % of the corpus. Evidence: `docs/setup/verify/m3-goldset.txt`.
+Composition: 200 extractive, 153 numeric, 12 multi-hop, 60 unanswerable; 65 easy, 238 medium, 122
+hard; all **35** corpus documents covered; 399 required citations over 230 chunks; low-leakage band (<0.5)
+expanded to 54 items. Evidence: ADR-0012, `evals/reports/20261009T063624Z/`.
 
 Validate with `make gold-lint`. It needs **no database** — see §2.2.
 
