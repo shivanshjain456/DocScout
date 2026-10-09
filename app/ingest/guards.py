@@ -1,4 +1,4 @@
-"""Stage credential isolation — SECURITY S-4 / SPEC FR-6.
+"""Stage credential isolation  -  SECURITY S-4 / SPEC FR-6.
 
 The ingestion entrypoint must fail fast if deploy or cloud credentials are present in its
 environment. The threat (SECURITY T-5) is credential bleed between stages: an offline
@@ -23,7 +23,7 @@ from app.ingest.errors import CredentialBleedError
 #:
 #: `GITHUB_TOKEN` is also deliberately absent. GitHub Actions injects it into every job
 #: unconditionally, so including it would make this guard fail every CI run that touched
-#: ingestion — and a guard that cries wolf is removed, not obeyed. Deploy authority on
+#: ingestion  -  and a guard that cries wolf is removed, not obeyed. Deploy authority on
 #: GitHub is carried by the PATs and OIDC roles named in SECURITY.md S-14, not by the
 #: ambient job token.
 DEPLOY_CREDENTIAL_VARS: frozenset[str] = frozenset(
@@ -64,7 +64,7 @@ def find_deploy_credentials(env: Mapping[str, str] | None = None) -> list[str]:
     A variable set to the empty string does not count as present. CI systems routinely
     declare a variable with no value when a secret is unavailable to a given job, and
     treating that as a credential would make the guard fire where there is no authority
-    at all. Names only are ever returned — never values (SECURITY S-2).
+    at all. Names only are ever returned  -  never values (SECURITY S-2).
     """
     source: Mapping[str, str] = os.environ if env is None else env
     return sorted(name for name in DEPLOY_CREDENTIAL_VARS if source.get(name, "").strip())

@@ -1,4 +1,4 @@
-# MCP server audit — Phase 0 (guardrail §1.1)
+# MCP server audit  -  Phase 0 (guardrail §1.1)
 
 Date: 2026-10-01. Auditor: setup agent. Method: real MCP handshake (`initialize` → `tools/list`)
 against each candidate server using `scripts/mcp_probe.py`, then manual read of **every** tool
@@ -12,8 +12,8 @@ Raw evidence: `docs/setup/mcp-verify/*.txt` (full tool lists with complete descr
 | playwright | `@playwright/mcp` (Microsoft, official npm) | `0.0.83` | stdio | 25 | 0 | **APPROVED** |
 | context7 | `https://mcp.context7.com/mcp` (Upstash, official remote) | server v4.1.1 | http | 2 | 0 | **APPROVED** |
 | memory | `@modelcontextprotocol/server-memory` (official MCP reference, npm) | `2026.8.31` (reports v0.6.3) | stdio | 9 | 0 | **APPROVED (with write-log rule)** |
-| github | `ghcr.io/github/github-mcp-server` (GitHub, official) | not pulled | stdio/docker | n/a | n/a | **BLOCKED** — no PAT issued (human declined in Phase 0) |
-| postgres | see rejection below | — | — | — | — | **REJECTED — awaiting human decision** |
+| github | `ghcr.io/github/github-mcp-server` (GitHub, official) | not pulled | stdio/docker | n/a | n/a | **BLOCKED**  -  no PAT issued (human declined in Phase 0) |
+| postgres | see rejection below |  -  |  -  |  -  |  -  | **REJECTED  -  awaiting human decision** |
 
 ---
 
@@ -42,8 +42,8 @@ notice: *"Package no longer supported"*), never to PyPI under this name. An unaf
 undocumented, zero-dependency package occupying an official-sounding PyPI name is the exact
 typosquat/supply-chain shape described in guardrail §1.1 and the postmark-mcp incident.
 
-Severity is amplified by the brief's own invocation: the live DB connection string — **including the
-Postgres superuser password** — is passed as a command-line argument to that package. Executing it
+Severity is amplified by the brief's own invocation: the live DB connection string  -  **including the
+Postgres superuser password**  -  is passed as a command-line argument to that package. Executing it
 would hand project credentials to unvetted third-party code, and `uvx` would fetch the newest
 release at run time (no pinning), so the code could change under us at any invocation.
 
@@ -57,14 +57,14 @@ release at run time (no pinning), so the code could change under us at any invoc
 - **(B) Approve the maintained community server `postgres-mcp` (crystaldba, PyPI 0.3.0).** Actively
   maintained, real repo, used for tuning/analysis. Requires explicit human approval under §6
   ("any other community server → DO NOT INSTALL"), must be version-pinned, and should connect with
-  the least-privilege `docscout_app` role — never the superuser — via env var, not argv.
+  the least-privilege `docscout_app` role  -  never the superuser  -  via env var, not argv.
 - **(C) Use the deprecated official `@modelcontextprotocol/server-postgres@0.6.2`.** Official
   provenance, but unmaintained and archived; inherits any unpatched defects.
 
 ## 2. Note on APPROVED servers
 
 - **playwright** exposes `browser_run_code_unsafe` (arbitrary JS in page context). Not a poisoned
-  description — it is honestly named and the capability is inherent to browser automation — but it
+  description  -  it is honestly named and the capability is inherent to browser automation  -  but it
   is a genuine capability risk when the browser visits untrusted pages. Mitigation: the server is
   configured `--headless --isolated` (ephemeral profile, no persistent cookies/credentials), and
   per guardrail §1.2 the DocScout corpus must never be rendered in this browser during dev.

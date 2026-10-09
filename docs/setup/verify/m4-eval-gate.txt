@@ -1,4 +1,4 @@
-M4 EXIT CRITERION 4 — THE REGRESSION GATE: VERIFICATION LOG
+M4 EXIT CRITERION 4  -  THE REGRESSION GATE: VERIFICATION LOG
 Generated 2026-10-01T20:30:45Z. Every block below is real command output.
 Host: 2 vCPU / 1.9 GiB; PostgreSQL 18.6, pgvector 0.8.6.
 

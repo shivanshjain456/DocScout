@@ -100,7 +100,7 @@ Recall@5 split across question-to-evidence lexical overlap:
 | Mean Latency | 63.3 ms | 62.4 ms | -0.9 ms |
 | p50 Latency | 63.2 ms | 61.8 ms | -1.4 ms |
 | p95 Latency | 72.5 ms | 72.4 ms | -0.1 ms |
-| Precompiled Regex Expansion Time | — | < 0.08 ms | +0.08 ms |
+| Precompiled Regex Expansion Time |  -  | < 0.08 ms | +0.08 ms |
 | Token / Cost Overhead | 0 external tokens | 0 external tokens | $0.00 |
 
 ---

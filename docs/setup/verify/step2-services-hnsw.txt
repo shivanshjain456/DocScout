@@ -1,4 +1,4 @@
-### V2.3 retest — hnsw GUCs + index, 2026-10-01T09:54:54Z
+### V2.3 retest  -  hnsw GUCs + index, 2026-10-01T09:54:54Z
 NOTE: pgvector registers hnsw.* GUCs only after its shared library loads in the session;
       a bare 'SHOW hnsw.iterative_scan' in a fresh session errors. Forcing load first.
 

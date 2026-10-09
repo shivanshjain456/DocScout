@@ -1,4 +1,4 @@
-"""DocScout corpus ingestion — SPEC FR-1 … FR-8, ARCHITECTURE §3.1.
+"""DocScout corpus ingestion  -  SPEC FR-1 … FR-8, ARCHITECTURE §3.1.
 
 Stages: fetch → extract → guard → clean → chunk → embed → store.
 

@@ -15,7 +15,7 @@ problem. Under schema 0001 the gold set breaks when **nothing** changes.
 
 `chunks.chunk_id` was `uuid PRIMARY KEY DEFAULT uuidv7()`, so the database minted an identifier
 from the clock at insert time. Ingesting the same 21 documents into an empty database twice
-produced **0 of 170 matching identifiers** — identical bytes, identical extracted text, identical
+produced **0 of 170 matching identifiers**  -  identical bytes, identical extracted text, identical
 character spans, 170 different primary keys. The measurement is in the evidence file.
 
 Three things depend on that identifier and all three were quietly broken:
@@ -42,7 +42,7 @@ already what FR-7 requires to be re-derivable. Nothing else is needed to say whi
 
 | Property | Consequence |
 |---|---|
-| Same content, any machine, any re-ingest | Same identifier — 170/170 verified across two cold ingests, on a different engine version than the one that produced the M2 evidence |
+| Same content, any machine, any re-ingest | Same identifier  -  170/170 verified across two cold ingests, on a different engine version than the one that produced the M2 evidence |
 | Two chunk geometries that agree on a span | Agree on the identifier, which is correct: it is the same text of the same document |
 | Any geometry change that moves a boundary | New identifier, so E-7's re-pinning requirement becomes a loud failure instead of a silent re-point to different text |
 | Ordinal deliberately excluded | Ordinals renumber when geometry changes even for chunks whose text is untouched |
@@ -63,8 +63,8 @@ without any reproducibility obligation.
 
 **What this costs.** ADR-0004 chose `uuidv7()` partly on credativ's 50-million-row benchmark:
 inserts 1:46 against 20:39, primary-key index 1,504 MB against 1,981 MB, leaf fragmentation 0
-against 50%. A v5 identifier is random, so `chunks` gives those up. At the measured corpus — 170
-chunks, and a target in the low tens of thousands — the effect is unmeasurable, and the ingest
+against 50%. A v5 identifier is random, so `chunks` gives those up. At the measured corpus  -  170
+chunks, and a target in the low tens of thousands  -  the effect is unmeasurable, and the ingest
 is a 41-second batch job run from a CLI, not a latency-sensitive write path. If `chunks` ever
 reaches a scale where index locality on insert matters, the honest fix is a separate
 monotonic surrogate key with `chunk_id` kept as the published identifier, not a return to
@@ -77,14 +77,14 @@ with no database: `uuid5(ns, f"{sha256}:{start}:{end}")` where the hash comes fr
 without a running Postgres, and a citation in a bug report still resolves after a redeploy.
 
 **What still breaks, honestly.** A new *version* of a document gets a new hash and therefore new
-chunk IDs for every chunk, including text that did not change. That is intended — FR-4 requires
+chunk IDs for every chunk, including text that did not change. That is intended  -  FR-4 requires
 old chunk IDs to stay resolvable, and they do, because the old version's rows are retained and
 `ON DELETE RESTRICT` prevents their removal. A citation names the version it was made against.
 
 **The namespace constant is load-bearing.** Changing `CHUNK_ID_NAMESPACE` re-identifies every
 chunk in the corpus and invalidates every committed citation. It is pinned in code, derived
 reproducibly as `uuid5(NAMESPACE_URL, "https://docscout.invalid/chunk-id/v1")`, and a test
-asserts both the derivation and a frozen known-answer vector — a first draft of this ADR shipped
+asserts both the derivation and a frozen known-answer vector  -  a first draft of this ADR shipped
 a hand-typed constant that did not match its own documented derivation, which the test now makes
 impossible.
 
@@ -95,7 +95,7 @@ impossible.
 The smallest change, and it was the first plan. Rejected because it fixes the gold set and
 leaves the reports broken. E-12 compares against the last three baselines and E-15 requires
 cited reports to resolve; under this option the raw outputs of run *N−3* name identifiers that
-no longer exist, so the gate's history can never be audited — only trusted. It also pushes a
+no longer exist, so the gate's history can never be audited  -  only trusted. It also pushes a
 mandatory re-resolution step into the quickstart, where every added step is a place to lose a
 reader. "Regenerate it" also quietly assumes the regeneration is correct, which is the thing a
 stable identifier would have let us check.
@@ -105,19 +105,19 @@ stable identifier would have let us check.
 Genuinely attractive: span citations are chunker-independent, so a chunk-size A/B could reuse
 one gold set unchanged, and scoring becomes a span-overlap test. Rejected for now because it
 changes what the system is measured on. `EVAL_PROTOCOL.md` §2.1 specifies chunk IDs, the API
-returns chunk IDs (FR-14), and an overlap-based scorer needs its own threshold — how much
-overlap counts as a hit — which is a new tunable knob invented at the exact moment the project
+returns chunk IDs (FR-14), and an overlap-based scorer needs its own threshold  -  how much
+overlap counts as a hit  -  which is a new tunable knob invented at the exact moment the project
 needs its numbers to be boring and defensible. Content-derived IDs deliver most of the benefit
 with no new knob: the span *is* the key, so the mapping from span to ID is a pure function
 available to any future span-based scorer. **If the chunk-size A/B in `EVAL_PROTOCOL.md` §8.1
 turns out to need one gold set across geometries, this becomes the right answer and the
-migration path is already open** — re-resolve spans to IDs per configuration.
+migration path is already open**  -  re-resolve spans to IDs per configuration.
 
 ### C. A monotonic integer or a `(version_id, ordinal)` composite key
 
 Compact, naturally ordered, and the classic relational choice. Rejected on two counts. A
 sequence is assigned at insert, so it is as unstable as `uuidv7()`. The composite is stable only
-while ordinals are, and ordinals renumber whenever chunk geometry shifts — the very event E-7 is
+while ordinals are, and ordinals renumber whenever chunk geometry shifts  -  the very event E-7 is
 about. A composite key also makes a citation a pair rather than an opaque token, which pushes
 the join into every API response, log line and bug report that wants to name a chunk.
 

@@ -1,4 +1,4 @@
-# Implementation Plan: P0-1 — Answer Construction Behind Passages, With Judged Evaluation
+# Implementation Plan: P0-1  -  Answer Construction Behind Passages, With Judged Evaluation
 
 - **Task ID:** P0-1
 - **Status:** IN_PROGRESS

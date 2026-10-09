@@ -1,4 +1,4 @@
-"""Embedding — ADR-0002.
+"""Embedding  -  ADR-0002.
 
 `BAAI/bge-small-en-v1.5` at 384 dimensions, L2-normalised, CPU-only. ADR-0002 fixed this
 after a five-arm bake-off and called the dimension a one-way door: `chunks.embedding` is
@@ -8,12 +8,12 @@ Two asymmetries from that decision which this module is the only place to get ri
 
 * **Query text carries a prefix, passage text does not.** BGE is trained with an
   instruction on the query side only. Prefixing passages, or forgetting to prefix queries,
-  degrades retrieval quietly — nothing raises, scores just get worse.
+  degrades retrieval quietly  -  nothing raises, scores just get worse.
 * **Everything is L2-normalised.** `ck_chunks_unit_norm` enforces this in the database, so
   an un-normalised vector is rejected at INSERT rather than silently ranking by magnitude.
 
-The contract checks in `_load` exist because the failure they catch — a model resolving to
-different weights or a different dimension after a cache eviction or a version bump — would
+The contract checks in `_load` exist because the failure they catch  -  a model resolving to
+different weights or a different dimension after a cache eviction or a version bump  -  would
 otherwise surface as a dimension error deep inside a bulk insert, or not at all.
 """
 
@@ -103,7 +103,7 @@ class Embedder:
         return array
 
     def encode_passages(self, texts: list[str]) -> np.ndarray:
-        """Encode chunk text. No prefix — ADR-0002 forbids it on the passage side."""
+        """Encode chunk text. No prefix  -  ADR-0002 forbids it on the passage side."""
         if not texts:
             return np.zeros((0, EMBEDDING_DIM), dtype=np.float32)
         return self._encode(texts)

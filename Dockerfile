@@ -1,4 +1,4 @@
-# DocScout API image — local deploy artifact (P0-4).
+# DocScout API image: local deploy artifact (P0-4).
 #
 # Reproducibility contract (must stay coherent with the measured pairing):
 # - Base is Debian trixie Python 3.12, pinned by digest (retrieved 2026-10-08 from

@@ -2,7 +2,7 @@
 
 Before this module there was no logging configuration anywhere in the repository. Six
 `logger.*` calls in `app/api/app.py` wrote to an unconfigured root logger, so everything at
-INFO — every access line — was silently discarded, and the only records that reached a
+INFO  -  every access line  -  was silently discarded, and the only records that reached a
 terminal were uvicorn's own. "Can you debug this from logs?" answered itself.
 
 Three decisions worth stating.
@@ -10,7 +10,7 @@ Three decisions worth stating.
 **structlog rather than a hand-rolled JSON formatter.** It was already a declared
 dependency and imported nowhere, which is a supply-chain surface with no benefit. Using it
 removes that, and `structlog.stdlib.ProcessorFormatter` is the piece that matters here: it
-routes *stdlib* records — uvicorn's, psycopg's, ours — through the same processor chain, so
+routes *stdlib* records  -  uvicorn's, psycopg's, ours  -  through the same processor chain, so
 one configuration produces one format for every log line in the process rather than two
 formats that drift.
 
@@ -166,7 +166,7 @@ def normalise_request_id(raw: str | None) -> str:
     """Return a safe correlation id, minting one when the caller supplied nothing usable.
 
     An inbound id is honoured so a request can be traced across a proxy or a client that
-    already has one, but only if it is short and free of control characters — it is
+    already has one, but only if it is short and free of control characters  -  it is
     attacker-controlled text that ends up in every log line for the request.
     """
     if raw and _REQUEST_ID_SAFE.match(raw):

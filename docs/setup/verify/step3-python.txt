@@ -1,4 +1,4 @@
-### Step 3 verification (final) — 2026-10-01T09:57:33Z
+### Step 3 verification (final)  -  2026-10-01T09:57:33Z
 --- interpreter ---
 Python 3.12.14
 

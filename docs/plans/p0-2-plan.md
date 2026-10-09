@@ -1,4 +1,4 @@
-# Plan: P0-2 — Scheduled Corpus Refresh and Freshness Signal
+# Plan: P0-2  -  Scheduled Corpus Refresh and Freshness Signal
 
 **Status:** VERIFIED
 **Owner:** Principal Engineer

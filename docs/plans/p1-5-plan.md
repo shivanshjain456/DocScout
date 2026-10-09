@@ -1,4 +1,4 @@
-# Plan: P1-5 — Human-Readable Citation Rendering (FR-14)
+# Plan: P1-5  -  Human-Readable Citation Rendering (FR-14)
 
 ## Context and Problem Statement
 - **FR-14 Requirement**:

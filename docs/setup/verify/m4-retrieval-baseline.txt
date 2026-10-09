@@ -1,4 +1,4 @@
-M4 — RETRIEVAL BASELINE AND A/B: VERIFICATION LOG
+M4  -  RETRIEVAL BASELINE AND A/B: VERIFICATION LOG
 Generated 2026-10-01T19:33:01Z by hand-run commands; every line below is real output.
 Host: 2 vCPU / 1.9 GiB. PostgreSQL 18.6, pgvector 0.8.6.
 

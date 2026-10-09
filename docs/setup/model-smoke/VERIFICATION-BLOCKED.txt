@@ -1,4 +1,4 @@
-### §10.2 live model-ID verification attempt — 2026-10-01T10:18:31Z
+### §10.2 live model-ID verification attempt  -  2026-10-01T10:18:31Z
 Guardrail §1.6: model IDs must be verified against the LIVE API and never guessed.
 
 --- credential presence (names only, never values) ---

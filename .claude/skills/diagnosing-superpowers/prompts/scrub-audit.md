@@ -24,7 +24,7 @@ Otherwise return:
 
 ```
 MISSED
-- <file>:<line> — <category> — <non-sensitive description or classification question>
+- <file>:<line>  -  <category>  -  <non-sensitive description or classification question>
 ...
 ```
 

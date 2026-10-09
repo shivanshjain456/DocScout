@@ -1,4 +1,4 @@
-M3 evidence — gold set v1.0.0
+M3 evidence  -  gold set v1.0.0
 Captured 2026-10-01T18:22:34Z. PostgreSQL 18.6 / pgvector 0.8.6, 2 vCPU / 1.9 GiB.
 
 === 1. Composition (make gold-stats; no corpus read, no model load) ===

@@ -1,6 +1,6 @@
 """Prometheus instrumentation for the serving API.
 
-RED — Rate, Errors, Duration — is the framework for a request-driven service, so those
+RED  -  Rate, Errors, Duration  -  is the framework for a request-driven service, so those
 three are what the HTTP metrics here measure. Two RAG-specific signals are added because
 they are the ones that actually explain this service's latency: the cache hit ratio and
 the per-mode retrieval time.
@@ -14,8 +14,8 @@ enumerated before it was added:
   one per value. Unmatched requests collapse to the literal ``"unmatched"`` rather than
   echoing whatever a scanner probed, which would otherwise be an attacker-controlled label.
 * ``method`` is bounded by HTTP itself.
-* ``status`` is the full code rather than a class. The enumeration is small and known —
-  200, 401, 422, 429, 500 — and the distinction between 401 and 429 is exactly what an
+* ``status`` is the full code rather than a class. The enumeration is small and known  -
+  200, 401, 422, 429, 500  -  and the distinction between 401 and 429 is exactly what an
   operator needs. Collapsing both to ``4xx`` would hide a rate-limited caller behind an
   unauthenticated one.
 * ``mode`` is the three values of the retrieval mode literal.
@@ -32,8 +32,8 @@ real distribution lives, and place an exact boundary at 3 s so SLO compliance is
 ratio rather than an interpolation.
 
 The default registry is used, which also exposes the ``process_*`` and ``python_*``
-collectors. That is correct for one worker and wrong for several — a multi-process
-deployment needs ``PROMETHEUS_MULTIPROC_DIR`` — and matches the ``single_process: true``
+collectors. That is correct for one worker and wrong for several  -  a multi-process
+deployment needs ``PROMETHEUS_MULTIPROC_DIR``  -  and matches the ``single_process: true``
 that ``/healthz`` already reports.
 """
 

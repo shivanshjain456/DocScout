@@ -1,4 +1,4 @@
-=== M2 ingestion evidence — 2026-10-01T17:02:22Z ===
+=== M2 ingestion evidence  -  2026-10-01T17:02:22Z ===
 Host: 2 vCPU, 1.9 GiB. Engine:
 PostgreSQL 18.4 (Debian 18.4-1.pgdg12+1) on x86_64-pc-linux-
 pgvector 0.8.2

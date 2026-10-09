@@ -1,4 +1,4 @@
-"""Offset-preserving cleaning — ADR-0003, serving FR-7.
+"""Offset-preserving cleaning  -  ADR-0003, serving FR-7.
 
 The rule that makes the rest of the citation machinery work: cleaning may *blank* a
 character but may never move one. `char_start`/`char_end` recorded on a chunk index into
@@ -9,11 +9,11 @@ re-checks that invariant on every call rather than trusting it.
 
 What gets blanked, from the Phase 0 corpus survey (ADR-0003):
 
-* Devanagari — the regulators publish bilingual PDFs and the Hindi text is not retrievable
+* Devanagari  -  the regulators publish bilingual PDFs and the Hindi text is not retrievable
   by an English-only embedder and tokeniser.
-* Latin Extended-B and spacing-modifier blocks — where `pypdf` deposits mojibake from
+* Latin Extended-B and spacing-modifier blocks  -  where `pypdf` deposits mojibake from
   mis-mapped font encodings.
-* `U+FFFD` replacement characters — decode failures.
+* `U+FFFD` replacement characters  -  decode failures.
 * Page furniture, which repeats on every page and dilutes BM25 term statistics.
 * **Invisible and private-use characters** (added 2026-10-02). Unicode categories Cf
   (format), Co (private use) and Cs (surrogate) carry no readable text but survive PDF
@@ -47,8 +47,8 @@ NOISE_PATTERN = re.compile(
 
 #: Running headers and footers.
 #:
-#: The Devanagari alternative below is unreachable in the current pass order — Devanagari
-#: has already been blanked by `NOISE_PATTERN` before this runs — and is retained verbatim
+#: The Devanagari alternative below is unreachable in the current pass order  -  Devanagari
+#: has already been blanked by `NOISE_PATTERN` before this runs  -  and is retained verbatim
 #: because the order is the one ADR-0003 measured. Reordering the two passes would be a
 #: strict improvement in cleaning, but it would also change the text the chunking sweep
 #: scored, so it belongs with a re-measurement rather than in a quiet edit here.

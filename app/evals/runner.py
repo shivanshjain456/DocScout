@@ -425,7 +425,7 @@ def write_report(
     winner, *losers = ranked
 
     lines: list[str] = []
-    lines.append(f"# Retrieval baseline — {run_utc}\n")
+    lines.append(f"# Retrieval baseline  -  {run_utc}\n")
     lines.append(
         "Retrieval only. No reranker, no generator, no LLM judge: those stages do not exist "
         "yet, and are reported as `null` rather than as zeros.\n"
@@ -436,9 +436,9 @@ def write_report(
     for run in runs:
         c = run.config
         lines.append(
-            f"| `{c.name}` | {c.mode} | {c.k_dense if c.mode != 'bm25' else '—'} | "
-            f"{c.k_lexical if c.mode != 'dense' else '—'} | {c.k_final} | "
-            f"{c.rrf_k if c.mode == 'hybrid' else '—'} |"
+            f"| `{c.name}` | {c.mode} | {c.k_dense if c.mode != 'bm25' else ' - '} | "
+            f"{c.k_lexical if c.mode != 'dense' else ' - '} | {c.k_final} | "
+            f"{c.rrf_k if c.mode == 'hybrid' else ' - '} |"
         )
     lines.append("")
     lines.append(

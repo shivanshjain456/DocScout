@@ -1,4 +1,4 @@
-=== U-8 / ADR-0003 verification — 2026-10-01T15:53:54Z ===
+=== U-8 / ADR-0003 verification  -  2026-10-01T15:53:54Z ===
 
 --- gate: ruff check ---
 All checks passed!
@@ -17,7 +17,7 @@ Success: no issues found in 1 source file
 
 1 passed in 0.02s
 ==============================================================
- DocScout Phase 0 — verification matrix     2026-10-01T15:54:05Z
+ DocScout Phase 0  -  verification matrix     2026-10-01T15:54:05Z
 ==============================================================
   PASS   V1 toolchain                 all required tools present
   PASS   V2 postgres+pgvector         pgvector=0.8.2 cosine=0.000 iterative_scan=off fts=t
@@ -38,5 +38,5 @@ Success: no issues found in 1 source file
   PASS   V17 clean state              only db + redis running; no other containers; 0 cloud resources
 --------------------------------------------------------------
  PASS=15  FAIL=0  BLOCKED=2
- BLOCKED items are credential/environment limits — see SETUP_REPORT.md §13.
+ BLOCKED items are credential/environment limits  -  see SETUP_REPORT.md §13.
 ==============================================================

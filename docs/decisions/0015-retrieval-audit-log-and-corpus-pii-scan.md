@@ -78,7 +78,7 @@ Prior to this decision, two security and compliance deficiencies existed (identi
 ### Positive
 - **Forensic Non-Repudiation**: Operators can inspect `retrieval_audit_log` to reconstruct exactly which chunks were served to which API key fingerprint at any point in time.
 - **Query Privacy Guaranteed**: Plaintext queries are never stored in the database, preventing query surveillance while preserving forensic joinability via `query_hash`.
-- **Tamper-Resistant Storage**: Enforced by Postgres permissions — `docscout_app` cannot modify or delete past audit entries.
+- **Tamper-Resistant Storage**: Enforced by Postgres permissions  -  `docscout_app` cannot modify or delete past audit entries.
 - **Corpus Leak Prevention**: Extracted text containing accidental credentials or API keys is caught prior to chunking and vector storage.
 - **Zero Ingestion Outages from PII**: Legitimate circular contact emails/phones do not halt ingestion runs.
 

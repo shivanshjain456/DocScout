@@ -1,4 +1,4 @@
-"""Chunk geometry — ADR-0003, serving FR-7 and ADR-0002's 512-token ceiling.
+"""Chunk geometry  -  ADR-0003, serving FR-7 and ADR-0002's 512-token ceiling.
 
 Fixed-width 1,000 characters with 150 characters of overlap, broken at whitespace where
 one is available in the overlap zone. ADR-0003 chose this over 800 and 1,200 and over
@@ -15,7 +15,7 @@ Three invariants this module is responsible for, all checked rather than assumed
    only pull an end *back* as far as the next window's start, so a gap is unreachable.
 3. **ADR-0002's ceiling.** No chunk exceeds 512 tokens. The encoder would silently
    truncate anything longer, leaving `char_end` claiming coverage of text the vector never
-   saw — a citation that points at words the retrieval never read.
+   saw  -  a citation that points at words the retrieval never read.
 """
 
 from __future__ import annotations
@@ -53,8 +53,8 @@ class Chunk:
 def _windows(text: str, size: int, overlap: int) -> Iterator[tuple[int, int]]:
     """Yield `(start, end)` character windows over `text`.
 
-    The boundary search is restricted to the overlap zone — the last `overlap` characters
-    of the window — so that an end can never be pulled back past where the next window
+    The boundary search is restricted to the overlap zone  -  the last `overlap` characters
+    of the window  -  so that an end can never be pulled back past where the next window
     begins. That is what makes a coverage gap impossible rather than merely unlikely: the
     experiment harness that produced ADR-0003's numbers searched back as far as the
     window's midpoint and advanced by `max(pos + step, end - overlap)`, which can skip
@@ -169,8 +169,8 @@ def verify_offsets(text: str, chunks: list[Chunk]) -> None:
     """Assert FR-7 for every chunk: its offsets must re-extract its stored text.
 
     Raises `ValueError` naming the first offending chunk. This runs on every ingest
-    because it costs one string comparison per chunk and because the alternative —
-    discovering it from a citation that quotes the wrong span — is a trust failure in the
+    because it costs one string comparison per chunk and because the alternative  -
+    discovering it from a citation that quotes the wrong span  -  is a trust failure in the
     product's core promise.
     """
     for chunk in chunks:

@@ -1,4 +1,4 @@
-"""Host allowlist for corpus fetching — SPEC FR-1 / CORPUS_SPEC C-1.
+"""Host allowlist for corpus fetching  -  SPEC FR-1 / CORPUS_SPEC C-1.
 
 The allowlist is exactly three hosts. Anything else is a hard error, not a skip, and the
 check runs before any socket is opened. Adding a host requires an ADR (C-1).
@@ -47,7 +47,7 @@ def assert_allowed(url: str) -> str:
 
     Raises `DisallowedHostError` for anything not served over HTTPS by one of the three
     permitted hosts. Pure and side-effect free, so it is always safe to call before a
-    fetch — which is the point: FR-1's test asserts an off-list URL raises *before any
+    fetch  -  which is the point: FR-1's test asserts an off-list URL raises *before any
     network call*.
     """
     parts = urlsplit(url)

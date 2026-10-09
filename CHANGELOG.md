@@ -6,6 +6,34 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 ## [Unreleased]
 
 ### Added
+- **Human-Readable Citation Rendering (P1-5, ADR-0018, FR-14).** Populated authoritative
+  titles and publication dates across all 35 documents in PostgreSQL (Migration 0006),
+  added canonical metadata catalog in pp/ingest/metadata.py, enriched Passage and
+  Retrieved models with 	itle and published_date, added authenticated resolution
+  endpoint GET /v1/documents/{document_id} with version lineage, and updated demo UI hit cards.
+- **Domain Query Understanding & Acronym Expansion (P1-3, ADR-0017).** Introduced
+  DomainQueryExpander in pp/retrieval/expansion.py providing bidirectional acronym and synonym
+  expansion across 36+ Indian regulatory terms and optional HyDE formulation, evaluated on 365
+  items with leakage stratification.
+- **In-Query Metadata Filtering & Composite Indices (P1-2, ADR-0016).** Introduced declarative
+  MetadataFilter DSL across dense SQL, BM25 in-index candidate pruning, and cache partitioning,
+  backed by composite indices on documents and document_versions in Migration 0005.
+- **Append-Only Retrieval Audit Log & Ingestion PII Scanner (P1-1, ADR-0015).** Added PostgreSQL
+  table
+etrieval_audit_log with append-only permissions, SHA-256 query hashing, key fingerprinting,
+  and fallback file sink. Added ingestion-time candidate secret and PII scanner with automatic sample masking.
+- **Cache Invalidation on Supersession & Liveness/Readiness Split (P0-5, ADR-0014).** Event-driven
+  cache invalidation and BM25 index reload on document supersession; split GET /healthz (zero-DB liveness)
+  and GET /readyz (traffic readiness verifying DB pool, chunk count, and staleness budget).
+- **Scheduled Corpus Refresh & Freshness Signal (P0-2, ADR-0013).** Migration 0003 corpus_sync_state
+  singleton table tracking audit timestamps and staleness budgets; refresh CLI and GitHub Actions cron;
+  tested supersession lifecycle.
+- **Corpus and Gold Scale Beyond Saturation (P0-3, ADR-0012).** Scaled corpus to 35 documents and 230 chunks;
+  expanded gold set to v2.0.0 (425 items: 365 answerable, 60 unanswerable, 3 canaries); desaturated depth-10
+  retrieval and reduced gate noise floor to <= 1.0pp.
+- **Citation-Grounded Answer Generation & Calibrated Judge (P0-1, ADR-0011).** Introduced POST /v1/answer
+  with grounded answer construction, mandatory citation verification, and prompt injection defense;
+  completed cross-judge calibration report on 80 double-labelled items (Cohen's kappa 1.000 / 0.844).
 - **Runnable local container deploy (P0-4, ADR-0010).** One `Dockerfile`
   (Debian trixie Python 3.12 pinned by manifest-list digest, `uv sync
   --frozen --no-dev`, non-root `app`, `HEALTHCHECK /healthz`, no secret in
@@ -26,19 +54,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 - **Abstention: measuring when the corpus cannot answer** (audit G11). 22 of 153 gold
   items (14.4%) are deliberately unanswerable and were excluded from every metric; they
   are now scored in every `make eval` run, with refusal rate, false rejection rate,
-  refusal precision and selective accuracy — the metrics the abstention literature uses.
+  refusal precision and selective accuracy  -  the metrics the abstention literature uses.
   **The obvious signal does not work.** Measured by how well each separates answerable
   from unanswerable (AUC, 0.5 = chance): the serving configuration's own `rrf_top` scores
-  **0.467 — worse than chance**, because RRF ranks rather than scores and its top value is
+  **0.467  -  worse than chance**, because RRF ranks rather than scores and its top value is
   nearly constant whether or not anything relevant was found. `dense_margin` 0.461,
   `bm25_top` 0.655. A confidence gate built on any of them would have looked plausible and
   done nothing.
-  **Evidence coverage** — the fraction of the question's analyzed terms present in the top
-  five passages — reaches **AUC 0.730**, and names the missing word: *"What **penalty**
+  **Evidence coverage**  -  the fraction of the question's analyzed terms present in the top
+  five passages  -  reaches **AUC 0.730**, and names the missing word: *"What **penalty**
   applies…"* → `penalti`; *"the **minimum** acceptable score"* → `minimum`. It works
   because an unanswerable question here is unanswerable through one term the corpus never
   uses while the rest retrieves its topic perfectly.
-  Threshold **0.65** chosen from the published sweep — the last point where a flag is right
+  Threshold **0.65** chosen from the published sweep  -  the last point where a flag is right
   more often than wrong. At it: abstention recall 0.273, false rejection rate 0.030,
   refusal precision 0.600, selective accuracy 0.869.
   `/v1/search` returns `confidence` **alongside** the passages and never withholds them: a
@@ -68,7 +96,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   runtime**: a CVE in `mutmut` cannot reach a user, and gating on it is how a gate gets
   ignored. Development-only findings are reported, not fatal.
   Two decisions keep the number honest. `torch` is audited at its **upstream** version
-  because `uv.lock` pins `torch==2.14.1+cpu`, which does not exist on PyPI — pip-audit
+  because `uv.lock` pins `torch==2.14.1+cpu`, which does not exist on PyPI  -  pip-audit
   skips it and still prints "No known vulnerabilities found", silently leaving the largest
   dependency unscanned. Doing that makes pip-audit read upstream torch metadata listing 22
   `nvidia-*`/`cuda-*` packages a CPU build never installs, so every audited package is
@@ -78,17 +106,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   timestamp and random `bom-ref` per component on every generation, which made the file
   churn 684 lines between identical runs and would have left the CI staleness check
   permanently red. The timestamp is dropped, the serial is a UUID5 over the component set,
-  and refs are re-keyed on each component's purl — so the file changes exactly when the
+  and refs are re-keyed on each component's purl  -  so the file changes exactly when the
   dependency set changes, and a dependency bump shows up as one line in review.
   24 network-free tests cover the normalisation, the phantom rule, the suppression policy
   (every suppression needs a justification and a review date; there are none) and whether
-  the committed artifacts still describe the current lockfile — verified to fail when the
+  the committed artifacts still describe the current lockfile  -  verified to fail when the
   digest is altered.
 
 ### Fixed
 - **`ragas` was declared but imported nowhere, and shipped two unfixable CVEs.** The first
   run of the new scanner found `ragas==0.4.3` (CVE-2026-6587) pulling in
-  `diskcache==5.6.3` (**CVE-2025-69872** — arbitrary code execution through pickle-based
+  `diskcache==5.6.3` (**CVE-2025-69872**  -  arbitrary code execution through pickle-based
   cache deserialisation), both with **no fix version available**. U-1 had already withdrawn
   the judge layer that was the only reason to depend on either, so the remediation was
   removal rather than suppression: **13 packages dropped, 4 advisories → 0**, full suite
@@ -99,7 +127,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   `app/evals/scorers.py` and `app/evals/stats.py` produce every number this project
   publishes, so a silent error there corrupts the README, the baselines and the regression
   gate at once. Line coverage said they were at 99% and 96%; their first mutation score was
-  **83.7% and 56.8%** — 79 deliberate behaviour changes passed unnoticed.
+  **83.7% and 56.8%**  -  79 deliberate behaviour changes passed unnoticed.
   Nine targeted tests, each naming the mutant it kills, took the total from **71.6% to
   78.4%** (scorers 83.7% → 91.5%). The three that mattered most: `score_item` passed
   `k=None` into `recall_at_k`, silently disabling the cutoff; `mcnemar_counts` lost
@@ -112,8 +140,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   a CI threshold". Research found the consensus against that: coverage measures execution
   rather than validation, Microsoft Research finds its correlation with defects disappears
   above 70–80%, and a *target* (as opposed to a floor) is counterproductive. Coverage is
-  therefore kept as a diagnostic — it is what identified `runner.py` as having no unit
-  coverage — and the gate-worthy signal is the mutation score.
+  therefore kept as a diagnostic  -  it is what identified `runner.py` as having no unit
+  coverage  -  and the gate-worthy signal is the mutation score.
 
 ### Fixed
 - **An autouse fixture imported the API for every test in the repository**, including the
@@ -122,7 +150,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   sources into its sandbox, so the unconditional import made every scorer test fail to
   start. It now looks the module up in `sys.modules` and resets it only when it is loaded,
   without suppressing an error to get there.
-- **`GET /metrics`: Prometheus instrumentation** (audit G4). RED — rate, errors, duration —
+- **`GET /metrics`: Prometheus instrumentation** (audit G4). RED  -  rate, errors, duration  -
   plus the two signals that explain this service's latency: cache hit ratio and per-mode
   retrieval time, alongside in-flight requests, rate-limit rejections and the retrievable
   chunk count.
@@ -134,7 +162,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   keys and request ids stay in the structured log, which carries the request id for
   joining. 114 series total on a live scrape.
   Histogram buckets come from this service's own measurements rather than a default ladder
-  — dense below 100 ms where the distribution sits (cache hit p95 2.11 ms, cold p95
+   -  dense below 100 ms where the distribution sits (cache hit p95 2.11 ms, cold p95
   48.11 ms) with an exact boundary at the **3 s NFR-1 budget**, so SLO compliance is a
   bucket ratio rather than an interpolation.
   `prometheus-client` is declared in `pyproject.toml` and locked; `uv sync --frozen` still
@@ -145,10 +173,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 - The shared serving-API test fixtures (`client`, the key constants, `auth()`, the
   rate-limiter reset) moved from `tests/test_api.py` into `tests/conftest.py`, now that two
   suites drive the API. Importing a fixture across test modules shadows the parameter of
-  the same name in every test that uses it — ruff flagged it 14 times.
+  the same name in every test that uses it  -  ruff flagged it 14 times.
 - **`app/observability.py`: structured logging and request correlation** (audit G2 + G3).
   There was no logging configuration anywhere in the repository: six `logger.*` calls wrote
-  to an unconfigured root logger, so every INFO record — including every access line — was
+  to an unconfigured root logger, so every INFO record  -  including every access line  -  was
   silently discarded. Now one structlog pipeline renders *all* records, including stdlib
   ones from uvicorn and psycopg, so a process emits one format instead of two that drift.
   JSON off a TTY, human-readable on one, `DOCSCOUT_LOG_JSON` to override,
@@ -160,16 +188,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   forgetful call site cannot leak a key. Verified against the running service: the
   configured API key appears **0 times** in the logs.
 - **Request correlation.** Every request binds a `request_id` contextvar that appears on
-  every record emitted while handling it — ours and uvicorn's — and is echoed as
+  every record emitted while handling it  -  ours and uvicorn's  -  and is echoed as
   `X-Request-ID` on every response including errors. An inbound id is honoured only if it
   is short and free of control characters, because it is attacker-controlled text that
   lands in every log line. The 500 handler now reuses that id, so the reference a caller is
   given is the string that appears in the logs. One access line per request, after the
   fact, carrying status and duration.
 - 30 tests in `tests/test_observability.py` plus 4 API-level correlation tests, asserting on
-  emitted records rather than on configuration — the failure that mattered was "nothing came
+  emitted records rather than on configuration  -  the failure that mattered was "nothing came
   out", which no configuration-shaped assertion would have caught.
-- **`docs/AUDIT-2026-10-02.md`** — a production-readiness audit against researched recruiter
+- **`docs/AUDIT-2026-10-02.md`**  -  a production-readiness audit against researched recruiter
   and senior-engineer expectations (10 cited sources, accessed 2026-10-02, with the
   disagreements between them resolved explicitly), and a prioritised 27-item gap checklist.
   Each item carries the expectation, verified current-state evidence, the exact gap,
@@ -179,7 +207,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 ### Fixed
 - **`docker-compose.yml` pinned a pgvector version no published number was measured on.**
   It specified `pgvector/pgvector:0.8.2-pg18` while `scripts/dev_db_native.sh` and the CI
-  job both provision **0.8.6** — so a reviewer following the compose path got a different
+  job both provision **0.8.6**  -  so a reviewer following the compose path got a different
   extension version than every baseline in this repository. The README compounded it by
   stating "There is no `docker compose up`" about a file tracked at the repo root.
   Compose is now pinned to `0.8.6-pg18-trixie`, identical to CI, and documented as the
@@ -192,7 +220,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 - **Superseded document versions were still retrievable and would be served as current.**
   The schema has modelled `is_current` since migration 0001, `store.py` demotes the
   previous version correctly on supersession, and FR-4 keeps the old rows because the
-  application role holds no DELETE — but **no retrieval path filtered on it**. Marking one
+  application role holds no DELETE  -  but **no retrieval path filtered on it**. Marking one
   version superseded in a rolled-back transaction left **all ten of its chunks in the top
   ten**. For a tool over circulars that are amended and withdrawn as a matter of routine,
   serving superseded regulatory text as though in force is the worst failure available.
@@ -209,7 +237,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   lines resolving files on the Hugging Face hub, around the one `api.ready` line that
   matters. Library loggers are quieted to WARNING; measured 30 → 0 at startup.
 - **The redactor destroyed an operational signal.** Matching on key name alone turned
-  `api_keys=1` — the *count* of configured keys, logged at startup — into "[redacted]".
+  `api_keys=1`  -  the *count* of configured keys, logged at startup  -  into "[redacted]".
   A credential is a string; a count, a flag and a duration are not. Redaction now applies
   to string and bytes values only.
 - **A latent test-isolation defect, surfaced by the new tests.**
@@ -219,12 +247,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   Nothing ran after it before, so it had never shown. It now reuses the module client.
 - **Invisible and private-use characters survived ingestion into embeddings and citations**
   (OWASP LLM09). A character-level scan of all 170 stored chunks found four occurrences of
-  **U+F0E0** — the Wingdings breadcrumb arrow in SEBI circulars, "under the link *Legal →
-  Circulars*" — embedded into the vector, tokenised, served in API responses, and present
+  **U+F0E0**  -  the Wingdings breadcrumb arrow in SEBI circulars, "under the link *Legal →
+  Circulars*"  -  embedded into the vector, tokenised, served in API responses, and present
   in **two chunks the gold set cites**. `clean.py` enumerated Unicode *ranges* and so could
   only ever catch what someone had thought of; it now blanks by **category** (Cf format,
   Co private-use, Cs surrogate), which is what the rule actually is. Cc is excluded on
-  purpose — newline and tab are structure.
+  purpose  -  newline and tab are structure.
   The substitution stays one-space-per-character, so ADR-0003's offset contract holds.
   Verified across a full rebuild: **170/170 chunk ids unchanged, all offsets identical,
   72/72 gold citations resolvable, FR-7 passing, eval gate PASS** (recall and nDCG
@@ -234,12 +262,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 - **U-1 is closed: the calibrated-judge claim is formally withdrawn** (`EVAL_PROTOCOL.md`
   §4.2, outcome (b)). M4's exit criterion 5 said carrying this past M4 was not permitted; it
   had been carried past M4 and M5. Two independent reasons, either sufficient: no paid API
-  credentials are available and none will be acquired, and — the stronger one — ADR-0008
+  credentials are available and none will be acquired, and  -  the stronger one  -  ADR-0008
   serves retrieved evidence rather than generated prose, so faithfulness has **no subject**.
   With no generated claim the honest value is *undefined*, not 1.0. The optional local judge
   the protocol permits was declined for the same reason: it would have nothing to evaluate.
 - **`tests/test_rescope.py` (52 cases) enforces the withdrawal mechanically.** A decision
-  recorded only in prose decays, and the pressure to publish a faithfulness number is real —
+  recorded only in prose decays, and the pressure to publish a faithfulness number is real  -
   it is the metric a reader expects and it would take one line to invent. The build now fails
   if a withdrawn metric appears as a published value in the README, SPEC, QUALITY_BAR,
   MILESTONES, ARCHITECTURE, EVAL_PROTOCOL, any ADR or any verification story; if a judge or
@@ -254,19 +282,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 - **`QUALITY_BAR.md` §5 reconciled against measured reality.** The table still said "SPECIFIED,
   not yet enforceable" and described blockers that had since cleared. Now: Q-12 **ENFORCED**
   (`make eval-gate`, drilled to exit 1), Q-17 **MEASURED and PASSING** (48.11 ms p95 against a
-  3 s budget — 1.6 % of it), Q-18 **MET** (153 items, 14.4 % unanswerable, 3 canaries),
+  3 s budget  -  1.6 % of it), Q-18 **MET** (153 items, 14.4 % unanswerable, 3 canaries),
   Q-13/Q-14/Q-15 **WITHDRAWN** with the replacement measurement named beside each, and Q-16
-  **NOT APPLICABLE BY DESIGN** — no model reads retrieved text, so there is nothing to inject
+  **NOT APPLICABLE BY DESIGN**  -  no model reads retrieved text, so there is nothing to inject
   into, and the gate reactivates the day a generator lands.
 - **`SPEC.md` FR-28 amended.** It required CI to fail on a >1 pp regression in faithfulness,
-  context precision and citation precision — all three now withdrawn — and recorded the CI job
+  context precision and citation precision  -  all three now withdrawn  -  and recorded the CI job
   as `if: false`, which stopped being true when the gate landed. The requirement's intent is
   unchanged; the gate now protects the deterministic metrics that exist: recall@5, MRR and
   nDCG@5.
 - README, `ARCHITECTURE.md`, `MILESTONES.md` and the verification story now say **withdrawn**
   rather than **blocked**. The distinction is the whole point: blocked implies a queue.
 - **M4 is complete.** All five exit criteria are met or formally resolved.
-- **`app/retrieval/rerank.py` and ADR-0009: the cross-encoder rerank stage — built, measured,
+- **`app/retrieval/rerank.py` and ADR-0009: the cross-encoder rerank stage  -  built, measured,
   and shipped disabled.** `ARCHITECTURE.md` had specified this stage since M1 and it did not
   exist; it now does, with explicit `max_length`, deterministic tie-breaking toward the
   incoming fusion order, a score/candidate length check, and `rerank_top_n >= k_final`
@@ -296,7 +324,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   on real corpus chunks. The project already applied exactly this reasoning to the embedder
   (112.4 sentences/s generic vs 6.9 chunks/s real) and had not carried it across to the
   reranker.
-- **`app/api/`: the serving API — citation-grounded retrieval over HTTP.** `POST /v1/search`
+- **`app/api/`: the serving API  -  citation-grounded retrieval over HTTP.** `POST /v1/search`
   returns ranked passages carrying a stable `chunk_id`, source document, canonical URL and
   character span, so a citation can be checked against the original PDF. **No model
   generates text in the request path**, so the endpoint cannot hallucinate: every character
@@ -308,17 +336,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   startup** rather than defaulting to open. Errors return a correlation id, never a
   traceback or a connection string; the 422 handler strips Pydantic's `input` field so
   caller data is not reflected back.
-- A self-contained demo page at `/` (no external asset of any kind — a test asserts it),
+- A self-contained demo page at `/` (no external asset of any kind  -  a test asserts it),
   plus `/docs` and an unauthenticated `/healthz` reporting readiness, cache counters and
   `single_process: true`.
 - **`scripts/bench_api.py` and `make bench`: measured cost and latency.** Over HTTP with
   real gold-set questions on 2 vCPU / 1.9 GiB: cold p95 **51.43 ms**, warm p95 **3.16 ms**
-  — caching is worth **16.3x on p95** (48.3 ms saved) — 37.0 q/s at concurrency 4, and
+   -  caching is worth **16.3x on p95** (48.3 ms saved)  -  37.0 q/s at concurrency 4, and
   **$0.000084 per 1,000 queries (~$0.08 per million)**. Raw output committed under
   `evals/bench/`. With no model in the request path that is the entire query cost.
 - `make serve`. Bounded LRU+TTL caches with hit/miss counters (`app/api/cache.py`), and a
   configurable rate limit (`DOCSCOUT_RATE_LIMIT_PER_MINUTE`) with no value that disables it.
-- `tests/test_api.py`: 35 cases weighted toward security — absent and wrong keys are
+- `tests/test_api.py`: 35 cases weighted toward security  -  absent and wrong keys are
   indistinguishable, a rejected payload is not echoed, an internal exception leaks nothing,
   the demo page loads no third-party asset.
 
@@ -332,7 +360,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   keys and a repeat query reported a miss. Now `StringConstraints`.
 - **ADR-0007 and the first verification story: a retrieval miss the harness caught.** Gold
   item g-038 scored zero recall at every cutoff while BM25 ranked the correct chunk **first**
-  — RRF at k=60 fused lexical-rank-1 and dense-rank-41 into rank 14, outside the served depth.
+   -  RRF at k=60 fused lexical-rank-1 and dense-rank-41 into rank 14, outside the served depth.
   Rank-only fusion cannot express certainty: at k=60, rank 1 is worth only 1.66x rank 41, so
   broad agreement beats one arm's conviction. Fixed by reserving a seat for each arm's own top
   hit (`RetrievalConfig.anchor_arm_top1`, enabled on the new `app.retrieval.SERVING_CONFIG`),
@@ -343,19 +371,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   guarantee cannot become cargo cult. Story:
   `docs/verification/0001-g038-fusion-miss.md`.
 - `scripts/experiments/u10_rrf_constant_sweep.py`: the RRF constant sweep behind ADR-0007,
-  with raw output under `evals/experiments/`. Partially closes U-10 — the constant stays at
+  with raw output under `evals/experiments/`. Partially closes U-10  -  the constant stays at
   the published default with measurements behind it; candidate depth and rerank depth remain
   open.
 - **`app/evals/gate.py` and `make eval-gate`: the E-12 regression gate.** Fails the build
   when the serving configuration's recall, MRR or nDCG@5 drops more than 1pp against the mean
   of the last three accepted baselines (`evals/baselines/`, promoted explicitly with
   `make eval-baseline`). Drilled against a real 1.90pp degradation: exit 1. Invariants run
-  first and fail hard — gold set mutated without a version bump, corpus manifest changed,
-  or fewer items scored than the baseline — because a gold set that quietly shrinks to its
+  first and fail hard  -  gold set mutated without a version bump, corpus manifest changed,
+  or fewer items scored than the baseline  -  because a gold set that quietly shrinks to its
   easy items makes every metric improve. The gate publishes its own noise floor
   (3.24pp here) beside each verdict instead of widening the 1pp rule.
 - **The corpus payloads are now tracked in git** (7.8 MB, 41 files). The manifest did not make
-  them re-derivable: the corpus contains *withdrawn* circulars — gold item g-038 is about one —
+  them re-derivable: the corpus contains *withdrawn* circulars  -  gold item g-038 is about one  -
   and `make eval` is only a reproduction command if `make ingest` runs offline. Verified by
   truncating the database and re-ingesting from tracked bytes alone: 21 documents, 170 chunks.
 - **The `eval-gate` CI job**, pinned to `pgvector/pgvector:0.8.6-pg18-trixie` (the exact
@@ -365,45 +393,45 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 - **A README `Limitations` section**, stating the leakage, the saturated corpus, the gate's
   noise floor, the absent generator and judge, and the missing badge.
 - `tests/test_gate.py` (18 cases) and `tests/test_git_history.py` (7 cases).
-- **`app/retrieval/`: the retrieval layer — a dense arm, a BM25 arm and RRF over both.**
+- **`app/retrieval/`: the retrieval layer  -  a dense arm, a BM25 arm and RRF over both.**
   BM25 is scored over the lexemes Postgres already stores in `chunks.tsv`, parsed by
   `unnest(tsvector)`, so the scorer and the GIN index can never disagree about stemming.
   The three configurations are one code path, so the ablation is hybrid minus a step.
 - **`app/evals/scorers.py`: deterministic retrieval metrics, run before any LLM judge.**
-  Recall, hit rate, MRR and nDCG are computed over *quote groups* — disjunction within a
-  group, conjunction across them — because ADR-0003's 150-char overlap puts a boundary
+  Recall, hit rate, MRR and nDCG are computed over *quote groups*  -  disjunction within a
+  group, conjunction across them  -  because ADR-0003's 150-char overlap puts a boundary
   quote in two chunks, and scoring the flat ID list charges a retriever 0.5 for a
   perfectly correct answer. 11 of 131 answerable items (8.4 %) are affected.
 - **`app/evals/stats.py`: paired bootstrap CIs and discordant-pair counts**, so a
-  difference is published with its uncertainty. This caught a real over-claim — see below.
+  difference is published with its uncertainty. This caught a real over-claim  -  see below.
 - **`app/evals/runner.py` and `make eval`: the first baseline run**, writing
   `evals/reports/<UTC-ts>/{results.json,report.md}` with full E-14 provenance read from
   the artifacts at run time. The pinned baseline is committed, because E-13 says a metric
   that has no raw output does not exist.
-- **ADR-0006 — hybrid retrieval, accepted on evidence that does not prove it.** The A/B
+- **ADR-0006  -  hybrid retrieval, accepted on evidence that does not prove it.** The A/B
   put `bm25-only` on top (recall@5 0.970 vs hybrid 0.966 vs dense 0.947), and the honest
   reading is that **no pairwise difference's 95 % CI excludes zero**: BM25's lead over
   hybrid is one item out of 131. Worse, the gold set's questions were authored from the
   evidence quotes and share **73.3 %** of their terms with the chunk they point at versus
-  **9.4 %** for a random chunk — a 7.8× handicap in the lexical arm's favour. Stratified by
+  **9.4 %** for a random chunk  -  a 7.8× handicap in the lexical arm's favour. Stratified by
   that overlap, BM25 is the **worst** of the three in the least-contaminated band (0.750 vs
   0.875). Hybrid is kept because it is never worst in any band, and the experiment that
   would overturn the decision is named: paraphrased query variants (**U-18**).
 - `scripts/git_history.sh` and `.history/docscout.bundle`: git history persisted as a file
   in the working tree. This sandbox restores the tree but rolls `.git` back to a fixed
-  baseline — observed twice, reflog included — which would truncate the project's commit
+  baseline  -  observed twice, reflog included  -  which would truncate the project's commit
   history permanently. `bootstrap.sh` restores the bundle, fast-forward only.
 - `app/rowtypes.py`: runtime-checked coercions for psycopg row values, so a column type
   change raises at the boundary instead of being silenced by a `cast`.
 - `tests/test_retrieval.py` (16 cases) and `tests/test_scorers.py` (18 cases): fusion
   arithmetic and the group model are pinned against hand-computed values.
-- **The gold set, `evals/gold/v1/gold.jsonl` — `goldset_version` 1.0.0.** 153 items over all
+- **The gold set, `evals/gold/v1/gold.jsonl`  -  `goldset_version` 1.0.0.** 153 items over all
   21 corpus documents: 87 extractive, 40 numeric, 4 multi-hop, 22 unanswerable (14.4 %, floor
   10 %) and 3 injection canaries. The protocol floor is 120. 150 required citations over 72
   distinct chunks, 42.4 % of the corpus. Evidence: `docs/setup/verify/m3-goldset.txt`.
 - **Items are authored against verbatim `evidence_quotes`, and citation IDs are derived from
   them**, not hand-written. Re-pinning after a chunking change is `make gold-pin`, and stale IDs
-  fail `make gold-lint` and the test suite — `EVAL_PROTOCOL.md` E-7 turned from a note into a
+  fail `make gold-lint` and the test suite  -  `EVAL_PROTOCOL.md` E-7 turned from a note into a
   gate. Because ADR-0005 made chunk IDs content-derived, the whole gold set validates with **no
   database**; verified by stopping Postgres and linting clean.
 - `app/evals/goldset.py`: loader, quote resolver, E-6 review pass and a linter enforcing every
@@ -416,18 +444,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   unavailable, by executing `infra/initdb/` rather than restating it.
 - `migrations/0002_chunk_id_content_derived`, `app/ingest/ids.py`, `tests/test_ids.py` and
   `ADR-0005`.
-- **`app/ingest/`: the corpus ingestion pipeline — the first DocScout feature code.**
+- **`app/ingest/`: the corpus ingestion pipeline  -  the first DocScout feature code.**
   fetch → extract → guard → clean → chunk → embed → store, as a CLI (`make ingest`) and
   never an API route. Run against the live database: **21 documents, 170 chunks, 0
   failures, 41.0 s** on 2 vCPU. Evidence: `docs/setup/verify/m2-ingestion.txt` and the raw
   run reports under `docs/corpus/evidence/`.
 - `make ingest`, `make ingest-dry`, `make ingest-status`, `make ingest-verify`. The last
   re-derives all 21 documents from their source PDFs and re-checks all 170 stored chunks'
-  offsets against the database — 170/170.
+  offsets against the database  -  170/170.
 - `tests/test_ingest.py`: 37 tests, each named for the requirement it proves, covering
   every M2 exit criterion. `tests/conftest.py` now holds the shared database fixtures.
 - `tests/fixtures/sebi_detail_stub.html`, which reproduces the CORPUS_SPEC K-17 failure
-  mode — a page that returns HTTP 200 and extracts 143 clean characters of navigation
+  mode  -  a page that returns HTTP 200 and extracts 143 clean characters of navigation
   furniture while the circular's real text sits in an iframe.
 - **Database schema (migration `0001_initial_schema`), applied to the live Postgres 18.4 /
   pgvector 0.8.2 instance.** `documents`, `document_versions` and `chunks`, with an HNSW index
@@ -440,7 +468,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   an applied file has been edited, and a `down` that will not run without an explicit `--to`. All
   four properties were exercised, not assumed. Exposed as `make migrate`, `make migrate-status`
   and `make migrate-down TO=N`.
-- `tests/test_schema.py`: 19 tests, each named for the requirement it proves — FR-3, FR-4, FR-5,
+- `tests/test_schema.py`: 19 tests, each named for the requirement it proves  -  FR-3, FR-4, FR-5,
   FR-7, FR-9, ADR-0002's dimension and token ceiling, and the least-privilege grants. Three
   constraints were additionally mutation-checked: dropping them inside a rolled-back transaction
   lets the previously rejected row insert, which proves the constraint is what rejects it.
@@ -485,7 +513,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   stage's status backed by a measurement.
 - **The FR-7 property tests now exercise the production chunker.** They previously carried
   their own copy of the chunking logic, so they could have passed while the code that
-  actually writes chunks was wrong — and it was: the experiment harness behind ADR-0003
+  actually writes chunks was wrong  -  and it was: the experiment harness behind ADR-0003
   stored stripped text against unstripped offsets, which violates FR-7 on **40 of its 170
   chunks**. The shipped chunker reproduces ADR-0003's 170 chunks exactly with zero
   violations, zero coverage gaps, and no chunk wholly contained in another.
@@ -496,7 +524,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   ADR-0004.
 - **FR-5 is enforced more strictly than §4 proposed:** `sha256` is unique *globally*, not per
   document. The proposed `UNIQUE (document_id, sha256)` would have permitted one payload to be
-  stored under two documents — the exact case FR-5's acceptance test forbids.
+  stored under two documents  -  the exact case FR-5's acceptance test forbids.
 - `chunks` carries `document_id` alongside `version_id`, kept honest by a composite foreign key,
   so a citation resolves in one row without the denormalised column being able to disagree.
 - **Database roles are split by privilege.** `MIGRATION_DATABASE_URL` is the owner and runs DDL;
@@ -554,7 +582,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   to the correction.
 - **Restored the executable bit on all 16 shebang scripts.** A workspace snapshot stripped it and
   the loss was committed unnoticed, because file modes are invisible in a diff. One of the affected
-  files is `.claude/hooks/dangerous-bash.sh`, the agent command denylist — a security control that
+  files is `.claude/hooks/dangerous-bash.sh`, the agent command denylist  -  a security control that
   was present, correct and **not running**. Found by V8 on the first re-run of the verification
   matrix. Guarded by a new `check-shebang-scripts-are-executable` pre-commit hook.
 - `scripts/bootstrap.sh` full tier: added `jq`, `postgresql-client` and `gh`, which V1 of the
@@ -562,7 +590,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 - `.gitignore`: `loadtests/reports/verify/` is now tracked. V15 asserts that report exists, so the
   matrix depended on an artifact git would not keep. Ad-hoc `make load` runs remain ignored.
 - `.gitignore`: anchored `corpus/` to `/corpus/`. Unanchored, it matched any directory named
-  `corpus` at any depth and silently excluded `docs/corpus/` — the new `CORPUS_SPEC.md` would not
+  `corpus` at any depth and silently excluded `docs/corpus/`  -  the new `CORPUS_SPEC.md` would not
   have been committed, with no error reported.
 - `.gitignore`: `corpus/raw/manifest.json` is now tracked, implementing what
   `docs/corpus-provenance.md` already stated. The manifest is the provenance anchor that makes the
@@ -577,7 +605,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 - Ingestion refuses to start when deploy or cloud credentials are in its environment
   (SECURITY S-4, FR-6), before the database connection and before any network call. Error
   messages name the variable and never its value.
-- The pipeline runs as `docscout_app` — SELECT/INSERT/UPDATE, no DELETE, no DDL — and the
+- The pipeline runs as `docscout_app`  -  SELECT/INSERT/UPDATE, no DELETE, no DDL  -  and the
   database tests run as that role to prove the write path needs nothing more.
 - Rejected the Postgres MCP server named in the original brief: the PyPI package
   `mcp-server-postgres` is an unvetted third-party upload, and the brief's invocation would have

@@ -1,4 +1,4 @@
-# Plan: P0-3 — Corpus and Gold Scale Beyond Saturation
+# Plan: P0-3  -  Corpus and Gold Scale Beyond Saturation
 
 **Status:** VERIFIED
 **Owner:** Principal Engineer

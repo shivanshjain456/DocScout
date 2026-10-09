@@ -8,8 +8,8 @@ identified and de-duplicated, and how versions are tracked. Written in Phase 0 a
 
 | Source | Entry point | Document form | Verified |
 |---|---|---|---|
-| **RBI** — Reserve Bank of India notifications & master circulars | `https://www.rbi.org.in/Scripts/NotificationUser.aspx` and `.../BS_ViewMasCirculardetails.aspx` | direct PDF links on `rbidocs.rbi.org.in` | 2026-10-01, 10/10 fetched & extracted |
-| **SEBI** — Securities and Exchange Board of India circulars & master circulars | `https://www.sebi.gov.in/sebiweb/home/HomeAction.do?doListing=yes&sid=1&ssid=7&smid=0` | listing → circular detail HTML → PDF in an `<iframe src=…file=…>` on `sebi.gov.in/sebi_data/attachdocs/` | 2026-10-01, 10/10 fetched & extracted |
+| **RBI**  -  Reserve Bank of India notifications & master circulars | `https://www.rbi.org.in/Scripts/NotificationUser.aspx` and `.../BS_ViewMasCirculardetails.aspx` | direct PDF links on `rbidocs.rbi.org.in` | 2026-10-01, 10/10 fetched & extracted |
+| **SEBI**  -  Securities and Exchange Board of India circulars & master circulars | `https://www.sebi.gov.in/sebiweb/home/HomeAction.do?doListing=yes&sid=1&ssid=7&smid=0` | listing → circular detail HTML → PDF in an `<iframe src=…file=…>` on `sebi.gov.in/sebi_data/attachdocs/` | 2026-10-01, 10/10 fetched & extracted |
 
 ### Access method notes (discovered, not assumed)
 
@@ -18,7 +18,7 @@ identified and de-duplicated, and how versions are tracked. Written in Phase 0 a
   plain HTTP fetch is sufficient. No JS rendering needed.
 - **SEBI** returns **HTTP 403** on directory-style paths (`/legal/circulars`, `/legal/master-circulars`)
   to non-browser clients, but serves individual circular detail pages (200) and the PDFs themselves.
-  The detail page body is a near-empty stub (~227 chars extractable) — **the real content is the PDF
+  The detail page body is a near-empty stub (~227 chars extractable)  -  **the real content is the PDF
   referenced in an iframe**, not the HTML. Extracting the HTML alone would silently yield almost no
   text; this is the kind of failure that looks like success. Always follow the iframe.
 - A descriptive User-Agent identifying the crawler is sent on every request.
@@ -36,7 +36,7 @@ rather than assumed away. Current posture:
 
 - Fetch politely: low volume, rate-limited, descriptive UA, no authentication bypass, no scraping of
   anything behind a login.
-- Treat documents as **reference material, quoted with attribution and a link to the source URL** —
+- Treat documents as **reference material, quoted with attribution and a link to the source URL**  -
   DocScout answers cite the originating circular rather than republishing corpora wholesale.
 - Before any public deployment, re-check each site's terms and `robots.txt` and record the outcome
   here (see skill `deploy-protocol`).
@@ -59,7 +59,7 @@ recorded in `corpus/raw/manifest.json`:
   one becomes current, and the chunk IDs of the superseded version stay valid so historical eval
   results remain reproducible.
 - **Supersession** (a master circular replacing earlier ones) is document metadata to be captured in
-  the build phase — it materially affects answer correctness, since the right answer to "what is the
+  the build phase  -  it materially affects answer correctness, since the right answer to "what is the
   current rule" depends on which circular is in force.
 - `corpus/` is **gitignored**. The corpus is re-derivable from the manifest; only the manifest and
   this provenance document are tracked.
@@ -69,7 +69,7 @@ recorded in `corpus/raw/manifest.json`:
 - **Scanned/image-only PDFs** extract near-zero text and need OCR. None appeared in the 20-document
   sample, but RBI archives contain older scanned material. Detection rule: a PDF with pages but
   <500 extracted chars is flagged, never silently ingested.
-- **Tables** (rate schedules, timelines) flatten badly in `pypdf` text extraction — a known risk for
+- **Tables** (rate schedules, timelines) flatten badly in `pypdf` text extraction  -  a known risk for
   numeric answer accuracy, and a build-phase decision (table-aware extraction vs accepting the loss).
 - **Rotated/expired URLs**: SEBI attachment filenames are opaque timestamps and can change. The
   manifest's URL + hash makes breakage detectable rather than silent.

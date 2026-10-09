@@ -5,7 +5,7 @@ Use this template when dispatching an implementer subagent.
 ```
 Subagent (general-purpose):
   description: "Implement Task N: [task name]"
-  model: [MODEL — REQUIRED: choose per SKILL.md Model Selection; an omitted
+  model: [MODEL  -  REQUIRED: choose per SKILL.md Model Selection; an omitted
          model silently inherits the session's most expensive one]
   prompt: |
     You are implementing Task N: [task name]
@@ -56,7 +56,7 @@ Subagent (general-purpose):
     fresh reviewer against your diff. A reviewer you spawn duplicates
     that review at full cost, and its approval counts for nothing in
     the process. If you catch yourself thinking "an independent review
-    would strengthen my report" — that review is already scheduled.
+    would strengthen my report"  -  that review is already scheduled.
     Report instead.
 
     ## Code Organization
@@ -66,7 +66,7 @@ Subagent (general-purpose):
     - Follow the file structure defined in the plan
     - Each file should have one clear responsibility with a well-defined interface
     - If a file you're creating is growing beyond the plan's intent, stop and report
-      it as DONE_WITH_CONCERNS — don't split files on your own without plan guidance
+      it as DONE_WITH_CONCERNS  -  don't split files on your own without plan guidance
     - If an existing file you're modifying is already large or tangled, work carefully
       and note it as a concern in your report
     - In existing codebases, follow established patterns. Improve code you're touching
@@ -122,7 +122,7 @@ Subagent (general-purpose):
     Fix them, re-run the tests that cover the amended code, and append a fix
     report to your report file: what you changed, the covering tests you
     ran, the command, and the output. Reviewers will not re-run tests for
-    you — your report is the test evidence. Then reply with the same short
+    you  -  your report is the test evidence. Then reply with the same short
     status contract as your first report.
 
     ## Report Format
@@ -137,7 +137,7 @@ Subagent (general-purpose):
     - Self-review findings (if any)
     - Any issues or concerns
 
-    Then report back with ONLY (under 15 lines — the detail lives in the
+    Then report back with ONLY (under 15 lines  -  the detail lives in the
     report file):
     - **Status:** DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
     - Commits created (short SHA + subject)
@@ -146,7 +146,7 @@ Subagent (general-purpose):
     - The report file path
 
     If BLOCKED or NEEDS_CONTEXT, put the specifics in the final message
-    itself — the controller acts on it directly.
+    itself  -  the controller acts on it directly.
 
     Use DONE_WITH_CONCERNS if you completed the work but have doubts about correctness.
     Use BLOCKED if you cannot complete the task. Use NEEDS_CONTEXT if you need

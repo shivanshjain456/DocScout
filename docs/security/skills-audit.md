@@ -12,7 +12,7 @@ the agent's memory file. Skills are a supply chain and are treated as one.
 | DocScout project skills (6) | written in-repo for this project | n/a | Allowed source per §7.4(c) |
 
 Nothing was installed from ClawHub or any third-party skill registry (§1.3, §12).
-`security-guidance` (§7.4(b), official Claude Code marketplace plugin) was **not** installed — this
+`security-guidance` (§7.4(b), official Claude Code marketplace plugin) was **not** installed  -  this
 environment has no Claude Code plugin client, so `/plugin install` is unavailable. Recorded as a
 Known issue, not silently skipped.
 
@@ -29,11 +29,11 @@ Scanned the full tree (`skills/`, `hooks/`, `scripts/`, `index.js`) for:
 
 | Check | Result |
 |---|---|
-| Writes to agent memory/instruction files (`CLAUDE.md`, `AGENTS.md`, `.claude/settings`, memory) — the ClawHavoc signature | **None found** |
-| `curl`/`wget`/`base64`/`nc`/`/dev/tcp`/`eval $(...)`/pipe-to-shell in executable code | None in executable code. One `curl` example inside documentation prose (`diagnosing-superpowers/references/github-issues.md`) — a GitHub API example for the user to run, not auto-executed |
+| Writes to agent memory/instruction files (`CLAUDE.md`, `AGENTS.md`, `.claude/settings`, memory)  -  the ClawHavoc signature | **None found** |
+| `curl`/`wget`/`base64`/`nc`/`/dev/tcp`/`eval $(...)`/pipe-to-shell in executable code | None in executable code. One `curl` example inside documentation prose (`diagnosing-superpowers/references/github-issues.md`)  -  a GitHub API example for the user to run, not auto-executed |
 | Credential/secret access (`~/.ssh`, `id_rsa`, `.env`, API keys) | **None found** |
 | Outbound hosts in executable code | Two only: `github.com/obra/superpowers` (docs link) and `primeradiant.com/brand/...png` (see finding below) |
-| Auto-executing hooks | One: `hooks/session-start`. Read in full — it `cat`s the `using-superpowers` SKILL.md and emits it as JSON context. No network, no file writes, no credential access. Benign. |
+| Auto-executing hooks | One: `hooks/session-start`. Read in full  -  it `cat`s the `using-superpowers` SKILL.md and emits it as JSON context. No network, no file writes, no credential access. Benign. |
 
 ### Finding (low severity, accepted with mitigation)
 
@@ -41,7 +41,7 @@ Scanned the full tree (`skills/`, `hooks/`, `scripts/`, `index.js`) for:
 token) and, when rendering, references a remote branding image at
 `https://primeradiant.com/brand/superpowers-visual-brainstorming-logo.png`. This is a usage beacon:
 it discloses to the author's domain that/when the skill is used, plus the requesting IP. It is not
-exfiltration — no project data is transmitted — and it is opt-out.
+exfiltration  -  no project data is transmitted  -  and it is opt-out.
 
 **Mitigation:** set `SUPERPOWERS_DISABLE_TELEMETRY=true` (or `DISABLE_TELEMETRY=true`) in the dev
 environment. Recorded in `.claude/skills/VENDORED-SUPERPOWERS.md` and `CLAUDE.md`.
@@ -59,6 +59,6 @@ Evidence: `docs/security/mcp-scan-servers.txt`, `docs/security/skills-scan.txt`.
 ## Standing rules
 
 - No skill may write to memory or instruction files without an explicit, audited action.
-- Skill descriptions are trigger text injected into context — re-read them after any update.
+- Skill descriptions are trigger text injected into context  -  re-read them after any update.
 - Updating the Superpowers pin is a reviewed action: diff the tree, re-run this audit, record the
   new commit hash.

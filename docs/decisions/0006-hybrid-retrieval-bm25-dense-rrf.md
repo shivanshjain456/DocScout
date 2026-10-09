@@ -19,7 +19,7 @@ they support is the substance of this ADR.
 
 ## What was measured
 
-Macro-averaged over 131 answerable items (22 unanswerable items excluded — they measure
+Macro-averaged over 131 answerable items (22 unanswerable items excluded  -  they measure
 abstention, a generation property). Recall is the fraction of *quote groups* covered, where
 a group is the set of chunks containing one evidence quote; ADR-0003's overlap means a
 boundary-adjacent quote legitimately lives in two chunks and citing either is correct.
@@ -58,7 +58,7 @@ The gold set's questions were authored *from* the evidence quotes (EVAL_PROTOCOL
 is also what makes citations re-pinnable rather than hand-maintained). The side effect is that
 questions inherit the vocabulary of the chunk they point at. Measured on this run: a question's
 analyzed terms appear in its own gold chunk **73.3%** of the time versus **9.4%** for a random
-chunk — a **7.8× lexical advantage handed to BM25 before it retrieves anything**.
+chunk  -  a **7.8× lexical advantage handed to BM25 before it retrieves anything**.
 
 Stratifying recall@5 by that overlap separates the confound from the signal:
 
@@ -69,7 +69,7 @@ Stratifying recall@5 by that overlap separates the confound from the signal:
 | high (≥0.8) | 0.980 | 0.980 | 0.971 | 51 |
 
 BM25's advantage is concentrated exactly where the leakage is, and in the band that most
-resembles a question a human would actually type — low overlap — it is the **worst** of the
+resembles a question a human would actually type  -  low overlap  -  it is the **worst** of the
 three, while hybrid matches the best. With n=8 that band proves nothing on its own. It is
 consistent with the mechanism, it is the opposite of the headline, and it is the reason the
 dense arm stays.
@@ -79,7 +79,7 @@ dense arm stays.
 **Keep hybrid BM25 + dense + RRF as the serving configuration**, at `k=60`, equal arm depth,
 unweighted.
 
-The justification is explicitly *not* "hybrid measured best" — it did not. It is:
+The justification is explicitly *not* "hybrid measured best"  -  it did not. It is:
 
 1. **No configuration is measurably better**, so the choice falls to which failure modes each
    covers. Hybrid is never worst in any leakage band; each single-arm configuration is worst
@@ -90,7 +90,7 @@ The justification is explicitly *not* "hybrid measured best" — it did not. It 
    budget (NFR). Latency is not the binding constraint at this corpus size.
 4. **Regulatory text needs both**: exact tokens (circular numbers, "T+1", percentages) are
    lexical; paraphrased intent is semantic. The corpus is 170 chunks, far too small for the
-   dense arm's weakness at scale — or its strength — to appear.
+   dense arm's weakness at scale  -  or its strength  -  to appear.
 
 ## Consequences
 
@@ -110,7 +110,7 @@ The justification is explicitly *not* "hybrid measured best" — it did not. It 
 **Paraphrased query variants.** Re-ask a sample of gold questions in wording that shares as
 little vocabulary with the evidence as possible, and re-run the same three configurations. If
 BM25 still matches hybrid on low-overlap questions, the dense arm is genuinely dead weight on
-this corpus and ADR-0006 should be reversed in favour of bm25-only — simpler, 34× faster, one
+this corpus and ADR-0006 should be reversed in favour of bm25-only  -  simpler, 34× faster, one
 fewer model to serve.
 
 This is deliberately *not* done with an LLM paraphraser right now: no API keys are available
@@ -122,7 +122,7 @@ would be a confound of its own. Tracked as **U-18**.
 ### A. Dense-only
 
 The configuration the measurement most clearly disfavours: worst recall (0.947), worst MRR
-(0.762), worst nDCG, and no latency advantage over hybrid (43 ms vs 34 ms p95 — the dense arm
+(0.762), worst nDCG, and no latency advantage over hybrid (43 ms vs 34 ms p95  -  the dense arm
 *is* the slow part, and hybrid's extra BM25 pass costs about a millisecond). It also fails
 exactly the queries regulatory users care about, where a circular number must match exactly.
 Rejected on its own numbers.
@@ -154,7 +154,7 @@ is the only variable. Revisit after the gold set grows and after U-18.
 
 Rejected. It is already available and index-backed, which is genuinely attractive, but it has
 neither IDF saturation nor document-length normalisation, and its scores are not comparable to
-any published baseline. Since fusion only consumes ranks, either would function — but a column
+any published baseline. Since fusion only consumes ranks, either would function  -  but a column
 labelled BM25 should contain BM25.
 
 ### F. Add a cross-encoder reranker before settling this

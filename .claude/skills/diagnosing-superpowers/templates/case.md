@@ -18,7 +18,7 @@ Goal is a superpowers bug report: yes | no
 | main | | | | | | | |
 | subagent | | | | | | | |
 
-Rejected candidates: <id — path — why rejected>, or "none".
+Rejected candidates: <id  -  path  -  why rejected>, or "none".
 
 Session still running at read time: yes | no (mtime <ISO>, lines <N>)
 
@@ -26,7 +26,7 @@ Session still running at read time: yes | no (mtime <ISO>, lines <N>)
 
 - OS: <name and version>
 - Harness: <name> <version>
-- Models seen: <model id — where (main / subagent id)>
+- Models seen: <model id  -  where (main / subagent id)>
 - Superpowers install root: <path>; version <x.y.z>; git sha <sha or "not a checkout">
 - Skill files read or injected during the session:
 

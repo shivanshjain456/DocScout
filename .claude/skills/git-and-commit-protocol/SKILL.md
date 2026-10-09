@@ -15,7 +15,7 @@ description: Use this skill for every git operation in DocScout - staging, commi
   two unrelated fixes do not.
 - **Banned messages:** `wip`, `final`, `final2`, `fixes`, `update`, `asdf`, and any bulk
   multi-feature commit. If the message needs "and", split the commit.
-- The body explains **why**, not what — the diff already says what.
+- The body explains **why**, not what  -  the diff already says what.
 - Never commit generated artifacts, `.env`, corpus files, model weights, or report directories
   (`.gitignore` covers these; do not `-f` past it).
 
@@ -27,13 +27,13 @@ parameters, judge model, threshold values, SDK version pins, cloud provider.
 
 ADR lives at `docs/decisions/NNNN-<slug>.md` using `docs/decisions/0000-template.md`, with sections
 Context / Decision / Consequences / **Rejected alternatives**. The rejected-alternatives section is
-mandatory and must name real options with real reasons — it is the portfolio's key AI-resistant
+mandatory and must name real options with real reasons  -  it is the portfolio's key AI-resistant
 artifact. The ADR is referenced in the commit body (`Refs: ADR-0007`).
 
 ## Before every push
 
-1. `make lint` `make typecheck` `make test` — all green.
-2. `make secret-scan` (gitleaks) — must pass, on the **full history**, not just the diff.
+1. `make lint` `make typecheck` `make test`  -  all green.
+2. `make secret-scan` (gitleaks)  -  must pass, on the **full history**, not just the diff.
 3. `make verify-setup` still green.
 4. Never `git push --force` to a shared branch. Use `--force-with-lease` on your own branch only,
    and never on `main`.

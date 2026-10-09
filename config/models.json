@@ -123,7 +123,7 @@
       "sample_score": -2.2330358028411865,
       "disk_mb": 88
     },
-    "threshold_check": "PASS — 4.56 ms/pair is well under the 50 ms/pair limit in §10.2, so the heavier BAAI/bge-reranker-v2-m3 remains a viable build-phase A/B arm rather than being ruled out on latency.",
+    "threshold_check": "PASS  -  4.56 ms/pair is well under the 50 ms/pair limit in §10.2, so the heavier BAAI/bge-reranker-v2-m3 remains a viable build-phase A/B arm rather than being ruled out on latency.",
     "rationale": "Fast, CPU-friendly, well-established baseline cross-encoder. Quality A/B against bge-reranker-v2-m3 is a build-phase ADR."
   },
   "generator_local": {

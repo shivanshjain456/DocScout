@@ -1,4 +1,4 @@
-# Plan: P1-3 — Query Understanding Expansion
+# Plan: P1-3  -  Query Understanding Expansion
 
 ## Context and Problem Statement
 - **Retrieval & Vocabulary Mismatch (§3.6)**:

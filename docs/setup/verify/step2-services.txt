@@ -1,4 +1,4 @@
-### DocScout Step 2 verification — 2026-10-01T09:54:36Z
+### DocScout Step 2 verification  -  2026-10-01T09:54:36Z
 
 --- compose ps ---
 NAME             IMAGE                          COMMAND                  SERVICE   CREATED          STATUS                    PORTS

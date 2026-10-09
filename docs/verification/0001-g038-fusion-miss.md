@@ -1,4 +1,4 @@
-# Verification story 1 — a retrieval miss the eval harness caught
+# Verification story 1  -  a retrieval miss the eval harness caught
 
 A worked example of the loop this project exists to demonstrate: the evaluation harness found
 a real defect, the defect was diagnosed rather than patched around, the fix was chosen against
@@ -21,7 +21,7 @@ g-038  type=extractive  difficulty=hard  groups=1
 `first_relevant_rank=None` with `recall@10=0.00` means the correct chunk was **not returned at
 all**. Every other miss was a ranking problem. This one was a retrieval failure.
 
-> **g-038** — *Which withdrawn circular dealt with CCTV coverage of cash handling operations in
+> **g-038**  -  *Which withdrawn circular dealt with CCTV coverage of cash handling operations in
 > currency chests, and on what date was it issued?*
 >
 > Evidence quote: `23-May-14 DCM.(CC).No.G- 20/03.39.01/2013-14 CCTV Coverage of All Cash
@@ -45,7 +45,7 @@ PY
 
 The first question was whether the gold item was wrong. It was not: the quote is verbatim in
 the source PDF, the citation resolves through the production chunker, and the question is the
-product's core use case — an analyst asking what a withdrawn circular said.
+product's core use case  -  an analyst asking what a withdrawn circular said.
 
 So the arms were measured individually:
 
@@ -69,7 +69,7 @@ rival chunk  dense   rank  1 -> 1/61  = 0.01639
 
 At `k=60`, rank 1 is worth only **1.66×** rank 41. Rank-only fusion cannot express certainty,
 so broad agreement beats one arm's conviction. `app/retrieval/fusion.py` had already recorded
-this as RRF's accepted cost — "an arm that is certain of its top hit contributes exactly as
+this as RRF's accepted cost  -  "an arm that is certain of its top hit contributes exactly as
 much as one that barely preferred it". This is that cost arriving, and in this domain it is not
 rare: questions turn on exact tokens like a circular number or "CCTV", which is exactly where
 BM25 is confident and where the dense arm, embedding a chunk that is a table of fifty unrelated
@@ -90,11 +90,11 @@ uv run python -m scripts.experiments.u10_rrf_constant_sweep
 | k=5 | 0.695 | 0.977 | 0.992 | 0.826 | +0.0115 | no | 1.00 |
 | k=10 | 0.695 | 0.966 | 0.992 | 0.825 | +0.0000 | no | 1.00 |
 | k=20 / 30 / 60 / 100 | 0.695 | 0.966 | 0.992 | 0.824 | +0.0000 | no | 0.00 |
-| **k=60 + arm anchor** | 0.695 | 0.966 | **1.000** | 0.825 | +0.0000 | — | **1.00** |
+| **k=60 + arm anchor** | 0.695 | 0.966 | **1.000** | 0.825 | +0.0000 |  -  | **1.00** |
 
 Lowering the constant works, but its 1.15pp gain is 1.5 items with a CI spanning zero, and
-ADR-0006 had already rejected tuning the constant on exactly that basis. The structural fix —
-reserve a seat for each arm's own top hit — is the only variant that makes recall@10 complete,
+ADR-0006 had already rejected tuning the constant on exactly that basis. The structural fix  -
+reserve a seat for each arm's own top hit  -  is the only variant that makes recall@10 complete,
 and a per-item comparison over all 131 items at both cutoffs found **0 items worse, 1 better**.
 
 Chosen: keep `rrf_k=60`, add the guarantee. Full reasoning and five rejected alternatives in
@@ -117,7 +117,7 @@ Serving configuration `hybrid-rrf`, all 131 answerable items:
 Raw output: [`evals/reports/20261001T192924Z/`](../../evals/reports/20261001T192924Z/) (before)
 and [`evals/reports/20261001T204628Z/`](../../evals/reports/20261001T204628Z/) (after).
 
-The regression gate was run against the fix and passed — recall and nDCG unchanged, MRR
+The regression gate was run against the fix and passed  -  recall and nDCG unchanged, MRR
 +0.07pp, no invariant violated:
 
 ```bash
@@ -136,7 +136,7 @@ FAILED tests/test_retrieval.py::test_g038_confident_lexical_hit_survives_fusion
 FAILED tests/test_retrieval.py::test_anchored_chunk_keeps_its_real_fused_score
 ```
 
-One of the four is deliberately inverted — `test_g038_is_still_buried_without_the_anchor`
+One of the four is deliberately inverted  -  `test_g038_is_still_buried_without_the_anchor`
 asserts that plain RRF *still* fails on this query. If a future change makes plain fusion
 surface the chunk unaided, that test fails and ADR-0007 gets revisited instead of the
 guarantee surviving as cargo cult.

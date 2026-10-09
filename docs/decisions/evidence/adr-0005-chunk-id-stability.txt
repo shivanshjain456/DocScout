@@ -1,9 +1,9 @@
-ADR-0005 evidence — chunk_id stability across re-ingest
+ADR-0005 evidence  -  chunk_id stability across re-ingest
 Captured 2026-10-01T17:55:03Z on PostgreSQL 18.6 / pgvector 0.8.6, 2 vCPU.
 Method: ingest the full 21-document corpus into an empty database, record every
 (version sha256, chunk span) -> chunk_id mapping, TRUNCATE, ingest again, compare.
 
-=== BEFORE — schema 0001, chunk_id uuid PRIMARY KEY DEFAULT uuidv7() ===
+=== BEFORE  -  schema 0001, chunk_id uuid PRIMARY KEY DEFAULT uuidv7() ===
 first two rows of each run, keyed by sha256:ordinal:
   run A  15f4cdf2950f1a25e8f80a4b2b979046ed5cfc0a42cd9cecc5a51fd22fdbb401:0 -> 01a0f888-f191-7c09-a02b-29b7c6da4b11
   run A  2e2e9b36b4b9d7c4cbca8ad04e5fd139f4f737101e9193750fc1f97ee4f9e4f6:0 -> 01a0f889-2f1d-7206-ad7b-ce5fb5ee5ac8
@@ -16,7 +16,7 @@ first two rows of each run, keyed by sha256:ordinal:
   => every identifier changed. Identical bytes, identical text, identical spans,
      170 different primary keys. Any committed citation or past eval report dangles.
 
-=== AFTER — schema 0002, chunk_id = uuid5(ns, '<sha256>:<char_start>:<char_end>') ===
+=== AFTER  -  schema 0002, chunk_id = uuid5(ns, '<sha256>:<char_start>:<char_end>') ===
   run A  15f4cdf2950f1a25e8f80a4b2b979046ed5cfc0a42cd9cecc5a51fd22fdbb401:19-951 -> 3a2b3d9d-69ba-5bd9-a9cd-1b5bb17e588b
   run A  2e2e9b36b4b9d7c4cbca8ad04e5fd139f4f737101e9193750fc1f97ee4f9e4f6:12-991 -> 2fbe64ec-c06b-5f2a-a6f6-7648b54d6fce
   run B  15f4cdf2950f1a25e8f80a4b2b979046ed5cfc0a42cd9cecc5a51fd22fdbb401:19-951 -> 3a2b3d9d-69ba-5bd9-a9cd-1b5bb17e588b

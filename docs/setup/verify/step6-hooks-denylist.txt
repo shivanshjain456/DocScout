@@ -1,4 +1,4 @@
-### V8 — dangerous-bash denylist demonstration — 2026-10-01T10:09:21Z
+### V8  -  dangerous-bash denylist demonstration  -  2026-10-01T10:09:21Z
 exit 2 = DENIED (blocks tool call), exit 0 = allowed
 
 --- must be DENIED (exit 2) ---

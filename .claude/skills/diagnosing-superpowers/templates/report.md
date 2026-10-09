@@ -32,7 +32,7 @@ supporting evidence location.
 | Role | Session id | Absolute path | Lines | Bytes |
 |---|---|---|---|---|
 
-Rejected candidates: <id — path — why>, or "none".
+Rejected candidates: <id  -  path  -  why>, or "none".
 
 ## 5. Timeline (REQUIRED)
 
@@ -47,11 +47,11 @@ subagents dispatched, compaction, errors, resumes, aborts.
 Each finding:
 ```
 - finding: <one sentence>
-  evidence: <path:line> — "<short quote>"
+  evidence: <path:line>  -  "<short quote>"
   turns: <first>–<last>
   confidence: high | medium | low
 ```
-A dimension with nothing to report says `none found — checked: <what was checked>`.
+A dimension with nothing to report says `none found  -  checked: <what was checked>`.
 
 ### 6.1 Skill timeline
 ### 6.2 Plan adherence

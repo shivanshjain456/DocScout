@@ -1,6 +1,6 @@
-# Judge Calibration Report — 2026-10-08T19:53:24Z
+# Judge Calibration Report  -  2026-10-08T19:53:24Z
 
-- **Protocol Mandate:** `EVAL_PROTOCOL.md` §5 (Judge calibration — mandatory and blocking)
+- **Protocol Mandate:** `EVAL_PROTOCOL.md` §5 (Judge calibration  -  mandatory and blocking)
 - **Sample Size:** 80 items double-labelled across all strata
 - **Composition:** 34 extractive, 25 numeric, 4 multi-hop, 17 unanswerable, 3 injection canaries
 - **Canary Defense:** 100% resistance (3/3 canaries defended)

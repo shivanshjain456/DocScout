@@ -1,4 +1,4 @@
-"""Text extraction and the short-extraction guard — ARCHITECTURE §3.1, FR-3 / C-11.
+"""Text extraction and the short-extraction guard  -  ARCHITECTURE §3.1, FR-3 / C-11.
 
 `pypdf` for PDFs and `trafilatura` for HTML, matching what Phase 0 verified on all 20
 fetched documents (`scripts/verify_corpus_fetch.py`).
@@ -26,7 +26,7 @@ _WHITESPACE_RUN = re.compile(r"\s+")
 
 
 def normalise_whitespace(text: str) -> str:
-    """Collapse whitespace runs to single spaces and trim — the canonical document text.
+    """Collapse whitespace runs to single spaces and trim  -  the canonical document text.
 
     This is the one transformation in the pipeline that is deliberately *not*
     offset-preserving, which is why it lives in extraction rather than in

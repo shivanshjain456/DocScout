@@ -1,4 +1,4 @@
-"""Ingestion orchestration — ARCHITECTURE §3.1 stages, end to end.
+"""Ingestion orchestration  -  ARCHITECTURE §3.1 stages, end to end.
 
 fetch (from the manifest) → extract → guard → clean → chunk → embed → store.
 
@@ -11,7 +11,7 @@ Two ordering decisions worth stating, because both are about honesty rather than
 * **A bad document is recorded, not fatal; a bad corpus is fatal.** An extraction failure
   or a document under FR-3's floor is per-document news: it is counted, named in the
   report, and the run continues, because the flagged-document count is itself an M2
-  deliverable. A manifest that disagrees with the bytes on disk aborts the run — that is
+  deliverable. A manifest that disagrees with the bytes on disk aborts the run  -  that is
   not one bad document, it is a corpus that is not what it claims to be.
 """
 

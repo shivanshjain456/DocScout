@@ -16,7 +16,7 @@ PAGE = """<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DocScout — citation-grounded regulatory search</title>
+<title>DocScout  -  citation-grounded regulatory search</title>
 <style>
   :root {
     --bg:#0f1117; --panel:#171a23; --line:#262b38; --ink:#e6e9f0; --dim:#9aa3b5;
@@ -67,7 +67,7 @@ PAGE = """<!doctype html>
   <h1>DocScout</h1>
   <p class="sub">
     Citation-grounded retrieval over RBI and SEBI circulars. Returns the <em>evidence</em>,
-    not a generated answer &mdash; every passage carries a stable chunk id and character
+    not a generated answer  -  every passage carries a stable chunk id and character
     span you can check against the source document.
   </p>
 
@@ -105,7 +105,7 @@ PAGE = """<!doctype html>
   <div id="out"></div>
 
   <footer>
-    Retrieval only &mdash; no LLM is in the request path.
+    Retrieval only  -  no LLM is in the request path.
     <a href="/docs">OpenAPI docs</a> &middot; <a href="/healthz">health</a>
   </footer>
 </div>

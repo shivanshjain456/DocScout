@@ -7,7 +7,7 @@
 
 # --- corpus & generated reports ---
 # Anchor with a leading slash. An UNANCHORED `corpus/` matches a directory named `corpus` at ANY
-# depth, which silently swallowed docs/corpus/ — the home of CORPUS_SPEC.md. Caught by ADR-0001's
+# depth, which silently swallowed docs/corpus/  -  the home of CORPUS_SPEC.md. Caught by ADR-0001's
 # pre-commit inspection; the deliverable would otherwise have been excluded without any error.
 /corpus/*
 # The manifest is the corpus's provenance anchor: identity, hashes and fetch timestamps for every
@@ -50,7 +50,7 @@ evals/bench/*
 /corpus/reports/
 # Ad-hoc `make load` runs are ignored, EXCEPT the pinned verification run: V15 of
 # scripts/verify_setup.sh asserts that report exists, so leaving it untracked made the matrix
-# depend on an artifact git would not keep — the same defect class as the corpus manifest above.
+# depend on an artifact git would not keep  -  the same defect class as the corpus manifest above.
 # Note the `/*` form: git will not descend into an excluded DIRECTORY, so `loadtests/reports/`
 # followed by a negation silently does nothing. Verified with `git check-ignore -v`.
 loadtests/reports/*

@@ -4,8 +4,8 @@ Scope, stated up front because the omission is deliberate: this serves **retriev
 citations**, not generated answers. There is no LLM in the request path and no API keys to
 call one (U-1). An endpoint that returned prose here would have to invent it, and inventing
 prose over regulatory text is the single failure this project is built to measure and
-avoid. What it returns instead is the evidence — ranked passages with resolvable chunk ids
-and character spans — which is exactly what the eval harness measures, so every number in
+avoid. What it returns instead is the evidence  -  ranked passages with resolvable chunk ids
+and character spans  -  which is exactly what the eval harness measures, so every number in
 the README describes this endpoint rather than a different code path.
 
 Three things are load-bearing in the design:

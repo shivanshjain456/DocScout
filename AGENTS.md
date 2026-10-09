@@ -1,29 +1,30 @@
-# AGENTS.md — DocScout
+# AGENTS.md: DocScout
 
 ## Project
 DocScout: production RAG service over the RBI/SEBI regulatory corpus.
-Stack: Python 3.12 (uv) + FastAPI + Postgres 18 + pgvector 0.8.6 + React/TS demo (self-contained; no Redis service — cache/limiter are in-process, `single_process: true`).
+Stack: Python 3.12 (uv) + FastAPI + Postgres 18 + pgvector 0.8.6 + React/TS demo (self-contained; no Redis service required: cache/limiter are in-process, `single_process: true`).
 Local services: `docker compose up -d` (db:5432 + api:8000). App: `uv run uvicorn app.api.app:app --port 8000`.
-Phase 0 (environment) is complete and signed off in `docs/setup/SETUP_REPORT.md`. Read its
-**Known issues** before writing code — several brief assumptions did not survive contact with reality.
 
 ## Commands (exact)
 - Setup:   make setup            # installs nothing; verifies env
 - Dev:     make dev
-- Test:    uv run pytest -q
+- Deploy:  make deploy           # local container deployment and healthcheck verification
+- Destroy: make destroy          # clean teardown of local compose services and volumes
+- Test:    uv run pytest -q      # full test suite (511 tests passing)
 - Lint:    uv run ruff check . && uv run ruff format --check .
 - Types:   uv run mypy app
-- Eval:    uv run pytest tests/eval -q      # subset; full: make eval
+- Eval:    make eval             # full eval run
+- Gate:    make eval-gate        # regression gate
 - Load:    k6 run loadtests/smoke.js
 - Secrets: make secret-scan
 - Verify:  make verify-setup
 
 ## Architecture boundaries (do not cross without an ADR)
-- `app/ingest/`    — offline path: fetch → extract → chunk → embed → store. Runs WITHOUT deploy creds.
-- `app/retrieval/` — online path: hybrid search (pgvector HNSW + tsvector), RRF fusion, rerank.
-- `app/generate/`  — prompt assembly (citations mandatory, refusal behavior) + LLM calls.
-- `app/evals/`     — gold set, scorers, judge, reports. Reads nothing from /ingest's network.
-- `app/api/`       — FastAPI surface; keys + rate limits only here.
+- `app/ingest/`: offline path: fetch -> extract -> chunk -> embed -> store -> scan -> refresh. Runs WITHOUT deploy creds.
+- `app/retrieval/`: online path: hybrid search (pgvector HNSW + tsvector), RRF fusion, query expansion, metadata filtering.
+- `app/generate/`: prompt assembly (citations mandatory, refusal behavior, prompt injection defense) + answer generation.
+- `app/evals/`: gold set v2.0.0, deterministic scorers, judge calibration, regression gating. Reads nothing from ingest network.
+- `app/api/`: FastAPI surface: keys, rate limits, audit logging, health and readiness probes.
 
 ## Testing instructions
 - TDD: write the failing test first (skill: test-driven-development). No untested public function.

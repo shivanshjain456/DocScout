@@ -2,8 +2,8 @@
 
 A `chunk_id` is the foreign key that every citation, every gold-set item and every raw eval
 output points at. It therefore has to mean the same thing on two machines, in two clones of
-this repository, and before and after a re-ingest. The database default it replaces —
-`uuidv7()` — guarantees the opposite: it mints a fresh identifier from the clock on every
+this repository, and before and after a re-ingest. The database default it replaces  -
+`uuidv7()`  -  guarantees the opposite: it mints a fresh identifier from the clock on every
 insert, so re-ingesting byte-identical content produced 0 of 170 matching identifiers
 (`docs/decisions/evidence/adr-0005-chunk-id-stability.txt`).
 

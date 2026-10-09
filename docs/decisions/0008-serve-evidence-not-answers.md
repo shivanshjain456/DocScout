@@ -14,7 +14,7 @@ honestly right now: there are no LLM API keys (U-1), there is no calibrated judg
 there is therefore no measurement of whether a generated answer is faithful to its sources.
 
 The project's whole claim is that its numbers are honest. Shipping prose that nothing
-measures — over regulatory text, where a wrong number is the entire failure mode — would
+measures  -  over regulatory text, where a wrong number is the entire failure mode  -  would
 contradict that claim in the one place a reader looks first.
 
 The corpus is also unusually unforgiving. Documents are withdrawn (gold item g-038 is about
@@ -33,7 +33,7 @@ later rather than merely checkable today.
 
 Three consequences of the "no generation" choice are deliberate, not accidental:
 
-1. **The endpoint cannot hallucinate.** Not "is unlikely to" — it has no generative
+1. **The endpoint cannot hallucinate.** Not "is unlikely to"  -  it has no generative
    component. Every character of regulatory text in a response is a substring of a stored
    chunk, and `tests/test_api.py::test_search_returns_checkable_citations` asserts exactly
    that by re-reading each returned chunk from the database and comparing text and span.
@@ -45,7 +45,7 @@ Three consequences of the "no generation" choice are deliberate, not accidental:
 
 ### Reversal condition
 
-When API keys exist: add generation *behind* this endpoint, not instead of it — the
+When API keys exist: add generation *behind* this endpoint, not instead of it  -  the
 passages stay in the response, the generated answer is an additional field, and it ships
 only once the judge is calibrated against 60–100 human labels with Cohen's κ reported
 (EVAL_PROTOCOL §4.1 and §5). Until κ exists, a generated answer would be an unmeasured
@@ -90,7 +90,7 @@ raised from inside a handler never appears in the response.
 | warm (cache hit) | 1.71 ms | 1.64 ms | **2.11 ms** | 2.68 ms |
 
 Caching is worth **22.8× on p95** (46.0 ms saved). Sustained throughput is 39.8 q/s at
-concurrency 4, which puts compute cost at **$0.000078 per 1,000 queries — about $0.08 per
+concurrency 4, which puts compute cost at **$0.000078 per 1,000 queries  -  about $0.08 per
 million** on an AWS t4g.small in ap-south-1 at $0.0112/hour.
 
 The relevant observation for the "your LLM bill is too high" question: with no model in the
@@ -102,13 +102,13 @@ measurable rather than folding it into one opaque endpoint.
 
 ### A. Return a generated answer now, using a local small model
 
-Technically possible — the machine already runs a 384-dim encoder and a cross-encoder — and
+Technically possible  -  the machine already runs a 384-dim encoder and a cross-encoder  -  and
 it would make the demo look complete. Rejected: a small local model over regulatory text
 produces exactly the confident, wrong, unverifiable prose this project exists to measure,
 and there is no judge to catch it. It would also mean the README's numbers described
 retrieval while the demo showed generation.
 
-### B. Extractive "answers" — return the single best sentence as the answer
+### B. Extractive "answers"  -  return the single best sentence as the answer
 
 Tempting, since it adds no model and looks like an answer. Rejected: selecting one sentence
 is itself an unmeasured claim about which sentence answers the question, and the gold set
@@ -125,8 +125,8 @@ that asks for a key. The key also makes per-caller rate limiting possible at all
 ### D. Redis for the cache and the rate limiter
 
 Correct for more than one process, and `REDIS_URL` is already in `.env.example` for when
-that day comes. Rejected now: it adds a service to the quickstart — which has to stay under
-ten minutes and currently runs with two scripts — to solve a problem a single worker does
+that day comes. Rejected now: it adds a service to the quickstart  -  which has to stay under
+ten minutes and currently runs with two scripts  -  to solve a problem a single worker does
 not have. The in-process limitation is not hidden: `/healthz` reports `single_process: true`
 precisely so nobody reads these counters as cluster-wide.
 

@@ -1,8 +1,8 @@
 """Shared runtime configuration for the DocScout application packages.
 
 `scripts/migrate.py` deliberately carries its own copy of the dotenv loader rather than
-importing this module. The migration runner must work when `app/` is broken — that is
-precisely when a schema change is most likely to be needed — so coupling an operational
+importing this module. The migration runner must work when `app/` is broken  -  that is
+precisely when a schema change is most likely to be needed  -  so coupling an operational
 tool to the application package would be the wrong trade. The duplication is ten lines and
 is noted in both places.
 """
@@ -40,7 +40,7 @@ def database_url() -> str:
     names `docscout_app`, which holds SELECT/INSERT/UPDATE and has neither DELETE nor DDL
     (migration 0001). Ingestion running as the owner would quietly give the pipeline the
     privilege to drop the retention guarantee FR-4 depends on, so the weaker role is not a
-    default to fall back from — it is the only correct one here.
+    default to fall back from  -  it is the only correct one here.
     """
     load_dotenv()
     url = os.environ.get("DATABASE_URL", "").strip()

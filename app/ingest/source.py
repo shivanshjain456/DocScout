@@ -1,4 +1,4 @@
-"""Where documents come from — the local corpus manifest.
+"""Where documents come from  -  the local corpus manifest.
 
 `corpus/raw/manifest.json` is the corpus's provenance anchor and the only part of the
 corpus git tracks (`.gitignore`, ADR-0001). It records identity, content hash, fetch
@@ -6,8 +6,8 @@ timestamp and HTTP status for every attempt, which is exactly the provenance FR-
 `document_versions` to carry, so ingestion reads it rather than re-deriving any of it.
 
 **Scope, stated plainly.** This module reads documents Phase 0 already fetched. Re-crawling
-the regulators' listing pages — RBI's ASP.NET pagination and SEBI's detail-page-to-iframe
-hop — is verified separately in `scripts/verify_corpus_fetch.py` and is not reimplemented
+the regulators' listing pages  -  RBI's ASP.NET pagination and SEBI's detail-page-to-iframe
+hop  -  is verified separately in `scripts/verify_corpus_fetch.py` and is not reimplemented
 here. Ingesting from the manifest makes the pipeline deterministic and offline-reproducible
 and avoids hammering two regulators on every run; `app.ingest.fetch` is what the crawling
 path uses when documents are refreshed.

@@ -1,4 +1,4 @@
-# Retrieval baseline — 2026-10-01T20:46:29Z
+# Retrieval baseline  -  2026-10-01T20:46:29Z
 
 Retrieval only. No reranker, no generator, no LLM judge: those stages do not exist yet, and are reported as `null` rather than as zeros.
 
@@ -6,8 +6,8 @@ Retrieval only. No reranker, no generator, no LLM judge: those stages do not exi
 
 | config | mode | k_dense | k_lexical | k_final | rrf_k |
 |---|---|---|---|---|---|
-| `dense-only` | dense | 50 | — | 10 | — |
-| `bm25-only` | bm25 | — | 50 | 10 | — |
+| `dense-only` | dense | 50 |  -  | 10 |  -  |
+| `bm25-only` | bm25 |  -  | 50 | 10 |  -  |
 | `hybrid-rrf` | hybrid | 50 | 50 | 10 | 60 |
 
 Scored on 131 answerable gold items; 22 unanswerable items excluded from retrieval metrics (they measure abstention, which is a generation property).

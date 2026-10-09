@@ -15,7 +15,7 @@ Prior to this decision, DocScout operated strictly as an offline, fixed-manifest
 2. **Absence of Freshness Telemetry in Health and Metrics (C-6):**
    `GET /healthz` and `GET /metrics` reported only generic database ping connectivity and raw chunk count. Operators, orchestrators, and automated monitors had no indicator of how long ago the corpus was audited, whether a refresh was overdue, or whether manifest drift had occurred.
 3. **Unexercised Supersession Lifecycle:**
-   While `is_current` boolean flags existed in the schema, 100% of corpus versions were current (0 superseded documents). The live lifecycle—where an amended circular at a known canonical URL demotes an older version, retains previous chunks for compliance auditability (FR-4), and updates retrieval filters—had no automated end-to-end integration test.
+   While `is_current` boolean flags existed in the schema, 100% of corpus versions were current (0 superseded documents). The live lifecycle - where an amended circular at a known canonical URL demotes an older version, retains previous chunks for compliance auditability (FR-4), and updates retrieval filters - had no automated end-to-end integration test.
 4. **Untested Disaster Recovery Truncate Procedure:**
    The documented disaster-recovery procedure (`README.md` lines 530–545: `TRUNCATE ... CASCADE` followed by pipeline re-run) was never tested end-to-end in CI.
 

@@ -1,4 +1,4 @@
-=== M1 schema migration evidence — 2026-10-01T16:15:46Z ===
+=== M1 schema migration evidence  -  2026-10-01T16:15:46Z ===
 
 --- engine ---
 PostgreSQL 18.4 (Debian 18.4-1.pgdg12+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit
@@ -75,7 +75,7 @@ pgvector 0.8.2
 ============================== 19 passed in 0.30s ==============================
 
 ==============================================================
-RUNNER BEHAVIOUR — each property exercised, not assumed
+RUNNER BEHAVIOUR  -  each property exercised, not assumed
 ==============================================================
 
 --- 1. REVERSIBILITY: down --to 0, then up (round trip) ---

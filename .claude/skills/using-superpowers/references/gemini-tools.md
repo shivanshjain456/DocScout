@@ -15,7 +15,7 @@ Skills speak in actions ("dispatch a subagent", "create a todo", "read a file").
 | Fetch a URL | `web_fetch` |
 | Search the web | `google_web_search` |
 | Invoke a skill | `activate_skill` |
-| Dispatch a subagent (`Subagent (general-purpose):` template) | `invoke_agent` with `agent_name: "generalist"` (invocable via `@generalist` chat syntax — see [Subagent support](#subagent-support)) |
+| Dispatch a subagent (`Subagent (general-purpose):` template) | `invoke_agent` with `agent_name: "generalist"` (invocable via `@generalist` chat syntax  -  see [Subagent support](#subagent-support)) |
 | Multiple parallel dispatches | Multiple `invoke_agent` calls in the same response |
 | Task tracking ("create a todo", "mark complete") | `write_todos` (statuses: pending, in_progress, completed, cancelled, blocked) |
 
@@ -41,7 +41,7 @@ Skills dispatch with `Subagent (general-purpose):` and either reference a prompt
 
 ### Prompt filling
 
-Skills provide prompt templates with placeholders like `{WHAT_WAS_IMPLEMENTED}` or `[FULL TEXT of task]`. Fill all placeholders before passing the complete prompt to `invoke_agent`. The prompt template itself contains the agent's role, review criteria, and expected output format — the subagent will follow it.
+Skills provide prompt templates with placeholders like `{WHAT_WAS_IMPLEMENTED}` or `[FULL TEXT of task]`. Fill all placeholders before passing the complete prompt to `invoke_agent`. The prompt template itself contains the agent's role, review criteria, and expected output format  -  the subagent will follow it.
 
 ### Parallel dispatch
 

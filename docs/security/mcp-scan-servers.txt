@@ -1,7 +1,7 @@
-### snyk-agent-scan (formerly mcp-scan) inspect — 2026-10-01T10:03:40Z
+### snyk-agent-scan (formerly mcp-scan) inspect  -  2026-10-01T10:03:40Z
 NOTE: full 'scan' (threat analysis) requires SNYK_TOKEN, which is outside the §10.1
       credential list, so it was NOT requested. 'inspect' runs locally without a token.
-      Independent description audit performed by scripts/mcp_probe.py — see docs/setup/mcp-verify/.
+      Independent description audit performed by scripts/mcp_probe.py  -  see docs/setup/mcp-verify/.
 
 Snyk Agent Scan v0.6.8
 

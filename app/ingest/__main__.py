@@ -1,4 +1,4 @@
-"""Ingestion CLI — `python -m app.ingest`, or `make ingest`.
+"""Ingestion CLI  -  `python -m app.ingest`, or `make ingest`.
 
 Ingestion is a CLI entrypoint and never an API route: nothing in `app/api/` may trigger it
 (ARCHITECTURE §3.1, OUT-5). A corpus rebuild is an operator action with a cost and a
@@ -35,7 +35,7 @@ def display_path(path: Path) -> str:
     """Show a path relative to the repo when it is inside it, absolute when it is not.
 
     `Path.relative_to` raises for any path outside the repository *and* for a relative
-    path that does not literally start with the repo prefix — which is what a user-supplied
+    path that does not literally start with the repo prefix  -  which is what a user-supplied
     `--report-dir docs/...` is. Resolving first makes the common case relative; the
     fallback keeps an out-of-tree report directory from crashing a run that has already
     written all of its data.

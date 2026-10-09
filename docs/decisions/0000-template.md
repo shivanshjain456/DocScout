@@ -8,7 +8,7 @@
 ## Context
 
 What forces are at play? What problem are we solving, under what constraints (cost, latency,
-hardware, licensing, deadline)? What evidence do we have — measurements, report paths, sources?
+hardware, licensing, deadline)? What evidence do we have  -  measurements, report paths, sources?
 State facts with artifacts, not impressions.
 
 ## Decision
@@ -28,7 +28,7 @@ forecloses. Include the cost and performance implications with numbers where kno
 ### <Alternative A>
 - What it is.
 - Why it was plausible (the honest case for it).
-- Why we rejected it — with evidence, not vibes.
+- Why we rejected it  -  with evidence, not vibes.
 - What would change our mind (the condition under which we would revisit).
 
 ### <Alternative B>

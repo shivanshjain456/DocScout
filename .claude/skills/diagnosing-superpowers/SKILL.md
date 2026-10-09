@@ -1,6 +1,6 @@
 ---
 name: diagnosing-superpowers
-description: Use when a superpowers session went wrong and your human partner wants to know why — repeated work, ignored plans, stumbles, poor results, a skill that didn't fire, "it took too long", "why is it so expensive", "what is it doing" — or wants to build a bug report for the superpowers maintainers, for the current session or a past one identified by id or path, on any harness.
+description: Use when a superpowers session went wrong and your human partner wants to know why  -  repeated work, ignored plans, stumbles, poor results, a skill that didn't fire, "it took too long", "why is it so expensive", "what is it doing"  -  or wants to build a bug report for the superpowers maintainers, for the current session or a past one identified by id or path, on any harness.
 ---
 
 # Diagnosing Superpowers
@@ -45,14 +45,14 @@ Create a todo per step. Steps 5–7 run only on their stated condition.
    it to the workspace, show it, and give the path. Check what cited content
    actually proves and preserve the supporting case; a symlink alias is not a
    redundant copy.
-5. **GitHub issues** — when report §7 says possible or likely, or your
+5. **GitHub issues**  -  when report §7 says possible or likely, or your
    partner asks. Search open and closed issues for the symptoms per
    `references/github-issues.md`. Show matches and suggest adding the
    report to the closest. If none match, fill `templates/issue.md`, write
    it to the workspace, show the exact text, and create the issue only
    after approval. `gh` cannot attach files; if a bundle exists, give
    your partner its path to attach in the browser.
-6. **Export** — only when your partner asks for a bundle; never build one
+6. **Export**  -  only when your partner asks for a bundle; never build one
    unprompted. If the intake goal was a bug report, say once that a
    scrubbed bundle is available on request, then wait. Ask the redaction
    level, stating what each includes: skeleton (no tool-result bodies),
@@ -64,7 +64,7 @@ Create a todo per step. Steps 5–7 run only on their stated condition.
    Archive (`zip -r` or `tar -czf`) only after approval. With the archive
    path, state what it contains, point at the scrub log for replacements, and
    say scrubbing can miss things: they must review every file before sharing.
-7. **Similar sessions** — when asked. Turn confirmed findings into a
+7. **Similar sessions**  -  when asked. Turn confirmed findings into a
    signature, list candidates by mtime and size, find marker line numbers,
    dispatch `prompts/similar-session.md` per candidate in parallel, and
    append report §9.
@@ -104,8 +104,8 @@ yourself in step 3 and which findings to lead with in the verdict.
 - **Intake before analysis.** Nothing in steps 2–7 starts until your
   partner has answered. If they are away, write the questions and stop.
   A statement you reconstructed for them is not an answer. An
-  already-scoped request — one specific event, what is running now, or
-  the analysis to run — is itself the statement: answer it, then ask.
+  already-scoped request  -  one specific event, what is running now, or
+  the analysis to run  -  is itself the statement: answer it, then ask.
   A whole-session "why" is a complaint.
 
 ## Red Flags

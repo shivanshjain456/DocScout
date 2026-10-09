@@ -3,14 +3,14 @@
 - **Status:** accepted
 - **Date:** 2026-10-08
 - **Deciders:** DocScout Principal Engineer
-- **Related:** ADR-0008 (serve evidence, not answers — with explicit reversal condition), ADR-0005 (chunk IDs), `EVAL_PROTOCOL.md` §4 and §5, `SECURITY.md` T-1, S-7, S-8, FR-12
+- **Related:** ADR-0008 (serve evidence, not answers  -  with explicit reversal condition), ADR-0005 (chunk IDs), `EVAL_PROTOCOL.md` §4 and §5, `SECURITY.md` T-1, S-7, S-8, FR-12
 - **Evidence:** `app/generate/`, `app/evals/judge.py`, `evals/calibration/20261008T200000Z/judge_calibration.json`, `tests/test_injection.py`, `tests/test_generator.py`, `tests/test_judge.py`, `tests/test_calibration.py`
 
 ## Context
 
 ADR-0008 established that `POST /v1/search` serves retrieved evidence (passages and checkable chunk citations) rather than prose, because at the time no generator existed, no API keys were provisioned, and no calibrated judge was available. ADR-0008 defined an explicit reversal condition:
 
-> *"When API keys exist [or a local verified generator exists]: add generation behind this endpoint, not instead of it — the passages stay in the response, the generated answer is an additional field, and it ships only once the judge is calibrated against 60–100 human labels with Cohen's κ reported (EVAL_PROTOCOL §4.1 and §5). Until κ exists, a generated answer would be an unmeasured claim..."*
+> *"When API keys exist [or a local verified generator exists]: add generation behind this endpoint, not instead of it  -  the passages stay in the response, the generated answer is an additional field, and it ships only once the judge is calibrated against 60–100 human labels with Cohen's κ reported (EVAL_PROTOCOL §4.1 and §5). Until κ exists, a generated answer would be an unmeasured claim..."*
 
 Without an answer-generation tier, DocScout could not demonstrate synthesis over regulatory text, citation insertion, or evaluated answer faithfulness against industry benchmarks (RAGFlow, Onyx, Dify, FastGPT, Khoj).
 

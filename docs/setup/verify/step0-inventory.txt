@@ -1,4 +1,4 @@
-### Step 0 baseline inventory — captured 2026-10-01 (pre-install state reconstructed from session log)
+### Step 0 baseline inventory  -  captured 2026-10-01 (pre-install state reconstructed from session log)
 --- uname -a ---
 Linux e2b.local 6.1.158+ #1 SMP PREEMPT_DYNAMIC Fri Jul 17 14:31:34 UTC 2026 x86_64 GNU/Linux
 --- os-release ---

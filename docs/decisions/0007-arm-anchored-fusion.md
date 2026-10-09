@@ -19,20 +19,20 @@ Measured on the serving configuration before this change:
 |---|---|
 | BM25 | **1** (score 18.09, the top hit by a decisive margin) |
 | dense | 41 (cosine 0.613 against a top hit of 0.715) |
-| hybrid RRF, k=60 | **14** — outside the served depth of 10 |
+| hybrid RRF, k=60 | **14**  -  outside the served depth of 10 |
 
 The item scored zero recall at every cutoff while one arm had the answer in first place.
 
 This is not a tuning accident, it is the documented cost of rank-only fusion arriving. RRF
 scores a document `1/(k + rank)` per arm, so at `k=60` rank 1 is worth `1/61` and rank 41 is
-worth `1/101` — a ratio of only **1.66×**. A chunk that both arms place near the top
+worth `1/101`  -  a ratio of only **1.66×**. A chunk that both arms place near the top
 (`1/61 + 1/62 = 0.0325`) therefore outranks a chunk one arm is certain about
 (`1/61 + 1/101 = 0.0263`). `app/retrieval/fusion.py` already said RRF "throws away margin …
 an arm that is certain of its top hit contributes exactly as much as one that barely
 preferred it". Here that cost is the whole answer.
 
 Regulatory retrieval makes this failure mode routine rather than exotic. Questions turn on
-exact tokens — a circular number, a date, "CCTV" — which is precisely where the lexical arm
+exact tokens  -  a circular number, a date, "CCTV"  -  which is precisely where the lexical arm
 is confident and the dense arm, facing a chunk that is a table of fifty unrelated circulars,
 has nothing coherent to embed.
 
@@ -48,7 +48,7 @@ fixes on identical data.
 | k=10 | 0.695 | 0.966 | 0.992 | 0.825 | 0.845 | +0.0000 | no | 1.00 |
 | k=20 / 30 / 60 / 100 | 0.695 | 0.966 | 0.992 | 0.824 | 0.844 | +0.0000 | no | 0.00 |
 | k=5 + anchor | 0.695 | 0.977 | 0.992 | 0.826 | 0.851 | +0.0115 | no | 1.00 |
-| **k=60 + anchor** | 0.695 | 0.966 | **1.000** | 0.825 | 0.844 | +0.0000 | — | **1.00** |
+| **k=60 + anchor** | 0.695 | 0.966 | **1.000** | 0.825 | 0.844 | +0.0000 |  -  | **1.00** |
 
 Per-item comparison of `k=60 + anchor` against plain `k=60`, at both cutoffs, over all 131
 items: **0 items worse, 1 item better.** A strict Pareto improvement on this gold set.
@@ -57,7 +57,7 @@ items: **0 items worse, 1 item better.** A strict Pareto improvement on this gol
 
 **Keep `rrf_k = 60`. Guarantee each arm's own rank-1 chunk a seat in the returned `k_final`.**
 
-Implemented as `RetrievalConfig.anchor_arm_top1`, enabled on `app.retrieval.SERVING_CONFIG` —
+Implemented as `RetrievalConfig.anchor_arm_top1`, enabled on `app.retrieval.SERVING_CONFIG`  -
 the single definition of what ships, so the eval runner, the regression gate and any future
 API cannot drift apart. At most one chunk per arm is inserted, it keeps its real fused score,
 and nothing else is reordered or rescored.
@@ -67,7 +67,7 @@ The reasoning for preferring the guarantee over the obvious knob:
 1. **Lowering the constant is tuning; ADR-0006 rejected that, and the reason still holds.**
    `k=5` gains 1.15pp recall@5, which is 1.5 items out of 131, and its bootstrap CI includes
    zero. Adopting it would be fitting noise, and the sweep shows the gain is a cliff between
-   k=5 and k=10 rather than a smooth optimum — the signature of a value that happens to flip
+   k=5 and k=10 rather than a smooth optimum  -  the signature of a value that happens to flip
    a couple of items on this gold set.
 2. **The guarantee is structural and addresses the diagnosed cause.** The defect is that
    rank-only fusion cannot express certainty. Reserving a seat restores exactly the missing
@@ -81,7 +81,7 @@ The reasoning for preferring the guarantee over the obvious knob:
 
 Recorded honestly: the aggregate movement from this change is one item. It is adopted because
 it removes a diagnosed structural failure at zero measured cost, not because the gold set can
-prove it is better. The gate agrees — recall unchanged, MRR +0.07pp, no regression.
+prove it is better. The gate agrees  -  recall unchanged, MRR +0.07pp, no regression.
 
 ## Consequences
 
@@ -104,7 +104,7 @@ prove it is better. The gate agrees — recall unchanged, MRR +0.07pp, no regres
 The obvious knob, and it does fix g-038 while adding 1.15pp recall@5. Rejected because the
 gain is 1.5 items with a CI spanning zero, because ADR-0006 declined exactly this tuning for
 exactly this reason, and because the effect is a step between k=5 and k=10 rather than an
-optimum — a shape that rarely transfers to a different corpus. Revisit when the gold set is
+optimum  -  a shape that rarely transfers to a different corpus. Revisit when the gold set is
 large enough for 1pp to be resolvable.
 
 ### B. Weighted RRF favouring the lexical arm
@@ -118,8 +118,8 @@ benchmark would be measuring the benchmark's bias and calling it a tuning result
 This would genuinely fix the class of problem, since BM25's margin is exactly the information
 RRF discards. Rejected for the reasons in ADR-0006 §C: BM25 is unbounded and corpus-dependent,
 cosine is bounded, and any normalisation is itself a tuned, corpus-specific choice that one
-arm's score distribution can destabilise. The anchor captures the specific case that matters —
-an arm's single most confident result — without importing that whole problem.
+arm's score distribution can destabilise. The anchor captures the specific case that matters  -
+an arm's single most confident result  -  without importing that whole problem.
 
 ### D. Raise `k_final` from 10 to 15
 
@@ -130,7 +130,7 @@ every query to rescue one. It also fails the next case where a confident hit lan
 ### E. Add a cross-encoder reranker
 
 A reranker reorders what retrieval already returned, so it cannot recover a chunk that never
-entered the top 10 — it would not have fixed this at all. Still worth doing for ordering, as
+entered the top 10  -  it would not have fixed this at all. Still worth doing for ordering, as
 ADR-0006 notes, but it is not a fix for this defect and adopting it here would have been
 mistaking activity for diagnosis.
 
@@ -140,4 +140,4 @@ The quickest green build. Rejected, and worth stating plainly: the item is well-
 quote is verbatim in the corpus, its citation resolves, and a compliance analyst asking which
 circular was withdrawn is the product's core use case. Deleting the question that exposes a
 defect is how a gold set becomes decoration, and the gate's own invariants exist to make that
-visible — a shrinking item count fails the build.
+visible  -  a shrinking item count fails the build.

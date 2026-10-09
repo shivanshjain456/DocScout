@@ -5,12 +5,12 @@ is worth paying. A reranker reorders a list it is given; it can never introduce 
 retrieval failed to return. On this corpus the serving configuration already reaches
 recall@10 = 1.000 (ADR-0007), so a reranker cannot improve recall at depth 10 by
 construction. Its entire possible contribution is at the top of the list, where recall@1
-is 0.695 — that is the headroom, and that is what the ablation measures.
+is 0.695  -  that is the headroom, and that is what the ablation measures.
 
 Why a cross-encoder rather than a second bi-encoder pass: the dense arm already embeds the
 query and the passage independently, so a second independent embedding adds no information.
 A cross-encoder reads query and passage together in one forward pass and can therefore
-model term interaction — which is the only reason it is worth 100x the cost per pair.
+model term interaction  -  which is the only reason it is worth 100x the cost per pair.
 
 Determinism matters here as much as anywhere else in this project. The model runs in
 inference mode with a fixed batch size, and ties in the score are broken by the candidate's

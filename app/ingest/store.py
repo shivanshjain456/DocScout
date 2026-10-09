@@ -1,4 +1,4 @@
-"""Transactional persistence — FR-4, FR-5, NFR-8, ARCHITECTURE §3.1.
+"""Transactional persistence  -  FR-4, FR-5, NFR-8, ARCHITECTURE §3.1.
 
 One transaction per document, as ARCHITECTURE §3.1 specifies: a document, its version and
 all of its chunks become visible together or not at all. A partially stored document is
@@ -13,7 +13,7 @@ The three rules this module implements, and where each is really enforced:
   wrong or two ingests race.
 * **FR-4, a changed hash at a known URL is a new version.** The previous current version
   is demoted in the same transaction that inserts the new one, so `uq_versions_one_current`
-  is never transiently violated. Nothing is deleted — the application role has no DELETE
+  is never transiently violated. Nothing is deleted  -  the application role has no DELETE
   privilege to do it with.
 * **NFR-8, idempotent restartable ingestion.** Re-running over an unchanged corpus
   performs no writes at all. `version_exists` lets the pipeline establish that with one

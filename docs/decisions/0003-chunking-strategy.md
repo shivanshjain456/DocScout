@@ -35,7 +35,7 @@ Three further controls:
   configuration, which is how we know the harness works and that the masked numbers measure
   difficulty rather than breakage.
 
-Geometry is computed once from clean, unmasked text — exactly what production would chunk — and
+Geometry is computed once from clean, unmasked text  -  exactly what production would chunk  -  and
 shared by both retrieval variants. The injection canary is indexed as a distractor but **never**
 used as gold: scoring a hit on it would invert the test it exists to perform. Every configuration
 is scored under BM25, dense, and RRF(60) so the decision can be checked against U-10, still open.
@@ -43,7 +43,7 @@ is scored under BM25, dense, and RRF(60) so the decision can be checked against 
 ### Results
 
 200 probe spans over 21 documents (139,429 chars). `integrity` is the fraction of gold spans
-sitting entirely inside some chunk — deterministic, no retrieval involved. `tightness` is gold
+sitting entirely inside some chunk  -  deterministic, no retrieval involved. `tightness` is gold
 span length over cited chunk length: **higher means a tighter citation**, lower means the reader
 is handed more irrelevant text.
 
@@ -90,12 +90,12 @@ Four findings drive the decision:
    optimum.
 3. **1,200 characters breaches the ADR-0002 ceiling.** Even on cleaned text it produced 524–526
    token chunks against a 512 limit, truncating 1–2 chunks per configuration. Truncation silently
-   discards the tail of a chunk while leaving its `char_end` claiming otherwise — a correctness
+   discards the tail of a chunk while leaving its `char_end` claiming otherwise  -  a correctness
    bug in citations, not a quality tradeoff. This disqualifies 1,200 despite its significantly
    better recall.
 4. **Cleaning buys token headroom, not retrieval quality.** Integrity and recall are identical
    between cleaned and raw (0.855 / 0.620 both ways). What changes is the token budget: at 1,000
-   chars, raw text peaks at **484** tokens versus **441** cleaned — 94% of the ceiling versus 86%.
+   chars, raw text peaks at **484** tokens versus **441** cleaned  -  94% of the ceiling versus 86%.
    ADR-0002 speculated cleaning would help retrieval; measured, it does not. It earns its place by
    keeping the chosen size safely inside the limit.
 
@@ -106,7 +106,7 @@ Four findings drive the decision:
 
 Normative rules, each tied to something that breaks without it:
 
-- Text **MUST** be cleaned before chunking, and the cleaning **MUST** preserve offsets — noise
+- Text **MUST** be cleaned before chunking, and the cleaning **MUST** preserve offsets  -  noise
   characters are replaced by spaces of equal length, never deleted. This is what keeps
   `char_start`/`char_end` valid against the *original* extracted text, which FR-7 requires for a
   citation to resolve to a byte range. Cleaning removes Devanagari, Latin-Extended-B/IPA mojibake,
@@ -120,7 +120,7 @@ Normative rules, each tied to something that breaks without it:
   remain resolvable after supersession (FR-4), so chunk rows are never rewritten in place when a
   new version arrives.
 - Retrieval tuning (U-10) **MUST** be done against the hybrid, never the dense arm alone. On
-  verbatim probes BM25 scores a perfect 1.000 R@5 where dense reaches 0.945 — and RRF(60) scores
+  verbatim probes BM25 scores a perfect 1.000 R@5 where dense reaches 0.945  -  and RRF(60) scores
   0.980, *below* BM25 alone, because naive fusion dilutes an exact lexical match. On masked probes
   the ordering inverts (dense 0.570, BM25 0.570, RRF 0.595). Fusion weighting is therefore a real
   open decision, not a formality.
@@ -128,7 +128,7 @@ Normative rules, each tied to something that breaks without it:
 **What this is not.** The masked R@5 of 0.595 is not a prediction of production recall. It is a
 deliberately adversarial probe in which the answer text has been removed from the index, so the
 retriever must match a sentence to its surroundings. The verbatim control on the same chunks is
-0.980. Real queries sit between the two, and neither number may be quoted as a system metric —
+0.980. Real queries sit between the two, and neither number may be quoted as a system metric  -
 only `EVAL_PROTOCOL.md` numbers against a real gold set may be.
 
 ## Consequences
@@ -140,7 +140,7 @@ only `EVAL_PROTOCOL.md` numbers against a real gold set may be.
 - **7 of 200 spans (3.5%) still straddle a boundary** even at the chosen configuration. These are
   permanently uncitable as a single chunk. Reranking and a read-time context window can mitigate
   the retrieval half of that, but not the citation half.
-- **Citation tightness is 0.204** — about 80% of a cited chunk is not the answer. This is a
+- **Citation tightness is 0.204**  -  about 80% of a cited chunk is not the answer. This is a
   reviewer-effort proxy, *not* the same thing as `QUALITY_BAR.md`'s citation precision ≥ 0.90,
   which asks whether the citation supports the claim. It does mean a compliance reader is handed
   roughly five times the text they need, and the cross-encoder reranker was named as the
@@ -150,11 +150,11 @@ only `EVAL_PROTOCOL.md` numbers against a real gold set may be.
   measured on short synthetic text; on real chunks the reranker costs 102–126 ms/pair, and
   measured end to end it buys three items of recall@1 for 30× the p95. It is built and tested
   but disabled, so the "intended mitigation" for over-long context is currently *not* in the
-  serving path. The chunk geometry decision itself is unaffected — it was never justified by
-  the reranker — but this mitigation should not be cited as available.
+  serving path. The chunk geometry decision itself is unaffected  -  it was never justified by
+  the reranker  -  but this mitigation should not be cited as available.
 - **Corpus sizing gets a conversion factor**: this configuration yields one chunk per ~820
   characters of source text, so `CORPUS_SPEC.md` C-5's illustrative 10,000 chunks corresponds to
-  roughly 8.2M characters — about 59× the current 139k-character sample — and ~24 minutes of
+  roughly 8.2M characters  -  about 59× the current 139k-character sample  -  and ~24 minutes of
   embedding at the ADR-0002 rate of 6.9 chunks/s.
 - **Clause-aware chunking is parked, not dead.** It produced the tightest citations of any
   1,000-char configuration (0.243 vs 0.204) and would likely win outright if the extractor
@@ -164,20 +164,20 @@ only `EVAL_PROTOCOL.md` numbers against a real gold set may be.
   thresholds; an extraction upgrade that restores document structure; or tables (U-11), which this
   sweep did not model at all and which fixed-width chunking will certainly shred.
 
-## Amendment, 2026-10-02 — invisible and private-use characters
+## Amendment, 2026-10-02  -  invisible and private-use characters
 
 The offset-preserving cleaning contract this ADR established was sound; its blanking list
 was incomplete. It enumerated Unicode *ranges* (Devanagari, Latin Extended-B, spacing
 modifiers, U+FFFD) and therefore missed anything outside them.
 
-A character-level scan of all 170 stored chunks found **four occurrences of U+F0E0** — a
+A character-level scan of all 170 stored chunks found **four occurrences of U+F0E0**  -  a
 Private Use Area codepoint, the Wingdings breadcrumb arrow SEBI circulars use in "available
 at www.sebi.gov.in under the link *Legal → Circulars*". It was embedded into the vector,
 tokenised, and returned in API responses; **two of the four chunks are cited by the gold
 set**. OWASP's LLM09 (Vector and Embedding Weaknesses) names exactly this class: strip
 formatting and detect hidden content so it does not survive ingestion.
 
-Cleaning now blanks Unicode categories **Cf** (format — zero-width, bidi overrides, soft
+Cleaning now blanks Unicode categories **Cf** (format  -  zero-width, bidi overrides, soft
 hyphen, BOM), **Co** (private use) and **Cs** (surrogate), by *category* rather than by
 range, because the category is the rule and enumerating ranges is what let U+F0E0 through.
 Cc (control) is deliberately excluded: newline and tab are structure.
@@ -190,7 +190,7 @@ ingest report, because silent removal is how a corpus stops matching its source.
 
 **Operational note.** Ingestion skips a document whose source sha256 is unchanged, so a
 cleaning change is *not* picked up by re-running `make ingest`. Derived data must be
-rebuilt deliberately — see "Rebuilding derived data" in the README.
+rebuilt deliberately  -  see "Rebuilding derived data" in the README.
 
 ## Rejected alternatives
 
@@ -198,21 +198,21 @@ rebuilt deliberately — see "Rebuilding derived data" in the README.
 
 The cheapest option, and clearly wrong. Dropping overlap at 1,000 chars costs **0.110 span
 integrity** (0.965 → 0.855, p = 0.0001): 22 more of 200 answer spans get cut across a boundary
-and become uncitable. The saving is 21 chunks — 14% of the index, or roughly 5 MB at the
+and become uncitable. The saving is 21 chunks  -  14% of the index, or roughly 5 MB at the
 10,000-chunk scale against ADR-0002's 36.8 MB. Buying back 11 percentage points of citability
 for 14% more index is not a close call. Rejected.
 
-### B. 1,200 characters with overlap — the best recall in the sweep
+### B. 1,200 characters with overlap  -  the best recall in the sweep
 
 Significantly better masked recall than the chosen configuration (+0.070, p = 0.0125) and
 statistically indistinguishable span integrity. It loses on a hard constraint rather than a
 preference: it produced a 524-token chunk against ADR-0002's 512-token ceiling. Encoder
-truncation is not a graceful degradation — the chunk's stored `char_end` would claim coverage of
+truncation is not a graceful degradation  -  the chunk's stored `char_end` would claim coverage of
 text the embedding never saw, which breaks FR-7's guarantee that offsets resolve to the indexed
 content. It also has the loosest citations in the sweep (0.174). Rejected on correctness, and the
 recall it would have bought is recorded here as the measured price of that decision.
 
-### C. 800 characters with overlap — the tighter-citation option
+### C. 800 characters with overlap  -  the tighter-citation option
 
 Genuinely attractive: 21% tighter citations (0.247 vs 0.204) and 19% less context per top-5
 prompt. Rejected because it costs **0.120 masked recall** (p = 0.0009), the largest significant
@@ -223,20 +223,20 @@ recall wins at this step. It becomes the natural fallback if context budget ever
 
 Tested rather than assumed, and the structure is partly real: 74 validated clause boundaries
 across 16 of 21 documents, found by taking the longest run of inline `N.` markers incrementing by
-one — a sequential check, because a naive regex also matches dates, amounts and section letters.
+one  -  a sequential check, because a naive regex also matches dates, amounts and section letters.
 But the extracted text has **zero newlines**; layout did not survive pypdf, so clause detection is
 inference, not parsing. It loses significantly on span integrity (0.910 vs 0.965, p = 0.0433),
-gains nothing on recall (p = 0.4869), and degrades worst exactly where structure is weakest —
+gains nothing on recall (p = 0.4869), and degrades worst exactly where structure is weakest  -
 doc 12, the bilingual circular, yields no boundaries at all. Its tighter citations are a real
 advantage, which is why this is parked for re-evaluation behind a better extractor rather than
 rejected outright.
 
-### E. 400 or 600 characters — "small chunks, precise citations"
+### E. 400 or 600 characters  -  "small chunks, precise citations"
 
 The received wisdom, and the sweep refutes it for this corpus. At 400 chars span integrity
 collapses to **0.575**: four in ten answer spans are split across a boundary before retrieval even
-starts, and masked recall is 0.245. Regulatory sentences are long — the probe spans average 182
-characters (62–321) — so small windows cut through the middle of the very sentences that answer questions.
+starts, and masked recall is 0.245. Regulatory sentences are long  -  the probe spans average 182
+characters (62–321)  -  so small windows cut through the middle of the very sentences that answer questions.
 Rejected.
 
 ### F. Small-to-retrieve, large-to-read (retrieve small chunks, expand context at read time)
@@ -244,7 +244,7 @@ Rejected.
 The strongest untested alternative, and it would genuinely dissolve the recall-versus-tightness
 trade: index 400-char chunks for precise citation, then expand to neighbouring text before
 generation. The schema already supports it, since `char_start`/`char_end` make expansion a
-substring operation. Rejected for this iteration on scope and sequencing — it is a retrieval
+substring operation. Rejected for this iteration on scope and sequencing  -  it is a retrieval
 *and* generation design, it interacts with U-10 fusion and the context budget, and committing to
 it now would decide those by implication. Recorded as the first thing to try if citation tightness
 becomes the binding constraint at M4.
@@ -253,7 +253,7 @@ becomes the binding constraint at M4.
 
 Split where embedding similarity between adjacent sentences drops. Rejected on cost and
 determinism: it requires embedding every sentence before chunking (roughly 4× the ingest cost at
-the ADR-0002 rate), makes chunk boundaries depend on the embedding model — re-coupling U-8 to U-9
-after ADR-0002 deliberately ordered them — and makes re-ingestion non-deterministic across model
+the ADR-0002 rate), makes chunk boundaries depend on the embedding model  -  re-coupling U-8 to U-9
+after ADR-0002 deliberately ordered them  -  and makes re-ingestion non-deterministic across model
 versions, which `EVAL_PROTOCOL.md` §7 reproducibility forbids. Not justified by anything observed
 in this corpus.

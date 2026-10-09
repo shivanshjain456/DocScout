@@ -26,7 +26,7 @@ Return format (nothing else):
 ## <Dimension> findings
 
 - finding: <one sentence, what happened>
-  evidence: <absolute path>:<line> — "<quote, at most 200 characters>"
+  evidence: <absolute path>:<line>  -  "<quote, at most 200 characters>"
   turns: <first human turn>–<last human turn>
   confidence: high | medium | low
 

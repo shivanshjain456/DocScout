@@ -1,4 +1,4 @@
-"""HTTP fetching for the corpus — FR-1 / CORPUS_SPEC C-1, §2.1.
+"""HTTP fetching for the corpus  -  FR-1 / CORPUS_SPEC C-1, §2.1.
 
 Phase 0 discovered the access behaviour this has to respect (CORPUS_SPEC §2.1): RBI embeds
 absolute PDF links in plain HTML, SEBI answers 403 to directory-style paths but 200 to

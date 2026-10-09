@@ -1,4 +1,4 @@
-M0 VERIFICATION EVIDENCE — environment bootstrap + version-control restoration
+M0 VERIFICATION EVIDENCE  -  environment bootstrap + version-control restoration
 Generated: 2026-10-01T14:02:30Z   Host: Linux 6.1.158+ x86_64, 2 vCPU
 Refs: ADR-0001 · SPEC.md §2.3 · MILESTONES.md M0 · QUALITY_BAR.md Q-1/Q-3
 ==============================================================================
@@ -11,7 +11,7 @@ ls: cannot access '.venv': No such file or directory
 confirmed: .venv absent
 
 ────────────────────────────────────────────────────────────────
- DocScout bootstrap — tier=core  mode=install
+ DocScout bootstrap  -  tier=core  mode=install
 ────────────────────────────────────────────────────────────────
  OK         shell wiring     ~/.bashrc already configured
  OK         git              2.47.3
@@ -82,7 +82,7 @@ working tree                 : 1 modified (0 = clean)
 
 ### T6. Bootstrap idempotency re-check (installs nothing)
 ────────────────────────────────────────────────────────────────
- DocScout bootstrap — tier=core  mode=check
+ DocScout bootstrap  -  tier=core  mode=check
 ────────────────────────────────────────────────────────────────
  OK         shell wiring     ~/.bashrc already configured
  OK         git              2.47.3

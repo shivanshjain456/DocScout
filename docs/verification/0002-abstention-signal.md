@@ -1,4 +1,4 @@
-# Verification story 2 — measuring when the corpus cannot answer
+# Verification story 2  -  measuring when the corpus cannot answer
 
 A seventh of the gold set was doing no work, and the obvious way to use it turned out not
 to function. This records what was measured, what was rejected on the evidence, and what
@@ -14,7 +14,7 @@ Everything below is reproducible with `make eval`; the numbers come from
 `EVAL_PROTOCOL` Q-18 requires the gold set to be at least 10% unanswerable, and it is:
 **22 of 153 items, 14.4%**. Every one of them was excluded from every metric. The eval
 runner filtered them out because the retrieval scorers measure citation coverage, and an
-item with no citations has none to cover — a correct reason to exclude them from *those*
+item with no citations has none to cover  -  a correct reason to exclude them from *those*
 metrics, and a bad reason to leave them unmeasured entirely.
 
 These are the expensive items. Each was written so the corpus *nearly* answers it, and the
@@ -35,12 +35,12 @@ unanswerable (AUC; 0.5 is chance):
 
 | signal | AUC | verdict |
 |---|---|---|
-| `rrf_top` — the serving configuration's own score | **0.467** | worse than chance |
-| `dense_margin` — top-1 minus top-5 cosine | 0.461 | no signal, pointing the wrong way |
-| `docs_in_top10` — how many documents the results span | 0.477 | no signal |
-| `dense_top` — best cosine similarity | 0.574 | weak |
-| `bm25_top` — best BM25 score | 0.655 | weak |
-| **`cover_top5`** — query terms found in the top 5 passages | **0.730** | usable |
+| `rrf_top`  -  the serving configuration's own score | **0.467** | worse than chance |
+| `dense_margin`  -  top-1 minus top-5 cosine | 0.461 | no signal, pointing the wrong way |
+| `docs_in_top10`  -  how many documents the results span | 0.477 | no signal |
+| `dense_top`  -  best cosine similarity | 0.574 | weak |
+| `bm25_top`  -  best BM25 score | 0.655 | weak |
+| **`cover_top5`**  -  query terms found in the top 5 passages | **0.730** | usable |
 
 `rrf_top` cannot work even in principle: RRF scores by rank, so the top result's score is
 nearly constant whether or not anything relevant was found. Shipping a gate on it would
@@ -58,7 +58,7 @@ in the top five passages.
 The mechanism is the reason it beats the scores. An unanswerable question here is usually
 unanswerable because of one specific word the corpus never uses, while every other word in
 the question retrieves its topic perfectly. A score rewards the matching topic. Coverage
-notices the missing word — and can name it:
+notices the missing word  -  and can name it:
 
 | item | question | missing terms |
 |---|---|---|
@@ -92,8 +92,8 @@ The API returns the coverage, the missing terms and the `low_evidence` boolean *
 the passages**. It does not withhold them.
 
 A signal with AUC 0.730 has no business making that decision for a caller. Over-refusal is
-a documented failure mode — FinRAG-12B reports GPT-4.1 refusing 20.2% of queries against a
-calibrated 12% — and at threshold 0.65 this signal would be wrong 40% of the times it
+a documented failure mode  -  FinRAG-12B reports GPT-4.1 refusing 20.2% of queries against a
+calibrated 12%  -  and at threshold 0.65 this signal would be wrong 40% of the times it
 fired. Surfacing uncertainty is useful; acting on it unilaterally at this accuracy is not.
 
 ## 6. What this does not show

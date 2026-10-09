@@ -6,15 +6,15 @@
 - **Closes:** the rerank half of **U-10** (candidate depth and rerank depth) and the rerank ablation that `EVAL_PROTOCOL.md` §8.1 requires
 - **Amends:** `ARCHITECTURE.md` §3, which specified an always-on cross-encoder stage and quoted a per-pair cost that this ADR corrects by a factor of ~20
 - **Related:** ADR-0006 (deferred the reranker with a prediction) · ADR-0007 (made recall@10 = 1.000, which bounds what a reranker can achieve) · ADR-0008 (serving configuration and its latency budget)
-- **Also answers:** "why not HyDE?" — rejected alternative D, on three independent grounds
+- **Also answers:** "why not HyDE?"  -  rejected alternative D, on three independent grounds
 - **Evidence:** `scripts/experiments/u10_rerank_ablation.py` and `evals/experiments/u10-rerank-20261002T062322Z/results.json` · `app/retrieval/rerank.py` · `tests/test_rerank.py` (12 cases)
 
 ## Context
 
 `ARCHITECTURE.md` §3 has specified a cross-encoder rerank stage since M1, and
 `MILESTONES.md` lists it as M4 work. It was never built. ADR-0006 deferred it with an
-explicit prediction — that a reranker "cannot fix a recall ceiling, and at recall@10 near
-0.98 there is almost nothing left for it to recover" — and ADR-0007 then raised recall@10
+explicit prediction  -  that a reranker "cannot fix a recall ceiling, and at recall@10 near
+0.98 there is almost nothing left for it to recover"  -  and ADR-0007 then raised recall@10
 to **1.000**, which makes the prediction sharper rather than obsolete: on this corpus a
 reranker provably **cannot** improve recall at the serving depth, because retrieval already
 returns every piece of required evidence.
@@ -31,7 +31,7 @@ bootstrap on recall@1 (`scripts/experiments/u10_rerank_ablation.py`):
 
 | variant | R@1 | R@3 | R@5 | R@10 | MRR | nDCG@5 | p95 | Δ R@1 | CI excludes 0 |
 |---|---|---|---|---|---|---|---|---|---|
-| **no rerank (serving)** | 0.695 | **0.927** | 0.966 | **1.000** | 0.825 | 0.844 | **39 ms** | — | — |
+| **no rerank (serving)** | 0.695 | **0.927** | 0.966 | **1.000** | 0.825 | 0.844 | **39 ms** |  -  |  -  |
 | rerank top 10 | **0.718** | 0.924 | **0.977** | **1.000** | **0.850** | **0.867** | 1,185 ms | +0.023 | **no** |
 | rerank top 20 | 0.718 | 0.924 | 0.977 | 0.992 | 0.848 | 0.867 | 2,455 ms | +0.023 | no |
 | rerank top 50 | 0.718 | 0.924 | 0.977 | 0.992 | 0.848 | 0.867 | 6,276 ms | +0.023 | no |
@@ -48,7 +48,7 @@ The NFR budget is p95 < 3 s end to end, so top-20 and top-50 breach it outright,
 spends 40% of the entire budget on a stage whose benefit cannot be distinguished from noise.
 
 **3. Reranking deeper than the serving depth *breaks* recall@10.** At top-20 and top-50 it
-falls from 1.000 to 0.992. This is not a measurement artifact — it is structural. Once the
+falls from 1.000 to 0.992. This is not a measurement artifact  -  it is structural. Once the
 pool is larger than `k_final`, the cross-encoder can promote a chunk from rank 11–50 over a
 chunk fusion had correctly placed in the top 10, and the displaced chunk was the evidence.
 ADR-0007's guarantee was bought with a careful, bounded change; this would spend it.
@@ -85,7 +85,7 @@ unresolvable gain is not worth 30× the latency and 30× the compute cost, and t
 configuration that preserves recall@10 is also the one with the least room to help.
 
 This is not a permanent verdict and the ADR says so. The honest reading is that the
-benchmark is saturated — recall@10 is already 1.000 on 170 chunks — so it has very little
+benchmark is saturated  -  recall@10 is already 1.000 on 170 chunks  -  so it has very little
 power to detect what a reranker would do on a corpus where retrieval actually struggles.
 **Re-run `u10_rerank_ablation.py` when the corpus grows.** That is one command, and the
 stage is already built and tested, which is the reason to keep it rather than delete it.
@@ -94,7 +94,7 @@ stage is already built and tested, which is the reason to keep it rather than de
 
 - Serving latency and cost are unchanged: p95 48 ms end to end, ~$0.08 per million queries
   (ADR-0008). Enabling top-10 reranking would make those roughly 1.2 s and ~$2.40 per
-  million — a useful number to have measured rather than guessed.
+  million  -  a useful number to have measured rather than guessed.
 - `ARCHITECTURE.md`'s pipeline description changes from "then cross-encoder rerank" to an
   available, measured, disabled stage. The document no longer describes code that does not
   run.
@@ -132,11 +132,11 @@ real. This is the first thing to try if the corpus grows and reranking starts to
 Generate a hypothetical answer with an LLM, embed that, and retrieve with it. Rejected on
 three independent grounds, any one of which is sufficient:
 
-1. **It requires a generator, which does not exist** (U-1, no API keys) — and ADR-0008
+1. **It requires a generator, which does not exist** (U-1, no API keys)  -  and ADR-0008
    declined to put an unmeasured model in the request path.
 2. **It targets a problem this system does not have.** HyDE exists to close the vocabulary
    gap between a short question and a long document, which is precisely what the BM25 arm
-   already handles on this corpus — and the arm that measurably carries retrieval here
+   already handles on this corpus  -  and the arm that measurably carries retrieval here
    (ADR-0006).
 3. **It could not be evaluated honestly today.** The gold set's questions were authored from
    their evidence quotes and share 73.3% of their terms with the target chunk (U-18). A
@@ -144,7 +144,7 @@ three independent grounds, any one of which is sufficient:
    on a benchmark with almost no vocabulary mismatch; the measurement would be of the
    benchmark, not the technique.
 
-It also adds a generation call to every query's latency and cost — the one expense a
+It also adds a generation call to every query's latency and cost  -  the one expense a
 retrieval tier deliberately avoids.
 
 ### E. Delete the reranker code since it is disabled
@@ -154,12 +154,12 @@ unused: it is reachable through a documented configuration flag, exercised by 12
 including 4 against the real model, and executed by a committed experiment whose raw output
 this ADR cites. Deleting it would also delete the ability to re-run the ablation in one
 command when the corpus grows, which is the explicit condition for revisiting this decision.
-What would be dead code is a reranker with no tests, no experiment and no ADR — which is
+What would be dead code is a reranker with no tests, no experiment and no ADR  -  which is
 what the project had this morning, in the form of an architecture document describing a
 stage that did not exist.
 
 ### F. Run the cross-encoder on a GPU
 
-No GPU is available and none will be provisioned — this project creates no cloud resources.
+No GPU is available and none will be provisioned  -  this project creates no cloud resources.
 Worth recording only to note that it would change the arithmetic completely, not the
 conclusion: the gain would still be three items with a CI spanning zero.

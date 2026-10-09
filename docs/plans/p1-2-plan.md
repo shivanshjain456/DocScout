@@ -1,4 +1,4 @@
-# Plan: P1-2 — Metadata Filtering Beyond `is_current`
+# Plan: P1-2  -  Metadata Filtering Beyond `is_current`
 
 ## Context and Problem Statement
 - **Retrieval & Filtering Need (§3.6)**:

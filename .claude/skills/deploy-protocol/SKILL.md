@@ -45,7 +45,7 @@ as evidence.
 
 - **`terraform destroy` leaves artifacts behind.** Registries, log retention, secret versions, and
   state buckets commonly survive. Verify with list commands, not with destroy's exit code.
-- **A tag is not an identity.** `:latest` can point somewhere else tomorrow — pin and record the
+- **A tag is not an identity.** `:latest` can point somewhere else tomorrow  -  pin and record the
   **digest**.
 - **Cost caps are usually soft.** AWS budgets and GCP budget alerts *notify*; they do not reliably
   stop spend. Treat the cap as a tripwire and still check the bill.

@@ -11,7 +11,7 @@ Phase 0 finished on 2026-10-01 with a verified environment and two commits (`695
 a clean `gitleaks` scan over the full history, and `make verify-setup` at PASS=15 / FAIL=0 /
 BLOCKED=2.
 
-Work resumed in a fresh sandbox. The tracked working tree was intact — every source file, the
+Work resumed in a fresh sandbox. The tracked working tree was intact  -  every source file, the
 20-document corpus sample, and all of `docs/setup/verify/` survived. Everything else did not:
 
 | Lost | Observed |
@@ -19,7 +19,7 @@ Work resumed in a fresh sandbox. The tracked working tree was intact — every s
 | `.git/` | `git rev-parse` → *fatal: not a git repository*; the Phase 0 history is unrecoverable |
 | Toolchain | `uv`, `docker`, `psql`, `k6`, `gitleaks`, `pre-commit`, `gh`, `aws`, `pnpm` all absent from PATH |
 | `.venv/` (1.8 GB), Hugging Face cache, `node_modules/` | absent |
-| Empty directories | `evals/`, `evals/reports/`, `tests/eval/`, `docs/deploys/` absent — consistent with K-14 |
+| Empty directories | `evals/`, `evals/reports/`, `tests/eval/`, `docs/deploys/` absent  -  consistent with K-14 |
 
 This is consistent with the platform's snapshot rules: virtualenvs, caches, build output, and
 credential paths such as `.git/config` are excluded from persistence.
@@ -33,14 +33,14 @@ The forces in play:
    those claims could be re-checked. A verification matrix that cannot be re-run decays into
    folklore.
 3. **`docs/QUALITY_BAR.md` Q-1 forbids `--no-verify`.** Committing therefore required a working
-   `uv`, `mypy`, `ruff`, `gitleaks` and `pre-commit` — i.e. the environment had to be rebuilt
+   `uv`, `mypy`, `ruff`, `gitleaks` and `pre-commit`  -  i.e. the environment had to be rebuilt
    before the first commit could legitimately exist.
 
 ## Decision
 
 We will do three things, in this order.
 
-**1. Add `scripts/bootstrap.sh`** — an idempotent, version-pinned, tiered installer that
+**1. Add `scripts/bootstrap.sh`**  -  an idempotent, version-pinned, tiered installer that
 reconstructs the Phase 0 toolchain on Debian 13:
 
 - Pins read from `docs/setup/SETUP_REPORT.md`: uv 0.12.21, CPython 3.12.14, pre-commit 4.6.2,
@@ -65,7 +65,7 @@ atomic commits that describe what each body of work actually is:
 
 Every commit passes through the full 11-hook chain. No `--no-verify`, at any point.
 
-**3. Add `.gitkeep` files** to `tests/eval/` and `docs/deploys/` — the two empty directories that
+**3. Add `.gitkeep` files** to `tests/eval/` and `docs/deploys/`  -  the two empty directories that
 existing `Makefile` targets reference by path (K-14). `evals/reports/` is deliberately *not*
 tracked: it is gitignored generated output and the harness will `mkdir -p` it.
 
@@ -84,7 +84,7 @@ confirms the blast radius is small: no tracked document cites `695e0f4` or `c88f
 ADR and the two passages in `SPEC.md` §2.3 and `docs/MILESTONES.md` M0 that exist precisely to
 record the loss. `docs/setup/SETUP_REPORT.md` and `CHANGELOG.md` turn out not to reference commit
 identifiers at all, so nothing there needed annotating. What is genuinely lost is the *shape* of
-the Phase 0 history — the ability to see which change introduced which file — and that is not
+the Phase 0 history  -  the ability to see which change introduced which file  -  and that is not
 recoverable. `bootstrap.sh` is now a maintenance surface: a pin drifts whenever upstream removes a
 release artefact, and the script will fail loudly rather than silently install something else. That
 is the intended trade.
@@ -107,8 +107,8 @@ installed on linux-x86_64 from 169 locked entries, and all four CI `quality` gat
 - **The honest case for it.** History continuity is genuinely useful: `CHANGELOG.md` and
   SETUP_REPORT already cite those SHAs, and a log starting at "restore everything" loses the
   narrative of how Phase 0 was built.
-- **Why rejected.** The content of those commits cannot be reproduced — the intermediate tree state
-  no longer exists — so any reconstruction would be a plausible fiction with fabricated SHAs and
+- **Why rejected.** The content of those commits cannot be reproduced  -  the intermediate tree state
+  no longer exists  -  so any reconstruction would be a plausible fiction with fabricated SHAs and
   false dates. The project's first operating rule is *evidence or it didn't happen*; manufacturing
   provenance to make a log look tidy is precisely the failure mode the rule exists to prevent.
 - **What would change our mind.** Nothing short of recovering the actual `.git` directory.
@@ -119,7 +119,7 @@ installed on linux-x86_64 from 169 locked entries, and all four CI `quality` gat
 - **The honest case for it.** The immediate risk was data loss, and the files had already passed
   the hooks once in Phase 0. Speed has real value when work is unprotected.
 - **Why rejected.** Three reasons, in increasing order of seriousness. (1) It directly violates
-  Q-1. (2) The files had *not* all passed the hooks — the seven new specification documents and
+  Q-1. (2) The files had *not* all passed the hooks  -  the seven new specification documents and
   `bootstrap.sh` had never been linted by anything. (3) Most importantly, it would have concealed
   the actual finding. Rebuilding the environment is what proved `uv.lock` still reproduces and the
   gates still pass; `--no-verify` would have produced a repository that merely *claimed* a verified
@@ -131,7 +131,7 @@ installed on linux-x86_64 from 169 locked entries, and all four CI `quality` gat
 
 - **What it is.** Commit the `uv`, `gitleaks` and `k6` binaries so the tools travel with the code.
 - **The honest case for it.** It is the only approach immune to a missing network, and it makes
-  provenance exact — the bytes that were verified are the bytes that ship.
+  provenance exact  -  the bytes that were verified are the bytes that ship.
 - **Why rejected.** `check-added-large-files` caps additions at 5 MB and these binaries exceed it
   several times over; git stores every future version forever; and it hard-codes linux-x86_64 into
   a repository that should build elsewhere. Redistributing third-party binaries also raises
@@ -142,7 +142,7 @@ installed on linux-x86_64 from 169 locked entries, and all four CI `quality` gat
 ### D. A Dockerfile or devcontainer instead of a shell script
 
 - **What it is.** Express the environment as a container image; developers attach to it.
-- **The honest case for it.** Strictly better reproducibility than a shell script — pinned base
+- **The honest case for it.** Strictly better reproducibility than a shell script  -  pinned base
   image, layer caching, no reliance on the host distribution. This is the conventional answer and
   it is a good one.
 - **Why rejected, for now.** Docker is itself one of the things that disappeared. The core tier has
@@ -158,7 +158,7 @@ installed on linux-x86_64 from 169 locked entries, and all four CI `quality` gat
 - **What it is.** A single "initial commit".
 - **The honest case for it.** It is accurate in a narrow sense: all of it did arrive in the tree at
   the same moment.
-- **Why rejected.** Three genuinely different kinds of change are present — restored prior output,
+- **Why rejected.** Three genuinely different kinds of change are present  -  restored prior output,
   new tooling, new specification. The commit protocol bans bulk multi-feature commits precisely so
   that `git log` stays a usable explanation. A reader six months out should be able to see that the
   specification set was authored separately from the tooling that made it committable.

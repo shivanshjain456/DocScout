@@ -21,13 +21,13 @@ reader's job.
 
 ## Files
 
-- `report.md` — the diagnosis report (problem statement, verdict,
+- `report.md`  -  the diagnosis report (problem statement, verdict,
   environment, sessions, timeline, findings, involvement, coverage notes).
-- `case.md` — the case file the analysts worked from.
-- `environment.json` — machine-readable copy of the environment section.
-- `timeline.md` — the per-turn timeline.
-- `findings/<dimension>.md` — raw analyst findings per dimension.
-- `transcripts/<session-id>.md` — condensed per-turn rendering of each
+- `case.md`  -  the case file the analysts worked from.
+- `environment.json`  -  machine-readable copy of the environment section.
+- `timeline.md`  -  the per-turn timeline.
+- `findings/<dimension>.md`  -  raw analyst findings per dimension.
+- `transcripts/<session-id>.md`  -  condensed per-turn rendering of each
   examined session (never the raw JSONL). Tool-result bodies by level:
 
   | Level | Tool-result bodies |
@@ -35,7 +35,7 @@ reader's job.
   | skeleton | intentionally limited; replaced by `[tool result: <tool>, <bytes> bytes, exit <code>]` |
   | evidence | kept for cited events, including the commands and results needed to support findings |
   | full | all kept |
-- `scrub-log.md` — every placeholder used and its category (never the
+- `scrub-log.md`  -  every placeholder used and its category (never the
   original value).
 
 ## How to read it

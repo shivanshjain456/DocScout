@@ -26,13 +26,13 @@ Procedure:
 3. Return exactly:
 
 ```
-candidate: <session id> — <absolute path>
+candidate: <session id>  -  <absolute path>
 identity: <harness> <version>, <first timestamp>, "<first prompt, 100 chars>"
 match: yes | partial | no
 markers:
-- <marker>: hit — <path>:<line> — "<quote ≤ 120 chars>"
-- <marker>: miss — checked <what>
-- <marker>: unknown — <missing field>
+- <marker>: hit  -  <path>:<line>  -  "<quote ≤ 120 chars>"
+- <marker>: miss  -  checked <what>
+- <marker>: unknown  -  <missing field>
 ```
 
 `yes` = every marker hit; `partial` = at least one hit; `no` = none.

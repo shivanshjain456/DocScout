@@ -1,4 +1,4 @@
-"""Scheduled corpus refresh and freshness verification — P0-2, ARCHITECTURE §3.1.
+"""Scheduled corpus refresh and freshness verification  -  P0-2, ARCHITECTURE §3.1.
 
 RBI and SEBI amend and withdraw regulatory circulars continuously. Stale retrieval is
 the primary catastrophic failure for a compliance RAG service. This module provides the

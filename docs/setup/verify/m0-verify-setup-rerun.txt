@@ -1,4 +1,4 @@
-M0 EXIT CRITERION 2 — full-tier bootstrap + V1-V17 re-run
+M0 EXIT CRITERION 2  -  full-tier bootstrap + V1-V17 re-run
 ==========================================================================
 First execution of the verification matrix since Phase 0. The toolchain it
 needs did not exist at the start of this session; it was reconstructed by
@@ -8,7 +8,7 @@ Refs: ADR-0001 · SPEC.md §2.3, U-15 · MILESTONES.md M0 · QUALITY_BAR.md Q-3
 Generated: 2026-10-01T14:17:11Z
 Host     : Debian GNU/Linux 13 (trixie), kernel 6.1.158+, x86_64, 2 vCPU, 1.9 GiB RAM
 
-### S1. bootstrap.sh full — tool versions installed, vs the Phase 0 pins
+### S1. bootstrap.sh full  -  tool versions installed, vs the Phase 0 pins
   TOOL             INSTALLED              PHASE 0 (SETUP_REPORT)
   uv               0.12.21                0.12.21
   python           3.12.14                3.12.14
@@ -35,9 +35,9 @@ Host     : Debian GNU/Linux 13 (trixie), kernel 6.1.158+, x86_64, 2 vCPU, 1.9 Gi
   extensions: plpgsql 1.0, vector 0.8.2
   -> least-privilege app role docscout_app created by infra/initdb/02-app-role.sh.
 
-### S3. FIRST RUN — one genuine failure
+### S3. FIRST RUN  -  one genuine failure
   ==============================================================
-   DocScout Phase 0 — verification matrix     2026-10-01T14:14:16Z
+   DocScout Phase 0  -  verification matrix     2026-10-01T14:14:16Z
   ==============================================================
     PASS   V1 toolchain                 all required tools present
     PASS   V2 postgres+pgvector         pgvector=0.8.2 cosine=0.000 iterative_scan=off fts=t
@@ -58,11 +58,11 @@ Host     : Debian GNU/Linux 13 (trixie), kernel 6.1.158+, x86_64, 2 vCPU, 1.9 Gi
     PASS   V17 clean state              only db + redis running; no other containers; 0 cloud resources
   --------------------------------------------------------------
    PASS=14  FAIL=1  BLOCKED=2
-   BLOCKED items are credential/environment limits — see SETUP_REPORT.md §13.
+   BLOCKED items are credential/environment limits  -  see SETUP_REPORT.md §13.
   ==============================================================
   make: *** [Makefile:57: verify-setup] Error 1
 
-### S4. Diagnosis of the V8 failure — a security control silently disabled
+### S4. Diagnosis of the V8 failure  -  a security control silently disabled
 
 V8 requires .claude/hooks/dangerous-bash.sh to be EXECUTABLE. The hook logic was
 intact (deny 'rm -rf /' -> exit 2, allow 'uv run pytest -q' -> exit 0); only the
@@ -92,9 +92,9 @@ script without the exec bit can no longer be committed. Proven to fire:
   $ chmod +x .claude/hooks/dangerous-bash.sh && pre-commit run ... --all-files
     check that scripts with shebangs are executable..........................Passed
 
-### S5. SECOND RUN — after the fix
+### S5. SECOND RUN  -  after the fix
   ==============================================================
-   DocScout Phase 0 — verification matrix     2026-10-01T14:16:05Z
+   DocScout Phase 0  -  verification matrix     2026-10-01T14:16:05Z
   ==============================================================
     PASS   V1 toolchain                 all required tools present
     PASS   V2 postgres+pgvector         pgvector=0.8.2 cosine=0.000 iterative_scan=off fts=t
@@ -115,10 +115,10 @@ script without the exec bit can no longer be committed. Proven to fire:
     PASS   V17 clean state              only db + redis running; no other containers; 0 cloud resources
   --------------------------------------------------------------
    PASS=15  FAIL=0  BLOCKED=2
-   BLOCKED items are credential/environment limits — see SETUP_REPORT.md §13.
+   BLOCKED items are credential/environment limits  -  see SETUP_REPORT.md §13.
   ==============================================================
 
-### S6. Caveats — what this run does NOT establish
+### S6. Caveats  -  what this run does NOT establish
   - Not a pristine host. ~/.cache/uv and ~/.cache/pre-commit persisted within the
     session, so wheel and hook downloads were warm. Every BINARY (uv, docker, node,
     k6, gitleaks, psql, gh, aws) and both container images were fetched fresh.

@@ -1,4 +1,4 @@
-# Plan: P0-5 — Cache Invalidation on Supersession + Liveness/Readiness Split
+# Plan: P0-5  -  Cache Invalidation on Supersession + Liveness/Readiness Split
 
 **Status:** VERIFIED
 **Owner:** Principal Engineer

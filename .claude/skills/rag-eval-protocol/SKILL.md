@@ -20,12 +20,12 @@ Metrics are the product in this project. A number without a raw output file is a
 
 - **Size:** ≥120 QA pairs, hand-built. Grown, never auto-generated wholesale.
 - **Each item carries:**
-  - `question` — natural, in the voice of a real user (compliance analyst).
-  - `required_citation_chunk_ids` — the chunk IDs a correct answer MUST cite.
-  - `expected_answer_key_points` — list of atomic facts that must appear.
-  - `difficulty` — `easy` | `medium` | `hard`.
-  - `source_docs` — the document set the answer is derived from.
-  - `answer_type` — `extractive` | `numeric` | `multi-hop` | `unanswerable`.
+  - `question`  -  natural, in the voice of a real user (compliance analyst).
+  - `required_citation_chunk_ids`  -  the chunk IDs a correct answer MUST cite.
+  - `expected_answer_key_points`  -  list of atomic facts that must appear.
+  - `difficulty`  -  `easy` | `medium` | `hard`.
+  - `source_docs`  -  the document set the answer is derived from.
+  - `answer_type`  -  `extractive` | `numeric` | `multi-hop` | `unanswerable`.
 - **Scope rule:** no question may be answerable from more than the intended document set. If a
   question can be answered from general knowledge or from a doc outside `source_docs`, rewrite it.
 - **Include negatives:** unanswerable questions (correct behavior = refusal) and ≥1 injection canary
@@ -37,14 +37,14 @@ Metrics are the product in this project. A number without a raw output file is a
 
 ## Scoring layers
 
-**Layer 1 — deterministic (always run, free, fast):**
+**Layer 1  -  deterministic (always run, free, fast):**
 - citation precision = correct cited IDs / all cited IDs
 - citation recall = required IDs cited / required IDs
 - key-point coverage via exact / contains / numeric-with-tolerance match
 - refusal correctness on unanswerable items
 - retrieval: recall@k, MRR, nDCG against `required_citation_chunk_ids`
 
-**Layer 2 — LLM judge (open-ended only):** faithfulness (claims entailed by retrieved context),
+**Layer 2  -  LLM judge (open-ended only):** faithfulness (claims entailed by retrieved context),
 answer relevance, completeness. Judge prompts are versioned files; a prompt edit is a new judge
 version and invalidates prior calibration.
 
@@ -78,10 +78,10 @@ CI gate: **fail on regression >1pp on any threshold metric** measured against th
 - **Non-determinism:** judges at temperature > 0 drift between runs. Pin temperature 0 and record
   the seed/model version; expect residual variance and do not chase sub-1pp noise.
 - **Context precision degrades silently when the chunker changes.** Re-run the full suite on any
-  chunking, embedding, or index parameter change — not just the retrieval tests.
+  chunking, embedding, or index parameter change  -  not just the retrieval tests.
 - **RAGAS metric names and import paths move between versions** (`ragas.metrics` →
   `ragas.metrics.collections` is already deprecated in the pinned 0.4.3). Pin the version, and
-  re-check metric semantics after any upgrade — a renamed metric is not the same metric.
+  re-check metric semantics after any upgrade  -  a renamed metric is not the same metric.
 - **Gold-set leakage:** if you tune chunk size by watching the gold-set score, the gold set is now a
   training set. Hold out a slice you only look at before a release.
 - **Unanswerable items are where RAG systems look best and behave worst.** Keep ≥10% of the set

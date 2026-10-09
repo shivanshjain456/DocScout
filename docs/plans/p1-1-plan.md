@@ -1,4 +1,4 @@
-# Plan: P1-1 — Durable Retrieval Audit Log + Corpus Secret/PII Scan
+# Plan: P1-1  -  Durable Retrieval Audit Log + Corpus Secret/PII Scan
 
 ## Context and Problem Statement
 - **Audit Findings G12 & G13 (OWASP LLM09 & LLM02)**:
