@@ -17,7 +17,7 @@ from pydantic import BaseModel, ConfigDict
 
 from app.retrieval.rerank import MODEL_ID as RERANK_MODEL_ID
 
-Mode = Literal["dense", "bm25", "hybrid"]
+Mode = Literal["dense", "bm25", "hybrid", "graph-hybrid"]
 ExpansionMode = Literal["none", "synonym", "hyde", "combined"]
 
 # Reciprocal Rank Fusion's smoothing constant. 60 is the value from Cormack et al. (2009),

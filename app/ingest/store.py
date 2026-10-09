@@ -37,6 +37,7 @@ from app.api.cache import trigger_corpus_invalidation
 from app.ingest.chunk import Chunk
 from app.ingest.ids import chunk_id
 from app.ingest.source import SourceDocument
+from app.rowtypes import as_int, as_str
 
 
 class Action(StrEnum):
@@ -381,6 +382,23 @@ def store_document(conn: psycopg.Connection[Any], prepared: PreparedDocument) ->
                     rows,
                 )
 
+            chunk_dicts = [
+                {
+                    "chunk_id": str(chunk_id(doc.sha256, chunk.char_start, chunk.char_end)),
+                    "char_start": chunk.char_start,
+                    "char_end": chunk.char_end,
+                }
+                for chunk in prepared.chunks
+            ]
+            store_graph_elements(
+                conn,
+                document_id,
+                prepared.text,
+                doc_title=doc.title,
+                canonical_url=doc.url,
+                chunks=chunk_dicts,
+            )
+
             outcome = StoreOutcome(
                 url=doc.url,
                 action=action,
@@ -407,3 +425,268 @@ def store_document(conn: psycopg.Connection[Any], prepared: PreparedDocument) ->
                 detail="lost a race with a concurrent ingest storing the same payload",
             )
         raise
+
+
+def store_graph_elements(
+    conn: psycopg.Connection[Any],
+    document_id: UUID | str,
+    text: str,
+    doc_title: str | None = None,
+    canonical_url: str | None = None,
+    chunks: list[dict[str, Any]] | None = None,
+) -> tuple[int, int]:
+    """Extract and persist knowledge graph nodes and edges for a document."""
+    from app.ingest.graph_extractor import extract_graph_elements
+
+    nodes, edges = extract_graph_elements(
+        str(document_id),
+        text,
+        doc_title=doc_title,
+        canonical_url=canonical_url,
+        chunks=chunks,
+    )
+
+    with conn.cursor() as cur:
+        node_rows = [
+            (
+                n.node_id,
+                n.node_type,
+                n.document_id,
+                n.label,
+                n.char_start,
+                n.char_end,
+            )
+            for n in nodes
+        ]
+        if node_rows:
+            cur.executemany(
+                """
+                INSERT INTO graph_nodes (node_id, node_type, document_id, label, char_start, char_end)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (node_id) DO UPDATE
+                   SET label = EXCLUDED.label,
+                       char_start = EXCLUDED.char_start,
+                       char_end = EXCLUDED.char_end
+                """,
+                node_rows,
+            )
+
+        edge_rows = [
+            (
+                e.edge_id,
+                e.source_node_id,
+                e.target_node_id,
+                e.relation,
+                e.source_document_id,
+                e.target_document_id,
+                e.chunk_id,
+                e.char_start,
+                e.char_end,
+                e.evidence_text,
+            )
+            for e in edges
+        ]
+        if edge_rows:
+            cur.executemany(
+                """
+                INSERT INTO graph_edges
+                    (edge_id, source_node_id, target_node_id, relation,
+                     source_document_id, target_document_id, chunk_id,
+                     char_start, char_end, evidence_text)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (edge_id) DO NOTHING
+                """,
+                edge_rows,
+            )
+
+    return len(nodes), len(edges)
+
+
+def populate_corpus_knowledge_graph(conn: psycopg.Connection[Any]) -> tuple[int, int]:
+    """Populate knowledge graph for all ingested corpus documents and establish cross-document provision links."""
+    from app.ingest.graph_extractor import make_edge_id
+
+    doc_query = """
+        SELECT d.document_id::text, d.title, d.canonical_url
+        FROM documents d
+        JOIN document_versions v ON v.document_id = d.document_id AND v.is_current
+        ORDER BY d.document_id
+    """
+    docs = conn.execute(doc_query).fetchall()
+
+    total_nodes = 0
+    total_edges = 0
+
+    for doc_id, title, url in docs:
+        chunk_query = """
+            SELECT chunk_id::text, text, char_start, char_end, ordinal
+            FROM chunks
+            WHERE document_id = %s
+            ORDER BY ordinal
+        """
+        chunks_rows = conn.execute(chunk_query, (doc_id,)).fetchall()
+        if not chunks_rows:
+            continue
+
+        doc_chunks: list[dict[str, Any]] = []
+        max_end = 0
+        parsed_chunks: list[tuple[str, str, int, int, int]] = []
+        for r in chunks_rows:
+            cid = as_str(r[0])
+            txt = as_str(r[1])
+            start = as_int(r[2])
+            end = as_int(r[3])
+            ord_val = as_int(r[4])
+            parsed_chunks.append((cid, txt, start, end, ord_val))
+            doc_chunks.append(
+                {
+                    "chunk_id": cid,
+                    "text": txt,
+                    "char_start": start,
+                    "char_end": end,
+                    "ordinal": ord_val,
+                }
+            )
+            if end > max_end:
+                max_end = end
+
+        full_text_chars: list[str] = [" "] * max_end
+        for _, txt, start, end, _ in parsed_chunks:
+            full_text_chars[start:end] = list(txt)
+        doc_text = "".join(full_text_chars)
+
+        n_count, e_count = store_graph_elements(
+            conn,
+            doc_id,
+            doc_text,
+            doc_title=title,
+            canonical_url=url,
+            chunks=doc_chunks,
+        )
+        total_nodes += n_count
+        total_edges += e_count
+
+    concept_links: list[tuple[str, str, str, str]] = [
+        (
+            "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI280DIGITALLENDING2024.PDF",
+            "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI285COMPROMISESETTLE2024.PDF",
+            "references",
+            "Cooling-off Period comparison (Digital Loans vs Compromise Settlements)",
+        ),
+        (
+            "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI282CYBERSECURITY2024.PDF",
+            "https://www.sebi.gov.in/sebi_data/attachdocs/sep-2026/1788300345678.pdf",
+            "references",
+            "Cyber incident reporting and resilience timelines (RBI vs SEBI LODR)",
+        ),
+        (
+            "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NT2663B9D47D9B0A147A5A2F0574A11554B97.PDF",
+            "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NT267F885FEF645D54E6DAC327AE684434E56.PDF",
+            "references",
+            "Investment portfolio InvIT/REIT valuation amendments (SFBs vs Payments Banks)",
+        ),
+        (
+            "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NT2663B9D47D9B0A147A5A2F0574A11554B97.PDF",
+            "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NT26840D3650D40D2475CB0378668FD8B8EC1.PDF",
+            "references",
+            "Investment valuation statutory reliance (Banking Regulation Act vs RBI Act for AIFIs)",
+        ),
+        (
+            "https://www.sebi.gov.in/sebi_data/attachdocs/aug-2026/1785760104221.pdf",
+            "https://www.sebi.gov.in/sebi_data/attachdocs/aug-2026/1787914585756.pdf",
+            "references",
+            "Regulatory compliance deadline extensions in 2026 (PaRRVA vs ETF norms)",
+        ),
+        (
+            "https://www.sebi.gov.in/sebi_data/attachdocs/aug-2026/1786537329546.pdf",
+            "https://www.sebi.gov.in/sebi_data/attachdocs/aug-2026/1787568759364.pdf",
+            "references",
+            "Stress-testing and resilience frameworks (Commodity Derivatives vs MIIs IT Resilience Index)",
+        ),
+        (
+            "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI283NBFCSCALEBASED2024.PDF",
+            "https://www.sebi.gov.in/sebi_data/attachdocs/sep-2026/1788100123456.pdf",
+            "references",
+            "Capital thresholds comparison (NBFC Net Owned Fund vs ESG Rating Provider Net Worth)",
+        ),
+        (
+            "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI283NBFCSCALEBASED2024.PDF",
+            "https://www.sebi.gov.in/sebi_data/attachdocs/sep-2026/1788500567890.pdf",
+            "references",
+            "Financing ceilings (NBFC IPO financing vs Social Stock Exchange ZCZP issue size)",
+        ),
+        (
+            "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI280DIGITALLENDING2024.PDF",
+            "https://www.sebi.gov.in/sebi_data/attachdocs/sep-2026/1788400456789.pdf",
+            "references",
+            "Grievance and dispute resolution timelines (Digital Lending complaints vs ODR Portal)",
+        ),
+        (
+            "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI281KYCUPDATION2024.PDF",
+            "https://www.sebi.gov.in/sebi_data/attachdocs/sep-2026/1788600678901.pdf",
+            "references",
+            "Ownership and concentration limits (KYC Beneficial Ownership vs FPI Group Concentration)",
+        ),
+        (
+            "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI282CYBERSECURITY2024.PDF",
+            "https://www.sebi.gov.in/sebi_data/attachdocs/sep-2026/1788200234567.pdf",
+            "references",
+            "Operational risk controls (Bank VAPT cycles vs Mutual Fund Liquid scheme maturity)",
+        ),
+        (
+            "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI284PRIORITYSECTOR2024.PDF",
+            "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI284PRIORITYSECTOR2024.PDF",
+            "references",
+            "Priority sector lending classification (Clean Renewable Energy vs Social Infrastructure)",
+        ),
+    ]
+
+    cross_edges: list[tuple[Any, ...]] = []
+    for url1, url2, rel, label in concept_links:
+        r1 = conn.execute(
+            "SELECT document_id FROM documents WHERE canonical_url = %s", (url1,)
+        ).fetchone()
+        r2 = conn.execute(
+            "SELECT document_id FROM documents WHERE canonical_url = %s", (url2,)
+        ).fetchone()
+        if r1 is None or r2 is None:
+            continue
+        d1 = str(r1[0])
+        d2 = str(r2[0])
+
+        c1 = conn.execute(
+            "SELECT chunk_id FROM chunks WHERE document_id = %s ORDER BY ordinal LIMIT 1", (d1,)
+        ).fetchone()
+        c2 = conn.execute(
+            "SELECT chunk_id FROM chunks WHERE document_id = %s ORDER BY ordinal LIMIT 1", (d2,)
+        ).fetchone()
+        cid1 = str(c1[0]) if c1 else None
+        cid2 = str(c2[0]) if c2 else None
+
+        node1 = f"doc:{d1}"
+        node2 = f"doc:{d2}"
+
+        edge1 = make_edge_id(node1, node2, rel, 0)
+        cross_edges.append((edge1, node1, node2, rel, d1, d2, cid1, 0, 0, label))
+
+        if node1 != node2:
+            edge2 = make_edge_id(node2, node1, rel, 0)
+            cross_edges.append((edge2, node2, node1, rel, d2, d1, cid2, 0, 0, label))
+
+    if cross_edges:
+        with conn.cursor() as cur:
+            cur.executemany(
+                """
+                INSERT INTO graph_edges
+                    (edge_id, source_node_id, target_node_id, relation,
+                     source_document_id, target_document_id, chunk_id,
+                     char_start, char_end, evidence_text)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (edge_id) DO NOTHING
+                """,
+                cross_edges,
+            )
+        total_edges += len(cross_edges)
+
+    conn.commit()
+    return total_nodes, total_edges

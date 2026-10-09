@@ -171,13 +171,13 @@ class Retriever:
 
         store = self.get_vector_store(config.vector_store_adapter)
 
-        if config.mode in ("dense", "hybrid"):
+        if config.mode in ("dense", "hybrid", "graph-hybrid"):
             vector = self._embedder.encode_query(dense_query)
             hits = store.search(vector, config.k_dense, filter=filter_spec)
             arms["dense"] = [cid for cid, _ in hits]
             raw_scores.update({cid: score for cid, score in hits})
 
-        if config.mode in ("bm25", "hybrid"):
+        if config.mode in ("bm25", "hybrid", "graph-hybrid"):
             if self._conn is None:
                 raise RuntimeError("BM25 lexical search requires an active database connection")
             hits = self.bm25.search(self._conn, lexical_query, config.k_lexical, filter=filter_spec)
@@ -185,7 +185,33 @@ class Retriever:
             for cid, score in hits:
                 raw_scores.setdefault(cid, score)
 
-        if config.mode == "hybrid":
+        if config.mode == "graph-hybrid":
+            seed_ids: list[str] = []
+            if "dense" in arms:
+                seed_ids.extend(arms["dense"][:5])
+            if "lexical" in arms:
+                seed_ids.extend([cid for cid in arms["lexical"][:5] if cid not in seed_ids])
+
+            if self._conn is not None and seed_ids:
+                from app.retrieval.graph import traverse_graph_neighbors
+
+                graph_res = traverse_graph_neighbors(self._conn, seed_ids)
+                if graph_res.expanded_chunks:
+                    arms["graph"] = [cid for cid, _ in graph_res.expanded_chunks]
+
+            weights = {
+                "dense": config.weight_dense,
+                "lexical": config.weight_lexical,
+            }
+            if "graph" in arms:
+                weights["graph"] = 0.85
+
+            fused = fusion.reciprocal_rank_fusion(
+                arms,
+                weights=weights,
+                rrf_k=config.rrf_k,
+            )
+        elif config.mode == "hybrid":
             fused = fusion.reciprocal_rank_fusion(
                 arms,
                 weights={"dense": config.weight_dense, "lexical": config.weight_lexical},
@@ -201,7 +227,7 @@ class Retriever:
             fused = self._rerank(query, fused, arms, config)
 
         top = fused[: config.k_final]
-        if config.anchor_arm_top1 and config.mode == "hybrid":
+        if config.anchor_arm_top1 and config.mode in ("hybrid", "graph-hybrid"):
             top = _anchor_arm_leaders(top, arms, fused, config.k_final)
         is_curr = filter_spec.is_current if filter_spec is not None else True
         meta = self._metadata(

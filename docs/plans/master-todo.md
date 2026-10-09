@@ -173,20 +173,20 @@ Each P2 capability is now defensible and forced by concrete failing query classe
 | ID | Capability | Failing Query Class / Operational Gap | Status |
 |---|---|---|---|
 | P2-1 | Retrieval-Port Adapter | **Operability gap**: Swapping embedding model (`MODEL_ID`/`EMBEDDING_DIM` ADR-0002 one-way door) or vector index currently forces changes across 6+ files in `app/retrieval/` and `app/ingest/` with zero port abstraction. | VERIFIED |
-| P2-2 | Lightweight Knowledge-Graph over Provisions | **12 multi-hop items** in `evals/gold/v1`: Cross-circular amendment joins (e.g., KYC circular updating Digital Lending clause) where `multi-hop MRR ≈ 0.55–0.65` severely lags extractive (0.85) because grouped citation scoring cannot join provisions across documents. | TODO (forced) |
+| P2-2 | Lightweight Knowledge-Graph over Provisions | **12 multi-hop items** in `evals/gold/v1`: Cross-circular amendment joins (e.g., KYC circular updating Digital Lending clause) where `multi-hop MRR ≈ 0.55–0.65` severely lags extractive (0.85) because grouped citation scoring cannot join provisions across documents. | VERIFIED |
 | P2-3 | Tight Agentic Research Loop + Minimal Workspace | **Complex compliance synthesis questions**: Multi-aspect regulatory comparisons (e.g., compromise-settlement eligibility before and after Green Deposits circulars with condition tables) where single-pass k=5 retrieval fails citation recall and judge completeness. | TODO (forced) |
 | P2-4 | Pluggable Extraction Chain with Docling/MinerU Fallback | **Scanned annexures and merged tables**: Real SEBI circulars with image/scanned annexes where `pypdf` yields low text fidelity / table collapse (`recall` on scanned fixture drops to near-zero despite 0.96 headline). | TODO (forced) |
 | P2-5 | Ingestion-Scale Harness | **Scale throughput & latency bottleneck**: Ingestion loop lacks back-pressure against regulator 429s, lacks shrink-retry on token ceiling, lacks tokenization cache, and linear re-embedding slows corpus-refresh beyond SLA. | TODO (forced) |
 | P2-GUARD | P2 Non-Regression & Evidence Close-out | **Verification integrity**: Ensure every P2 lands without regressing S-1…S-12, all new modes are A/B-measured with paired bootstrap + McNemar, no architectural scaffolding, and evidence artifacts committed. | TODO (forced) |
 
-### P2-1 — Retrieval-Port Adapter (one seam, not a matrix) | Status: VERIFIED (VectorStore Protocol in app/retrieval/port.py, PgVectorStore adapter, config/retrieval.json registry, ADR-0019, tests/test_retrieval_port.py 6/6 passing, zero metric regression Δ recall@5 = 0.000)
+### P2-1 — Retrieval-Port Adapter (one seam, not a matrix) | Status: VERIFIED (Actions run 37941465593 on 33f94be: all 5 CI jobs green; VectorStore Protocol in app/retrieval/port.py; PgVectorStore adapter; config/retrieval.json registry; ADR-0019; tests/test_retrieval_port.py 6/6 passing; zero metric regression Δ recall@5 = 0.000)
 
 - **Failing query class / operability gap:** Swapping the embedding model or adding a second vector store forces changes across 6+ files (`app/retrieval/{dense,lexical,fusion,search}.py`, `app/ingest/embed.py`) with no seam.
 - **WHAT TO DO:** Introduce a retrieval-port abstraction (`RetrievalPort` / `VectorStore`) so pgvector is an implementation, not the interface.
 - **QUALITY BAR:** Interface over implementation. Single production adapter (`pgvector`); `Retriever` depends on port, not `psycopg`/`pgvector` SQL directly; `tests/test_retrieval_port.py` proves `hybrid-rrf` via port == direct SQL within rounding; `Δ recall@5 ≤ 0.002` on 365 items; ADR-0019 records "single pgvector today, port exists for one-system-well" with rejected alternatives.
 - **WHAT SUCCESS LOOKS LIKE:** Port protocol committed, `app/retrieval/search.py` wired to port, config coherence test verifies registry, zero metric regression on 365 items.
 
-### P2-2 — Lightweight Knowledge-Graph over Regulatory Provisions | Status: TODO (forced)
+### P2-2 — Lightweight Knowledge-Graph over Regulatory Provisions | Status: VERIFIED (Migration 0007_knowledge_graph applied; grounded span extraction; 5/5 tests in tests/test_knowledge_graph.py passing; 525+ full suite passing; ADR-0020 committed)
 
 - **Failing query class:** The 12 multi-hop items in `evals/gold/v1` (cross-document provision amendments where `multi-hop MRR ≈ 0.55–0.65` vs `extractive 0.85`).
 - **WHAT TO DO:** Minimal entity graph over provisions (document, section/§, provision; edges: cites, amends, supersedes, implements) extracted from parsed `§` markers, plus graph-assisted hybrid retrieval.

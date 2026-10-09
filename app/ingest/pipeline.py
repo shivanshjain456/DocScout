@@ -413,6 +413,13 @@ def run_ingest(
         except Exception:  # noqa: BLE001 - sync state recording must not fail ingest return
             logger.warning("ingest.sync_state_record_failed", exc_info=True)
 
+        try:
+            from app.ingest.store import populate_corpus_knowledge_graph
+
+            populate_corpus_knowledge_graph(conn)
+        except Exception:  # noqa: BLE001 - graph population must not fail ingest return
+            logger.warning("ingest.knowledge_graph_population_failed", exc_info=True)
+
     return report
 
 

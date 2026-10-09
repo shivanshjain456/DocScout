@@ -72,11 +72,22 @@ EXPANDED_CONFIG = RetrievalConfig(
     expansion_mode="synonym",
 )
 
+GRAPH_HYBRID_CONFIG = RetrievalConfig(
+    name="graph-hybrid",
+    mode="graph-hybrid",
+    k_dense=50,
+    k_lexical=50,
+    k_final=10,
+    rrf_k=SERVING_CONFIG.rrf_k,
+    anchor_arm_top1=True,
+)
+
 BASELINE_CONFIGS: tuple[RetrievalConfig, ...] = (
     RetrievalConfig(name="dense-only", mode="dense", k_dense=50, k_final=10),
     RetrievalConfig(name="bm25-only", mode="bm25", k_lexical=50, k_final=10),
     SERVING_CONFIG,
     EXPANDED_CONFIG,
+    GRAPH_HYBRID_CONFIG,
 )
 
 
