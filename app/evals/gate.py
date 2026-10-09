@@ -88,16 +88,16 @@ class Finding:
 
 
 def _display(path: Path) -> str:
-    """Repo-relative when possible, absolute otherwise.
+    """Repo-relative when possible, absolute otherwise. Always POSIX-normalized.
 
     --report-dir legitimately points outside the repository (the smoke target writes to
     /tmp), and relative_to() raises rather than falling back, which turned a cosmetic
     path into a crash after the gate had already done its work.
     """
     try:
-        return str(path.resolve().relative_to(REPO_ROOT))
+        return path.resolve().relative_to(REPO_ROOT).as_posix()
     except ValueError:
-        return str(path.resolve())
+        return path.resolve().as_posix()
 
 
 def _git_commit() -> str:

@@ -69,7 +69,7 @@ def test_search_response_serializes_answer_behind_passages() -> None:
             chunk_size=1000,
             chunk_overlap=150,
             corpus_manifest_digest="test-digest",
-            corpus_chunks=170,
+            corpus_chunks=230,
             retrieval={"mode": "hybrid"},
         ),
         timings=Timings(total_ms=45.0, retrieval_ms=32.5, generation_ms=12.5, cache_hit=False),

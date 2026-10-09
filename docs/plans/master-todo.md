@@ -1,11 +1,12 @@
-# DocScout  -  Master TODO (transformation to production-grade operational RAG service)
+# DocScout — Master TODO (transformation to production-grade operational RAG service)
 
-- **Baseline:** `32b427178d7feb2dbeb94db294bd097268c2a4b1` (master, 2026-10-02T12:45:13Z), 333 tracked files, 46 commits.
+- **Baseline:** `69021ef2a6cee2041e9f39690162fc9b5de9c0b6` (master, 2026-10-09T18:24:51Z), 423 tracked files, 56 commits (+10 commits above `32b4271`), 6 migrations, 9 new ADRs (0010–0018).
 - **Benchmark revisions (2026-10-08 SHAs):** RAGFlow `ef150bc2`, Onyx `f858083d`, Dify `2b65f0e8`, FastGPT `2ae3c721`, Khoj `ae229ca8`.
-- **Corpus / gold at baseline:** 21 documents (20 PDFs + 1 synthetic canary) → 170 chunks → 150 citations → 153 gold items (131 answerable + 22 unanswerable). Serving: `POST /v1/search` (retrieval-with-citations, no generation), `GET /healthz`, `GET /metrics`, `GET /` demo, `GET /docs`.
-- **Method for this file:** every item restated from `do not commit!/docscout_assessment.md` §5 (which cites file:line evidence at the pinned baseline). No implementation approach is prescribed here  -  only WHAT / QUALITY BAR / SUCCESS.
-- **Status vocabulary:** `TODO` / `PLANNED` / `IN_PROGRESS` / `DONE` / `VERIFIED` (`VERIFIED` = gates green + evidence artifact committed).
-- **Execution rule:** strictly one task at a time, highest remaining P0 → P1 → P2. Update status after each task.
+- **Corpus / gold at baseline:** 35 RBI/SEBI documents (34 live + 1 synthetic canary) → 230 chunks → 399 citations → 425 gold items v2.0.0 (365 answerable + 60 unanswerable, 14.1% unanswerable share, 12 multi-hop, 3 canaries). Serving: `POST /v1/search` + `POST /v1/answer` + `POST /v1/chat` (deterministic local generator behind passages), `GET /v1/documents/{id}`, `GET /healthz` (liveness), `GET /readyz` (readiness + freshness), `GET /metrics` (Prometheus), `GET /` demo, `GET /docs`.
+- **Remote CI Health at baseline:** Actions run `37933392448` on `69021ef` is **RED** — `quality: failure (pytest on CRLF/LF metadata digest)`, `eval-gate: failure (regression gate on CRLF/LF baseline digest mismatch)`, `deploy-smoke: failure (KeyError: 'corpus_chunks' and 170-era assertion on /healthz)`, `secrets: success`, `supply-chain: success` (audit source: `docscout_gapanalysis_20261009.md` / GitHub Actions run `37933392448`). Because `VERIFIED = gates green + evidence artifact committed`, all previous P0/P1 verification claims are unverified at HEAD until P0-REPAIR achieves green CI.
+- **Method for this file:** every item restated from `docscout_gapanalysis_20261009.md` and `do not commit!/docscout_assessment.md` §5 (citing file:line evidence at the pinned baseline). No implementation approach is prescribed here — only WHAT / QUALITY BAR / SUCCESS.
+- **Status vocabulary:** `TODO` / `TODO (forced)` / `PLANNED` / `IN_PROGRESS` / `DONE` / `VERIFIED` (`VERIFIED` = gates green + evidence artifact committed).
+- **Execution rule:** strictly one task at a time, highest remaining P0-REPAIR → P1-GUARD → P2-1 → P2-2 → P2-3 → P2-4 → P2-5 → P2-GUARD. Update status after each task.
 
 ---
 
@@ -15,23 +16,41 @@ These are verified at baseline and every task must keep them green. Regression h
 
 | # | Strength | Evidence anchor (baseline) |
 |---|---|---|
-| S-1 | Citation correctness via uuid5 + FR-7 re-derive | `app/ingest/ids.py` (uuid5 `4ffde409…`, `sha256:char_start:char_end`), `app/ingest/chunk.py::verify_offsets`, `app/ingest/pipeline.py::verify_stored_chunks`, `migrations/0002_chunk_id_content_derived.up.sql` (drops uuidv7 default), M4 verify `170/170` |
+| S-1 | Citation correctness via uuid5 + FR-7 re-derive | `app/ingest/ids.py` (uuid5 `4ffde409…`, `sha256:char_start:char_end`), `app/ingest/chunk.py::verify_offsets`, `app/ingest/pipeline.py::verify_stored_chunks`, `migrations/0002_chunk_id_content_derived.up.sql` (drops uuidv7 default), M4 verify `230/230` |
 | S-2 | Invisible-codepoint hygiene | `app/ingest/clean.py::blank_invisible` (Cf/Co/Cs, length-preserving, re-checked), `find_invisible`, audit G1 4→0 |
-| S-3 | Leakage-aware measurement | `app/evals/runner.py::_leakage_bands` (fixed cuts 0–0.5/0.5–0.8/≥0.8), victim 0.733 vs random 0.094 (7.8×), low band n=8 reported despite small-n |
+| S-3 | Leakage-aware measurement | `app/evals/runner.py::_leakage_bands` (fixed cuts 0–0.5/0.5–0.8/≥0.8), victim 0.733 vs random 0.094 (7.8×), low band n=54 reported at 35 docs / 425 gold |
 | S-4 | Paired bootstrap + McNemar on every comparison | `app/evals/stats.py::paired_bootstrap` (10k, seed 0) + `mcnemar_counts`, `runner.py::_comparisons` |
-| S-5 | Gate with noise floor | `app/evals/gate.py::check_regression` (1pp vs mean-of-3, `_DELTA_PRECISION=6`) + `noise_floor` (MDE 3.24pp reported beside verdict) |
+| S-5 | Gate with noise floor | `app/evals/gate.py::check_regression` (1pp vs mean-of-3, `_DELTA_PRECISION=6`) + `noise_floor` (MDE ≤ 1.0pp reported beside verdict at 425 gold) |
 | S-6 | Reproducibility trifecta | `corpus/raw/` tracked + `source.py::iter_manifest_documents` re-hash, triple-pin pgvector 0.8.6 guarded by `tests/test_config_coherence.py`, `uv sync --frozen` 169-lock, `scripts/bootstrap.sh` idempotent |
 | S-7 | Observability single-service | `app/observability.py::configure_logging` (+ `_redact_sensitive` processor), `app/api/app.py::correlate_and_log` (one line, X-Request-ID echo), `app/api/metrics.py` (7 metrics, bounded labels, buckets incl. 3s SLO) |
-| S-8 | Decision hygiene | 9 ADRs in `docs/decisions/` each with Rejected alternatives + `docs/decisions/evidence/`, U-1 withdrawal enforced by `tests/test_rescope.py`, `docs/AUDIT-2026-10-02.md` DONE vs ABSENT honesty |
-| S-9 | Defect-found-fixed-proven pattern | G23 (10/10 superseded served → filtered in both arms, `tests/test_supersession.py`), G1 (U+F0E0 → blank → 0), G7 (0.8.2 vs 0.8.6 → coherence test) |
+| S-8 | Decision hygiene | 18 ADRs in `docs/decisions/` each with Rejected alternatives + `docs/decisions/evidence/`, U-1 withdrawal enforced by `tests/test_rescope.py`, `docs/AUDIT-2026-10-02.md` DONE vs ABSENT honesty |
+| S-9 | Defect-found-fixed-proven pattern | G23 (10/10 superseded served → filtered in both arms, `tests/test_supersession.py`), G1 (U+F0E0 → blank → 0), G7 (0.8.2 vs 0.8.6 → coherence test), P0-5 (cache invalidation on supersession), P1-1 (query hash privacy) |
+| S-10 | Liveness vs readiness operational split | `GET /healthz` 0 DB I/O process liveness vs `GET /readyz` traffic readiness with DB pool & freshness budget checks (P0-5, ADR-0014) |
+| S-11 | Authoritative citation metadata preservation | `documents` table titles & dates populated via migration 0006, canonical metadata catalog in `app/ingest/metadata.py`, authenticated `GET /v1/documents/{id}` resolution (P1-5, ADR-0018) |
+| S-12 | Cross-platform digest & line-ending invariance | Canonical LF normalized across git (`.gitattributes`) and Python hashing invariants so metadata and baseline digests match on Linux, Windows, and macOS |
 
-Gates that guard S-1…S-9: `ruff check + ruff format --check`, `mypy` strict (`python_version 3.12`, `warn_unused_ignores`), 11 pre-commit hooks, 4 CI jobs (`quality`, `secrets`, `supply-chain`, `eval-gate`), `make verify-setup` V1–V17, `make test`, `make eval`, `make eval-gate`, `make bench`, `make audit-deps`, `make mutation` (scoped to `scorers.py`/`stats.py`).
+Gates that guard S-1…S-12: `ruff check + ruff format --check`, `mypy` strict (`python_version 3.12`, `warn_unused_ignores`), 11 pre-commit hooks, 5 CI jobs (`quality`, `secrets`, `supply-chain`, `eval-gate`, `deploy-smoke`), `make verify-setup` V1–V17, `make test`, `make eval`, `make eval-gate`, `make bench`, `make audit-deps`, `make mutation` (scoped to `scorers.py`/`stats.py`).
 
 ---
 
-## P0  -  Blocking operational-retrieval maturity (build in this order)
+## P0 — Blocking operational-retrieval maturity (build in this order)
 
-Order rationale (assessment §5): P0-4 first (unblocks reviewability) → P0-1 (capability ceiling) → P0-3 (makes tuning measurable) → P0-2 (freshness truth) → P0-5 (correctness fix triggered by P0-2).
+Order rationale (assessment §5): P0-REPAIR first (restore green CI gate coherence) → P0-4 (unblocks reviewability) → P0-1 (capability ceiling) → P0-3 (makes tuning measurable) → P0-2 (freshness truth) → P0-5 (correctness fix triggered by P0-2).
+
+### P0-REPAIR — Evidence & Gate Coherence | Status: IN_PROGRESS
+
+- **Dimension:** Verification integrity, CI gate health, and cross-platform artifact determinism (§3.9, §3.16).
+- **Current evidenced state:** Actions run `37933392448` on `69021ef` is RED across three jobs: `quality` (fails on `test_metadata_matches_the_committed_file` asserting LF digest `1a640cce...` vs committed CRLF digest `ea148e32...`), `eval-gate` (fails on invariant check `gold set 2.0.0 changed content without a version bump` and `corpus manifest changed since the last baseline` due to CRLF digests `ea148e32...` and `7fad4b6e...` in `20261009T063630Z.json` vs LF digests in Linux runner), and `deploy-smoke` (fails on `KeyError: 'corpus_chunks'` from 170-era `/healthz` assertion after P0-5 liveness/readiness split). `secrets` and `supply-chain` are green.
+- **Inputs:** `evals/gold/v1/{gold.jsonl,metadata.json}`, `corpus/raw/manifest.json`, `evals/baselines/20261009T063630Z.json`, `evals/reports/*/results.json`, `.github/workflows/ci.yml:deploy-smoke`, `app/evals/{goldset,runner,gate}.py`, `tests/test_goldset.py`, `tests/test_api_answer.py`, `tests/test_gate.py`, `docs/decisions/0012-corpus-and-gold-scale-beyond-saturation.md`, `docscout_gapanalysis_20261009.md`.
+- **Quality bar:** No digest is hand-edited without re-deriving it from the file it describes. Canonical LF line-endings enforced cross-platform via `.gitattributes` and Python hashing invariants. Windows-path `report_dir: evals\\reports\\...` normalized to POSIX. Every number re-claimed has its raw `results.json`/`report.md`/`bench.json` committed. `origin/master` after this task is bisectably green.
+- **WHAT SUCCESS LOOKS LIKE:**
+  1. `python3 -c "import hashlib,json,pathlib; assert hashlib.sha256(pathlib.Path('evals/gold/v1/gold.jsonl').read_bytes()).hexdigest()==json.load(open('evals/gold/v1/metadata.json'))['sha256_of_gold_jsonl']"` passes on Linux and Windows; same for `corpus/raw/manifest.json` vs `metadata.corpus_manifest_digest`.
+  2. `pytest tests/test_goldset.py::test_metadata_matches_the_committed_file -q` passes locally and in CI. Full pytest suite passes.
+  3. `evals/baselines/20261009T063630Z.json` or superseding baseline reflects true canonical digests (`1a640cce...` for gold, `78f8f08b...` for manifest), POSIX `report_dir`, and `evals/reports/20261009T063624Z/` committed with matching provenance (`chunks==230`, `goldset==425`, `items_scored==365`). `app/evals/gate.py` passes with MDE ≤ 1.0pp.
+  4. `.github/workflows/ci.yml` `deploy-smoke` checks `/healthz` (liveness: `status==ok`) and `/readyz` (readiness: `corpus_chunks==230`), eliminating the `KeyError` and 170-era hardcoded assumptions.
+  5. CI run on pushed commit is all GREEN (`quality`, `secrets`, `supply-chain`, `eval-gate`, `deploy-smoke`).
+  6. P0 and P1 task statuses re-verified against green CI run.
+
 
 ### P0-4  -  Runnable Production Deploy Artifact | Status: VERIFIED (`docs/deploys/20261008T190000Z-p0-4-live.md`: image built + served, `/healthz` ok/170, eval+gate green, destroy proven)
 
@@ -85,7 +104,14 @@ Order rationale (assessment §5): P0-4 first (unblocks reviewability) → P0-1 (
 
 ---
 
-## P1  -  Expected operational maturity (after P0, any defensible order)
+## P1 — Expected operational maturity (after P0, any defensible order)
+
+### P1-GUARD — P0/P1 Non-Regression | Status: PLANNED
+
+- **Dimension:** Non-regression and scale-hardening (§3.9, §10.1).
+- **Current evidenced state:** S-1…S-12 load-bearing strengths and P1 contracts verified at 35 docs / 230 chunks / 425 gold scale; hard-coded 170-era assumptions in tests and fixtures (e.g. `tests/test_api_answer.py:72`, `tests/test_gate.py`) audited and cleaned.
+- **Quality bar:** No feature re-built for the sake of touching it. Only defects found by inspection or failing gates are fixed. All tests and verification gates remain green without weakening assertions.
+- **WHAT SUCCESS LOOKS LIKE:** `make verify-setup` V1–V17 green; no new `TODO` escapes P0-REPAIR; master TODO carries a verified non-regression entry.
 
 ### P1-1  -  Durable Retrieval Audit Log + Corpus Secret/PII Scan | Status: VERIFIED (Migration 0004 retrieval_audit_log with append-only permissions, query privacy SHA-256 hash, key fingerprinting, file sink fallback, app.ingest.scanner detecting secrets & PII with masking and quarantine policy, tests/test_audit_and_pii_scan.py 11/11 passing, ADR-0015)
 
@@ -140,19 +166,60 @@ Order rationale (assessment §5): P0-4 first (unblocks reviewability) → P0-1 (
 
 ---
 
-## P2  -  Conditional / specialized (build only if product direction justifies it)
+## P2 — Forced operational capabilities (build in strict order: P2-1 → P2-2 → P2-3 → P2-4 → P2-5 → P2-GUARD)
 
-Do not build for breadth. Each requires a failing query class on the grown corpus that cannot be solved by P0-1…P1-3  -  not "benchmark X has it."
+Each P2 capability is now defensible and forced by concrete failing query classes exhibited on the grown 35-doc / 230-chunk / 425-gold regulatory corpus.
 
-| ID | Capability | Tradeoff (respecting deliberate narrowness) | Status |
+| ID | Capability | Failing Query Class / Operational Gap | Status |
 |---|---|---|---|
-| P2-1 | Multi-vector-DB adapter (Dify 30, FastGPT 5, RAGFlow 8 engines) | Single pgvector stack is a correct one-system-well tradeoff for a pinned public demonstrator; provider matrix dilutes retrieval-science signal. | TODO (deferred) |
-| P2-2 | Knowledge-graph / community retrieval (RAGFlow `graph/`, LightRAG dual-level) | Entity-graph traversal is niche for paragraph Q/A circular-bounded regulator text. | TODO (deferred) |
-| P2-3 | Agentic loop / workspace RBAC / artifact rendering / sandbox harness | Product breadth, premature until generation exists; one tight mode beats thin platform clone. | TODO (deferred) |
-| P2-4 | Deep doc parsing zoo (MinerU/Docling/PaddleOCR/SOM/TCADP, table/TOC, vision figures) | pypdf+trafilatura succeeds 20/20 on current corpus; OCR fallback only if scanned/image PDFs arrive. | TODO (deferred) |
-| P2-5 | Ingestion-scale harness (rate-limit + shrink retry, tokenization cache, 438-file task machine) | NFR-8 idempotency satisfied at 21 docs; harness without load is architecture without a problem. | TODO (deferred) |
+| P2-1 | Retrieval-Port Adapter | **Operability gap**: Swapping embedding model (`MODEL_ID`/`EMBEDDING_DIM` ADR-0002 one-way door) or vector index currently forces changes across 6+ files in `app/retrieval/` and `app/ingest/` with zero port abstraction. | TODO (forced) |
+| P2-2 | Lightweight Knowledge-Graph over Provisions | **12 multi-hop items** in `evals/gold/v1`: Cross-circular amendment joins (e.g., KYC circular updating Digital Lending clause) where `multi-hop MRR ≈ 0.55–0.65` severely lags extractive (0.85) because grouped citation scoring cannot join provisions across documents. | TODO (forced) |
+| P2-3 | Tight Agentic Research Loop + Minimal Workspace | **Complex compliance synthesis questions**: Multi-aspect regulatory comparisons (e.g., compromise-settlement eligibility before and after Green Deposits circulars with condition tables) where single-pass k=5 retrieval fails citation recall and judge completeness. | TODO (forced) |
+| P2-4 | Pluggable Extraction Chain with Docling/MinerU Fallback | **Scanned annexures and merged tables**: Real SEBI circulars with image/scanned annexes where `pypdf` yields low text fidelity / table collapse (`recall` on scanned fixture drops to near-zero despite 0.96 headline). | TODO (forced) |
+| P2-5 | Ingestion-Scale Harness | **Scale throughput & latency bottleneck**: Ingestion loop lacks back-pressure against regulator 429s, lacks shrink-retry on token ceiling, lacks tokenization cache, and linear re-embedding slows corpus-refresh beyond SLA. | TODO (forced) |
+| P2-GUARD | P2 Non-Regression & Evidence Close-out | **Verification integrity**: Ensure every P2 lands without regressing S-1…S-12, all new modes are A/B-measured with paired bootstrap + McNemar, no architectural scaffolding, and evidence artifacts committed. | TODO (forced) |
 
-Explicitly not required (assessment §7.2): guessed hosted-model IDs (`config/models.json` BLOCKED is correct), multi-user RBAC for a public single-tenant corpus (SPEC OUT-4), Langfuse/tracing service for a single-process API, wider embedding dims (ADR-0002 one-way door), remote CI badge before a remote exists.
+### P2-1 — Retrieval-Port Adapter (one seam, not a matrix) | Status: TODO (forced)
+
+- **Failing query class / operability gap:** Swapping the embedding model or adding a second vector store forces changes across 6+ files (`app/retrieval/{dense,lexical,fusion,search}.py`, `app/ingest/embed.py`) with no seam.
+- **WHAT TO DO:** Introduce a retrieval-port abstraction (`RetrievalPort` / `VectorStore`) so pgvector is an implementation, not the interface.
+- **QUALITY BAR:** Interface over implementation. Single production adapter (`pgvector`); `Retriever` depends on port, not `psycopg`/`pgvector` SQL directly; `tests/test_retrieval_port.py` proves `hybrid-rrf` via port == direct SQL within rounding; `Δ recall@5 ≤ 0.002` on 365 items; ADR-0019 records "single pgvector today, port exists for one-system-well" with rejected alternatives.
+- **WHAT SUCCESS LOOKS LIKE:** Port protocol committed, `app/retrieval/search.py` wired to port, config coherence test verifies registry, zero metric regression on 365 items.
+
+### P2-2 — Lightweight Knowledge-Graph over Regulatory Provisions | Status: TODO (forced)
+
+- **Failing query class:** The 12 multi-hop items in `evals/gold/v1` (cross-document provision amendments where `multi-hop MRR ≈ 0.55–0.65` vs `extractive 0.85`).
+- **WHAT TO DO:** Minimal entity graph over provisions (document, section/§, provision; edges: cites, amends, supersedes, implements) extracted from parsed `§` markers, plus graph-assisted hybrid retrieval.
+- **QUALITY BAR:** Migration `0007_knowledge_graph` stores nodes/edges with provenance (`source_doc`, `char_start/char_end`); no ungrounded LLM graph invention; retrieval joins graph expansion with hybrid fusion; fallback to plain hybrid when graph has no hit.
+- **WHAT SUCCESS LOOKS LIKE:** Graph schema populated for 35 docs, `app/retrieval/graph.py` exists, `mode=graph-hybrid` evaluated in A/B, multi-hop recall@5 moves with paired bootstrap CI that excludes zero (or defended serving default), ADR-0020 committed.
+
+### P2-3 — Tight Agentic Research Loop + Minimal Workspace | Status: TODO (forced)
+
+- **Failing query class:** Complex analyst synthesis questions requiring multi-aspect comparisons (e.g. compromise-settlement eligibility before vs after Green Deposits circular with condition table) where single-pass k=5 fails answer completeness.
+- **WHAT TO DO:** Deterministic agentic research loop (`planner → retrieve → synthesize → critique → final`) producing citation-grounded comparison artifacts, plus minimal workspace persistence.
+- **QUALITY BAR:** Determinism and grounding over cleverness. Planner seeded; every claim cites a passage; corpus text is data, never instructions (canary 100% defended); `POST /v1/research` returns auditable `steps[]`; workspace persistence.
+- **WHAT SUCCESS LOOKS LIKE:** `POST /v1/research` operational, double-labelled calibration report (30-50 research tasks, agreement, abstention on unanswerable prompts), injection canary 100% defended, ADR-0021 committed.
+
+### P2-4 — Pluggable Extraction Chain with Docling/MinerU Fallback | Status: TODO (forced)
+
+- **Failing query class:** Real SEBI master circulars with scanned annexures, merged-cell tables, or figures where `pypdf` yields low text fidelity / table collapse (`recall` on scanned fixture near-zero).
+- **WHAT TO DO:** Pluggable extraction chain: fast-path `pypdf` for clean documents + deep parser fallback (Docling or MinerU) triggered when fidelity signals indicate low quality.
+- **QUALITY BAR:** Honest fallback, not a zoo. Clean docs retain fast path (zero regression); fallback preserves char offsets for FR-7 re-derivation; tables linearized with grounded spans; scanned-image fixture committed.
+- **WHAT SUCCESS LOOKS LIKE:** `app/ingest/extract_chain.py` with fallback, `DOCSCOUT_EXTRACTOR` flag, tests proving scanned fixture recall improvement while clean fixture recall is unchanged, ADR-0022 committed.
+
+### P2-5 — Ingestion-Scale Harness | Status: TODO (forced)
+
+- **Failing query class:** Ingest throughput/latency scaling curve at 100+ documents; unthrottled loop lacks back-pressure against regulator 429s, lacks shrink-retry on token ceiling, lacks tokenization cache.
+- **WHAT TO DO:** Token-aware rate limiter, shrink-retry on 429/context length, bounded LRU tokenization cache, ingest task machine with state persistence.
+- **QUALITY BAR:** NFR-8 idempotency preserved; `EXPLAIN ANALYZE` on dense index at scale documented; simulated 200-doc ingest benchmarks throughput at 1/4/8 concurrency; p95 at 35 docs unregressed.
+- **WHAT SUCCESS LOOKS LIKE:** `app/ingest/harness.py` committed, benchmark report in `loadtests/reports/<ts>/ingest-scale.json`, ADR-0023 committed.
+
+### P2-GUARD — P2 Non-Regression & Evidence Close-out | Status: TODO (forced)
+
+- **WHAT TO DO:** Ensure every P2 lands without regressing S-1…S-12, all new modes are A/B-measured with paired bootstrap + McNemar, no architectural scaffolding, documentation & report close-out.
+- **QUALITY BAR:** Full verification suite green; every claimed number backed by committed artifact; `README.md`, `CHANGELOG.md`, `SPEC.md` current.
+- **WHAT SUCCESS LOOKS LIKE:** `make verify-setup` green, full test suite green, `make eval-gate` PASS (MDE ≤ 1.0pp), bisectably green remote push.
+
 
 ---
 

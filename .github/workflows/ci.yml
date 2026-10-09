@@ -204,7 +204,7 @@ jobs:
           uv run python -m app.ingest run
           uv run python -m app.ingest verify
 
-      - name: start api and prove /healthz serves the full corpus
+      - name: start api and prove /healthz and /readyz serve the full corpus
         run: |
           docker compose up -d api
           for i in $(seq 1 30); do
@@ -212,7 +212,9 @@ jobs:
             sleep 2
           done
           curl -s http://localhost:8000/healthz | tee /tmp/healthz.json
-          python -c "import json; h=json.load(open('/tmp/healthz.json')); assert h['status']=='ok', h; assert h['corpus_chunks']==170, h; print('deploy-smoke ok:', h['status'], h['corpus_chunks'])"
+          python -c "import json; h=json.load(open('/tmp/healthz.json')); assert h['status']=='ok', h; assert h['model_loaded'] is True, h; print('deploy-smoke healthz liveness ok:', h['status'])"
+          curl -s http://localhost:8000/readyz | tee /tmp/readyz.json
+          python -c "import json; r=json.load(open('/tmp/readyz.json')); assert r['status'] in ('ok', 'degraded'), r; assert r['database'] is True, r; assert r['corpus_chunks']==230, r; print('deploy-smoke readyz readiness ok:', r['status'], 'chunks:', r['corpus_chunks'])"
 
       - name: teardown (always, even on failure)
         if: always()
