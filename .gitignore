@@ -57,6 +57,7 @@ evals/bench/*
 # followed by a negation silently does nothing. Verified with `git check-ignore -v`.
 loadtests/reports/*
 !loadtests/reports/verify/
+!loadtests/reports/20261009T164315Z/
 loadtests/dummy_server.py
 
 # --- python ---

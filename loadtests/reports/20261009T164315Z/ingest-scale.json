@@ -1,0 +1,74 @@
+{
+  "schema": "docscout.bench.ingest_scale/1",
+  "timestamp_utc": "2026-10-09T16:43:19.135870+00:00",
+  "system": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.10",
+    "cpu_count": "AMD64"
+  },
+  "config": {
+    "documents_simulated": 200,
+    "embedding_model": "BAAI/bge-small-en-v1.5",
+    "embedding_dimensions": 384,
+    "concurrencies": [
+      1,
+      4,
+      8
+    ],
+    "note": "Simulated embedder benchmarks pipeline concurrency and cache coordination without GPU/CPU thermal variance. In production with neural BAAI/bge-small-en-v1.5, cache hits save ~15-25ms per chunk."
+  },
+  "concurrency_scaling": {
+    "c1": {
+      "concurrency": 1,
+      "docs_count": 200,
+      "chunks_count": 1312,
+      "tokens_count": 306912,
+      "duration_s": 0.588,
+      "docs_per_s": 340.27,
+      "chunks_per_s": 2232.17,
+      "tokens_per_s": 522164.94,
+      "p50_latency_ms": 2.0,
+      "p95_latency_ms": 4.0,
+      "cache_hit_ratio": 0.7973
+    },
+    "c4": {
+      "concurrency": 4,
+      "docs_count": 200,
+      "chunks_count": 1312,
+      "tokens_count": 306912,
+      "duration_s": 0.618,
+      "docs_per_s": 323.48,
+      "chunks_per_s": 2122.06,
+      "tokens_per_s": 496406.09,
+      "p50_latency_ms": 4.0,
+      "p95_latency_ms": 64.0,
+      "cache_hit_ratio": 0.7942
+    },
+    "c8": {
+      "concurrency": 8,
+      "docs_count": 200,
+      "chunks_count": 1312,
+      "tokens_count": 306912,
+      "duration_s": 0.699,
+      "docs_per_s": 286.12,
+      "chunks_per_s": 1876.93,
+      "tokens_per_s": 439064.98,
+      "p50_latency_ms": 20.0,
+      "p95_latency_ms": 40.0,
+      "cache_hit_ratio": 0.7942
+    }
+  },
+  "cache_reingest_effect": {
+    "concurrency": 4,
+    "docs_count": 200,
+    "chunks_count": 1312,
+    "duration_s": 1.204,
+    "docs_per_s": 166.05,
+    "p50_latency_ms": 14.0,
+    "p95_latency_ms": 63.0,
+    "cache_hits": 2352,
+    "cache_misses": 272,
+    "cache_hit_ratio": 0.8963,
+    "speedup_vs_cold_x": 0.51
+  }
+}
