@@ -110,3 +110,21 @@ def staleness_budget_hours() -> float:
             except ValueError:
                 pass
     return DEFAULT_STALENESS_BUDGET_HOURS
+
+
+DEFAULT_EXTRACTOR_MODE: str = "auto"
+
+
+def extractor_mode() -> str:
+    """The configured PDF extractor mode ('auto', 'fast', 'pypdf', 'deep', 'docling', 'mineru').
+
+    Controlled by DOCSCOUT_EXTRACTOR env var. Default is 'auto' (fast-path pypdf with
+    fidelity check that escalates to deep fallback).
+    """
+    load_dotenv()
+    val = os.environ.get("DOCSCOUT_EXTRACTOR", "").strip().lower()
+    return (
+        val
+        if val in {"auto", "fast", "pypdf", "deep", "docling", "mineru"}
+        else DEFAULT_EXTRACTOR_MODE
+    )

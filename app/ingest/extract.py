@@ -12,7 +12,6 @@ stub that can never answer anything, and nothing anywhere reports a problem.
 
 from __future__ import annotations
 
-import io
 import re
 from dataclasses import dataclass
 
@@ -62,19 +61,11 @@ class Extraction:
 
 
 def extract_pdf(data: bytes) -> Extraction:
-    """Extract text from PDF bytes with pypdf, joining pages with newlines."""
-    import pypdf
+    """Extract text from PDF bytes via the pluggable extraction chain (P2-4)."""
+    from app.ingest.extract_chain import get_pdf_extractor
 
-    try:
-        reader = pypdf.PdfReader(io.BytesIO(data))
-        pages = [page.extract_text() or "" for page in reader.pages]
-    except Exception as exc:  # noqa: BLE001 - pypdf raises a wide, undocumented range
-        raise ExtractionError(
-            f"pypdf could not read the document: {type(exc).__name__}: {exc}"
-        ) from exc
-    return Extraction(
-        text=normalise_whitespace("\n".join(pages)), pages=len(pages), extractor="pypdf"
-    )
+    chain = get_pdf_extractor()
+    return chain.extract_pdf(data)
 
 
 def extract_html(data: bytes) -> Extraction:
