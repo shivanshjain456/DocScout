@@ -1,7 +1,7 @@
 # DocScout: Architecture
 
 **Status:** authoritative architecture document. Last updated **2026-10-09**.
-**Implementation status:** fully implemented, tested (511 tests passing), and verified in production containers.
+**Implementation status:** fully implemented, tested (448 test functions (555 collected cases incl. parametrization) passing), and verified in production containers.
 
 Status tags (**VERIFIED / SPECIFIED / PROPOSED / BLOCKED / RESOLVED**) are defined in `SPEC.md` §1.
 

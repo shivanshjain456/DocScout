@@ -3,12 +3,12 @@
 Citation-grounded question answering over Indian financial-regulatory circulars (RBI + SEBI), with
 hybrid retrieval (BM25 + dense vectors), cross-encoder reranking, answer generation, and a versioned evaluation harness.
 
-> **Status: Production operational RAG service.** P0, P1, and P2 capabilities verified, tested (555 tests passing), and containerized.
+> **Status: Production operational RAG service.** P0, P1, and P2 capabilities verified, tested (448 test functions (555 collected cases incl. parametrization) passing), and containerized.
 > Benchmarked against top open-source RAG architectures (Onyx, RAGFlow, Dify, Khoj, FastGPT).
 
 ## Results
 
-Retrieval evaluation baseline (`evals/reports/20261009T111050Z/`). Every number below is macro-averaged over the
+Retrieval evaluation baseline (`evals/reports/20261010T050559Z/`). Every number below is macro-averaged over the
 365 answerable items of gold set `2.0.0` (425 items total, including 60 unanswerable) and comes from the raw file linked
 beside it. Nothing here is estimated, rounded up, or carried over from a previous run.
 
@@ -17,11 +17,11 @@ beside it. Nothing here is estimated, rounded up, or carried over from a previou
 
 | Metric | Value | Reproduce | Raw output |
 |---|---|---|---|
-| Recall@1 (quote groups) | 0.695 | `make eval` | [`results.json`](evals/reports/20261009T111050Z/results.json) |
-| Recall@5 | 0.966 | `make eval` | [`results.json`](evals/reports/20261009T111050Z/results.json) |
-| Recall@10 | 0.992 | `make eval` | [`results.json`](evals/reports/20261009T111050Z/results.json) |
-| MRR | 0.854 | `make eval` | [`results.json`](evals/reports/20261009T111050Z/results.json) |
-| nDCG@5 | 0.867 | `make eval` | [`results.json`](evals/reports/20261009T111050Z/results.json) |
+| Recall@1 (quote groups) | 0.695 | `make eval` | [`results.json`](evals/reports/20261010T050559Z/results.json) |
+| Recall@5 | 0.966 | `make eval` | [`results.json`](evals/reports/20261010T050559Z/results.json) |
+| Recall@10 | 0.992 | `make eval` | [`results.json`](evals/reports/20261010T050559Z/results.json) |
+| MRR | 0.854 | `make eval` | [`results.json`](evals/reports/20261010T050559Z/results.json) |
+| nDCG@5 | 0.867 | `make eval` | [`results.json`](evals/reports/20261010T050559Z/results.json) |
 | Retrieval p95 latency | 42 ms | `make bench` | [`bench.json`](evals/bench/20261002T053217Z/bench.json) |
 
 Hardware for the latency figure: 2 vCPU / 1.94 GiB, PostgreSQL 18.6 (Debian 18.6-1.pgdg13+2).
@@ -169,7 +169,7 @@ Verify the install:
 
 ```bash
 make verify-setup    # environment matrix
-make test            # full suite (555 tests passing)
+make test            # full suite (448 test functions (555 collected cases incl. parametrization) passing)
 make eval            # retrieval baseline -> evals/reports/<UTC-ts>/
 make eval-gate       # fails build on a >1pp regression
 ```
@@ -212,7 +212,7 @@ The image is pinned (`python:3.12-slim-trixie`, `uv sync --frozen`, non-root,
 | `make dev` | db up + local uvicorn `app.api.app:app` with reload |
 | `make deploy` | local container deploy: build api, migrate, ingest, serve, prove `/healthz` |
 | `make destroy` | tear down local compose services, volumes and image |
-| `make test` | pytest (full test suite, 555 tests) |
+| `make test` | pytest (full test suite, 448 test functions (555 collected cases incl. parametrization)) |
 | `make lint` / `make typecheck` | ruff / mypy strict |
 | `make eval` | full eval run -> `evals/reports/<ts>/` |
 | `make eval-gate` | regression gate against mean-of-3 baselines |
