@@ -136,6 +136,6 @@ Signal: evidence coverage, separation AUC **0.8297** (0.5 is chance). At the shi
 make eval
 ```
 
-Gold set `2.0.0` (sha256 `1a640cce7d27bf2d…`), corpus manifest `d906aac4d861251a…`, uv.lock `11d95b4327db31ef…`.
+Gold set `2.0.0` (sha256 `1a640cce7d27bf2d…`), corpus manifest `3c7a585f24068d83…`, uv.lock `11d95b4327db31ef…`.
 
 Raw per-item rankings: `results.json`.

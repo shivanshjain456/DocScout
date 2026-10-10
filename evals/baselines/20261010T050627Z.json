@@ -5,7 +5,7 @@
   "git_commit": "00e94fdca70bfda994f1b76291b0236bd77f8ccf",
   "goldset_version": "2.0.0",
   "goldset_sha256": "1a640cce7d27bf2de3a1390e858cd7537cfd8e25fe03bea1260d12f8c4e9a3b5",
-  "corpus_manifest_digest": "d906aac4d861251aef4a28acfe1f9f0a9778a23027cc9f3915ad1239a5b31b12",
+  "corpus_manifest_digest": "3c7a585f24068d838f425318dd6150e8fb67e5a9f6acaa0982a33c2077d2b663",
   "corpus_chunks_in_db": 230,
   "items_scored": 365,
   "serving_config": "hybrid-rrf",
