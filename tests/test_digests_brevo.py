@@ -14,7 +14,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import psycopg.errors
 import pytest
@@ -38,7 +38,7 @@ class PoolWrapper:
 
 
 @pytest.fixture
-def test_user(db: Any) -> uuid4:
+def test_user(db: Any) -> UUID:
     """Fixture ensuring a test user exists in the users table."""
     user_id = uuid4()
     with db.transaction():
@@ -58,7 +58,7 @@ def test_user(db: Any) -> uuid4:
     return user_id
 
 
-def test_subscription_creation_and_consent(db: Any, test_user: uuid4) -> None:
+def test_subscription_creation_and_consent(db: Any, test_user: UUID) -> None:
     """Analyst creates subscription with explicit consent and topic associations."""
     pool = PoolWrapper(db)
     engine = DigestEngine(pool)
@@ -91,7 +91,7 @@ def test_subscription_creation_and_consent(db: Any, test_user: uuid4) -> None:
     assert row[3] == "192.168.1.50"
 
 
-def test_one_click_unsubscribe_by_token(db: Any, test_user: uuid4) -> None:
+def test_one_click_unsubscribe_by_token(db: Any, test_user: UUID) -> None:
     """Analyst can unsubscribe immediately with high-entropy token without password login."""
     pool = PoolWrapper(db)
     engine = DigestEngine(pool)
@@ -167,7 +167,7 @@ def test_grounded_digest_formatting() -> None:
     assert "GROUNDED EVIDENCE NOTICE" in text
 
 
-def test_deduplication_guarantee_prevents_duplicate_deliveries(db: Any, test_user: uuid4) -> None:
+def test_deduplication_guarantee_prevents_duplicate_deliveries(db: Any, test_user: UUID) -> None:
     """Enforces uq_digest_delivery_version: same document version is not delivered twice."""
     pool = PoolWrapper(db)
     engine = DigestEngine(pool)
@@ -212,7 +212,7 @@ def test_deduplication_guarantee_prevents_duplicate_deliveries(db: Any, test_use
             )
 
 
-def test_brevo_webhook_event_processing(db: Any, test_user: uuid4) -> None:
+def test_brevo_webhook_event_processing(db: Any, test_user: UUID) -> None:
     """Webhook callback events update delivery logs and deactivate bounced recipients."""
     pool = PoolWrapper(db)
     engine = DigestEngine(pool)
