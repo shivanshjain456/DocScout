@@ -1,31 +1,94 @@
 # DocScout
 
-![CI](https://github.com/shivanshjain456/DocScout/actions/workflows/ci.yml/badge.svg?branch=master)
-![Evals](https://img.shields.io/badge/evals-365%20scored-brightgreen)
-![Tests](https://img.shields.io/badge/tests-448%20functions%20(555%20cases)-brightgreen)
-![Python](https://img.shields.io/badge/python-3.12-blue)
+<p align="center">
+  <a href="https://github.com/shivanshjain456/DocScout/actions/workflows/ci.yml"><img src="https://github.com/shivanshjain456/DocScout/actions/workflows/ci.yml/badge.svg?branch=master" alt="CI"></a>
+  <a href="evals/reports/20261010T050559Z/results.json"><img src="https://img.shields.io/badge/evals-365%20scored-brightgreen?style=flat-square" alt="Evals"></a>
+  <a href="https://github.com/shivanshjain456/DocScout/actions"><img src="https://img.shields.io/badge/tests-448%20passing-brightgreen?style=flat-square" alt="Tests"></a>
+  <a href="pyproject.toml"><img src="https://img.shields.io/badge/python-3.12-blue?style=flat-square" alt="Python"></a>
+</p>
 
-> **Clone → queryable in 90 seconds:** `cp .env.example .env && make deploy && curl -s localhost:8000/healthz` · **5/5 green at** [`38037523415`](https://github.com/shivanshjain456/DocScout/actions/runs/38037523415)
+<p align="center">
+  <strong>Clone to queryable in 90 seconds:</strong> <code>cp .env.example .env && make deploy && curl -s localhost:8000/healthz</code> · <a href="https://github.com/shivanshjain456/DocScout/actions/runs/38037523415">5/5 green at 38037523415</a><br>
+  Without clone: <code>docker run -p 8000:8000 ghcr.io/shivanshjain456/docscout:1.0.1</code>
+</p>
+
+<p align="center">
+  <img src="docs/assets/demo.png" width="800" alt="DocScout demo citation grounded answer with sources">
+</p>
+
+> Citation-grounded QA over RBI and SEBI circulars for analysts, auditors, and fintech teams.
 >
-> **Without clone:** `docker run -p 8000:8000 ghcr.io/shivanshjain456/docscout:1.0.1` (or `ghcr.io/shivanshjain456/docscout:latest`) — then `curl -s localhost:8000/healthz`
+> *Every answer cites its source or it refuses to answer.*
 
+<p align="center">
+  <a href="#quickstart">Quick Start</a> ·
+  <a href="#results">Results</a> ·
+  <a href="#architecture">Architecture</a> ·
+  <a href="#api">API</a> ·
+  <a href="#faq">FAQ</a> ·
+  <a href="#contributing">Contributing</a>
+</p>
 
-Citation-grounded question answering over Indian financial-regulatory circulars (RBI + SEBI), with
-hybrid retrieval (BM25 + dense vectors), cross-encoder reranking, answer generation, and a versioned evaluation harness.
+---
 
-> **Status: Production operational RAG service.** P0, P1, and P2 capabilities verified, tested (448 test functions (555 collected cases incl. parametrization) passing), and containerized.
-> Benchmarked against top open-source RAG architectures (Onyx, RAGFlow, Dify, Khoj, FastGPT).
->
-> **Executive & Hiring Review:** For a 90-second technical narrative, verifiable evidence links, architecture pillars, and copy-paste resume bank, see [`docs/portfolio/ONE_PAGER.md`](docs/portfolio/ONE_PAGER.md).
+## Contents
+
+- [Why DocScout](#why-docscout)
+- [Quickstart](#quickstart)
+- [Demo](#demo)
+- [Results](#results)
+- [Architecture](#architecture)
+- [API](#api)
+- [Configuration](#configuration)
+- [Commands](#commands)
+- [Verification](#verification)
+- [FAQ](#faq)
+- [Repo Map](#repo-map)
+
+---
+
+## Why DocScout
+
+- **Problem:** RBI/SEBI circulars are dispersed across regulator sites. Keyword search misses paraphrases; dense search fails IDs.
+- **Solution:** Hybrid BM25 and BGE-small-en-v1.5 384d retrieval via RRF (k=60), 36-term domain expansion, and citation-grounded generation with refusal.
+- **Proof:** 0.966 Recall@5, 0.854 MRR, and 48.11 ms cold / 2.11 ms warm p95 across 365 items; 100% citation precision; kappa 1.000 / 0.844.
+
+---
+
+## Quickstart
+
+```bash
+cp .env.example .env && make deploy          # build, migrate, ingest, serve, verify /healthz
+curl -s localhost:8000/healthz               # {"status":"ok","corpus_chunks":170}
+curl -s -H "X-API-Key: $DOCSCOUT_API_KEY" -H "Content-Type: application/json" \
+     -d '{"question":"What is the timeline for filing regulatory capital returns?","k":5}' \
+     localhost:8000/v1/search | jq
+```
+
+Verify: `make test && make eval-gate` (448 tests passing). Native DB: `bash scripts/dev_db_native.sh`; Docker: `docker compose up -d`. See [SETUP_REPORT.md](docs/setup/SETUP_REPORT.md).
+
+---
+
+## Demo
+
+```bash
+make serve                                   # serves API on http://localhost:8000
+curl -s -H "X-API-Key: $DOCSCOUT_API_KEY" http://localhost:8000/v1/documents/doc-rbi-001 | jq
+```
+
+<p align="center">
+  <img src="docs/assets/ui-console.png" width="800" alt="DocScout UI Console search identity and digest operations">
+</p>
+
+React console for Search, Citations, Auth0, Brevo, and OCR. Narrative: [ONE_PAGER.md](docs/portfolio/ONE_PAGER.md).
+
+---
 
 ## Results
 
-Retrieval evaluation baseline (`evals/reports/20261010T050559Z/`). Every number below is macro-averaged over the
-365 answerable items of gold set `2.0.0` (425 items total, including 60 unanswerable) and comes from the raw file linked
-beside it. Nothing here is estimated, rounded up, or carried over from a previous run.
+Retrieval baseline on gold set `2.0.0` (365 scored items, 60 unanswerable). Macro-averaged; links to committed artifacts.
 
-**Serving configuration: `hybrid-rrf`** (BM25 + dense, RRF k=60, arm depth 50, k=5). See
-[ADR-0006](docs/decisions/0006-hybrid-retrieval-bm25-dense-rrf.md).
+Serving config: **hybrid-rrf**: BM25 + dense, RRF k=60, arm depth 50, k=5, arm-anchored top-1 guarantee per [ADR-0007](docs/decisions/0007-arm-anchored-fusion.md).
 
 | Metric | Value | Reproduce | Raw output |
 |---|---|---|---|
@@ -34,397 +97,183 @@ beside it. Nothing here is estimated, rounded up, or carried over from a previou
 | Recall@10 | 0.992 | `make eval` | [`results.json`](evals/reports/20261010T050559Z/results.json) |
 | MRR | 0.854 | `make eval` | [`results.json`](evals/reports/20261010T050559Z/results.json) |
 | nDCG@5 | 0.867 | `make eval` | [`results.json`](evals/reports/20261010T050559Z/results.json) |
-| Retrieval p95 latency | 42 ms | `make bench` | [`bench.json`](evals/bench/20261002T053217Z/bench.json) |
+| Retrieval p95 latency | 48.11 ms cold / 2.11 ms warm | `make bench` | [`bench.json`](evals/bench/20261002T054058Z/bench.json) |
 
-Hardware for the latency figure: 2 vCPU / 1.94 GiB, PostgreSQL 18.6 (Debian 18.6-1.pgdg13+2).
-Retrieval only: the embedding model is loaded once at startup, not per query.
+*Hardware: 2 vCPU, 1.94 GiB, PostgreSQL 18.6. Model loaded at startup. 170 chunks in bench server, 230 in eval corpus ([ADR-0025](docs/decisions/0025-evaluation-and-production-corpus-reconciliation.md)).*
 
-### Retrieval A/B and Expansion
+<details><summary><b>Retrieval A/B and Expansion</b></summary>
 
 | config | recall@5 | MRR | p95 | verdict |
 |---|---|---|---|---|
-| `bm25-only` | 0.970 | 0.838 | 1 ms | lexical headline, vulnerable to low-overlap paraphrase |
-| `hybrid-rrf` | 0.966 | 0.854 | 42 ms | **serving** (best MRR and nDCG) |
-| `dense-only` | 0.947 | 0.762 | 38 ms | semantic recall, fails exact numeric/circular IDs |
+| `bm25-only` | 0.970 | 0.838 | 1 ms | lexical headline, fails paraphrase |
+| `hybrid-rrf` | 0.966 | 0.854 | 48.11 ms cold / 2.11 ms warm | **serving** (best MRR/nDCG) |
+| `dense-only` | 0.947 | 0.762 | 38 ms | semantic recall, fails circular IDs |
 
-Domain query expansion is supported via `DomainQueryExpander` ([ADR-0017](docs/decisions/0017-query-understanding-and-domain-expansion.md)),
-providing bidirectional acronym expansion across 36+ regulatory terms and optional HyDE formulation.
+Domain expansion via `DomainQueryExpander` ([ADR-0017](docs/decisions/0017-query-understanding-and-domain-expansion.md)): 36+ acronyms and HyDE.
 
-### Regression Gate
+</details>
 
-`make eval-gate` fails the build when the serving configuration's recall, MRR, or nDCG@5 drops
-more than 1pp against the mean of accepted baselines, and fails hard on
-invariants that make a comparison meaningless: a gold set mutated without a version
-bump, a changed corpus, or items that quietly vanished. Drilled against a real 1.90pp
-degradation: exit 1.
+<details><summary><b>Effect of Reranking</b></summary>
 
-The gate publishes its own noise floor beside each verdict. On gold set v2.0.0 (365 paired items,
-ADR-0012), the minimum detectable effect sits at <= 1.0pp.
+Cross-encoder adds +2.3pp recall@1 for 30x-160x p95 latency; CI spans zero; degrades recall@10 deep. Disabled in serving ([ADR-0009](docs/decisions/0009-cross-encoder-reranking.md), [`results.json`](evals/experiments/u10-rerank-20261002T062322Z/results.json)):
 
-### Verification Story
-
-[A retrieval miss the harness caught](docs/verification/0001-g038-fusion-miss.md): BM25 ranked
-a chunk **first**, RRF fused it to rank 14, and the item scored zero recall at every cutoff.
-Diagnosed to rank-only fusion discarding an arm's certainty, fixed with a bounded guarantee
-([ADR-0007](docs/decisions/0007-arm-anchored-fusion.md)) chosen over constant-tuning on measured
-evidence, and pinned by a regression test that fails when the fix is removed.
-
-### Architecture
-
-System pipeline from regulatory ingestion to citation-grounded answering ([docs/architecture/system-diagram.md](docs/architecture/system-diagram.md)):
-
-```mermaid
-flowchart LR
-    subgraph OFFLINE["Ingestion stage (no deploy credentials)"]
-        SRC["RBI / SEBI
-        public circulars (PDF/HTML)"] --> FETCH["fetch
-        httpx"]
-        FETCH --> EXTRACT["extract
-        pypdf / trafilatura"]
-        EXTRACT --> CLEAN["clean & guard
-        blank invisible, >500 chars"]
-        CLEAN --> CHUNK["chunk
-        1000 chars, 150 overlap, uuid5 IDs"]
-        CHUNK --> EMBED["embed
-        bge-small-en-v1.5 (384d)"]
-        CHUNK --> SCAN["scan
-        secrets & PII scanner"]
-    end
-
-    EMBED --> STORE[("Postgres 18.6 + pgvector 0.8.6
-    documents, versions, chunks
-    HNSW & GIN indices
-    retrieval_audit_log")]
-    CHUNK --> STORE
-    SCAN --> STORE
-
-    subgraph ONLINE["Query path (FastAPI, p95 42ms cold / 2ms warm)"]
-        Q["user question"] --> API["app/api
-        FastAPI: API key + rate limit + audit log"]
-        API --> EXP["app/retrieval
-        DomainQueryExpander: acronyms & HyDE"]
-        EXP --> RETR["hybrid retrieval
-        dense KNN + tsvector BM25 + metadata filter"]
-        RETR --> STORE
-        RETR --> FUSE["RRF fusion (k=60)"]
-        FUSE --> CACHE[("in-memory TTL cache
-        invalidation hooks on supersession")]
-        FUSE --> GEN["app/generate
-        delimited context + mandatory citations
-        + refusal logic"]
-        GEN --> ANS["POST /v1/answer
-        grounded answer with citations"]
-        FUSE --> SRCH["POST /v1/search
-        ranked passages with titles & dates"]
-    end
-
-    subgraph EVAL["app/evals (offline evaluation)"]
-        GOLD["gold set v2.0.0
-        425 items (committed)"] --> SCORE["deterministic scorers
-        recall, MRR, nDCG, citation P/R"]
-        GOLD --> JUDGE["judge calibration
-        80 items, kappa 1.000 / 0.844"]
-        SCORE --> REP["evals/reports/<ts>/
-        results.json, report.md, gate.json"]
-        JUDGE --> REP
-        REP --> CI["CI eval gate
-        make eval-gate"]
-    end
-
-    ANS -.graded by.-> GOLD
-```
-
-### Live Demo and Serving
-
-![DocScout demo](docs/assets/demo.png)
-![DocScout UI Console](docs/assets/ui-console.png)
-
-**Without clone:** `docker run -p 8000:8000 ghcr.io/shivanshjain456/docscout:1.0.1` (or `ghcr.io/shivanshjain456/docscout:latest`) — then `curl -s localhost:8000/healthz`
-
-```bash
-make serve      # http://localhost:8000: demo UI, /docs, /healthz, /readyz
-```
-
-Endpoints provided:
-- `POST /v1/search`: Returns ranked passages with resolvable citations, confidence score, and optional metadata filtering (`filter: MetadataFilter`).
-- `POST /v1/answer`: Generates citation-grounded answers with mandatory citation validation, explicit refusal on unanswerable queries, and injection defense.
-- `POST /v1/research`: Executes deterministic agentic multi-aspect regulatory synthesis producing structured comparison tables and findings with mandatory citations.
-- `POST /v1/workspaces`: Creates research workspace for storing query findings and analysis artifacts.
-- `GET /v1/workspaces/{workspace_id}/artifacts`: Retrieves stored research artifacts and workspace state.
-- `GET /v1/documents/{document_id}`: Resolves authoritative document metadata (title, date, authority, version count, lineage).
-- `GET /healthz`: Zero-DB liveness probe (safe for pod liveness).
-- `GET /readyz`: Traffic readiness probe (verifies database pool, chunk count, staleness budgets).
-- `POST /v1/admin/cache/invalidate`: Authenticated admin cache purge and BM25 index reload.
-- `GET /metrics`: Prometheus metrics exposition.
-
-All protected endpoints require an API key (`X-API-Key`, constant-time compare, rotation supported)
-and are rate-limited per key. Missing key configuration stops startup rather than defaulting to open.
-
-### Cost and Latency
-
-Measured over HTTP with real gold-set questions on 2 vCPU / 1.9 GiB, 200 requests per phase.
-Reproduce with `make serve` then `make bench`; raw output
-[`bench.json`](evals/bench/20261002T053217Z/bench.json).
-
-| phase | mean | p50 | p95 | p99 |
-|---|---|---|---|---|
-| cold (cache bypassed) | 39.07 ms | 37.94 ms | **48.11 ms** | 53.19 ms |
-| warm (cache hit) | 1.71 ms | 1.64 ms | **2.11 ms** | 2.68 ms |
-
-| measure | value | reproduce |
-|---|---|---|
-| Cache effect on p95 | **22.8x** (46.0 ms saved) | `make bench` |
-| Sustained throughput | 39.8 q/s at concurrency 4 | `make bench` |
-| Cost per 1,000 queries | **$0.000078** (= about $0.08 per million) | `make bench` |
-| LLM cost | $0.00 for retrieval tier | `make bench` |
-
-Cost assumes one AWS t4g.small (2 vCPU / 2 GiB), ap-south-1, Linux on-demand at $0.0112/hour serving continuously at the
-measured throughput. The price is a third-party listing, not an AWS quotation: see the
-script for the source and the caveat.
-
-### Effect of Reranking
-
-A cross-encoder rerank stage is **built, tested, and measured, but switched off in serving**
-([ADR-0009](docs/decisions/0009-cross-encoder-reranking.md)). Reproduce with
-`uv run python -m scripts.experiments.u10_rerank_ablation`; raw output
-[`results.json`](evals/experiments/u10-rerank-20261002T062322Z/results.json).
-
-| config | recall@1 | recall@5 | recall@10 | MRR | p95 | CI excludes 0 |
+| config | R@1 | R@5 | R@10 | MRR | p95 | CI>0 |
 |---|---|---|---|---|---|---|
-| **no rerank (serving)** | 0.695 | 0.966 | **1.000** | 0.825 | **39 ms** | (baseline) |
+| no rerank (serving) | 0.695 | 0.966 | 1.000 | 0.825 | 39 ms | (base) |
 | rerank top 10 | 0.718 | 0.977 | 1.000 | 0.850 | 1185 ms | no |
 | rerank top 20 | 0.718 | 0.977 | 0.992 | 0.848 | 2455 ms | no |
 | rerank top 50 | 0.718 | 0.977 | 0.992 | 0.848 | 6276 ms | no |
 
-Reranking buys **+2.3pp recall@1 for 30x to 160x the p95**, and the
-bootstrap CI spans zero. Beyond the serving depth it degrades recall@10 because the cross-encoder
-promotes deep candidates over evidence fusion had already placed correctly. It stays off.
+</details>
 
-### Calibrated Generation Evaluation
+<details><summary><b>Calibrated Generation</b></summary>
 
-Answer generation (`POST /v1/answer`, ADR-0011) was calibrated against human double-labelling on 80 items across all strata:
-- **Judge vs Human Agreement (Faithfulness)**: 100.0%, Cohen's kappa = 1.000.
-- **Inter-Rater Human Agreement (Faithfulness)**: 97.5%, Cohen's kappa = 0.844.
-- **Citation Precision**: 100.0%, Cohen's kappa = 1.000.
-- **Abstention Correctness**: 100.0%, Cohen's kappa = 1.000.
-- **Prompt Injection Defense**: 100% canary defense (3/3 canaries defended).
-See [`evals/calibration/20261008T200000Z/calibration_report.md`](evals/calibration/20261008T200000Z/calibration_report.md).
+Answer generation (`POST /v1/answer`, [ADR-0011](docs/decisions/0011-answer-generation-and-calibrated-judge.md)) calibrated on 80 double-labelled items:
+- Faithfulness agreement: 100.0% (kappa = 1.000).
+- Inter-rater agreement: 97.5% (kappa = 0.844).
+- Citation precision: 100.0%.
+- Abstention correctness: 100.0%.
+- Prompt canary defense: 100% (3/3 defended).
+
+Report: [`calibration_report.md`](evals/calibration/20261008T200000Z/calibration_report.md).
+
+</details>
+
+<details><summary><b>Cost and Latency</b></summary>
+
+Measured over HTTP on 2 vCPU / 1.94 GiB ([`bench.json`](evals/bench/20261002T054058Z/bench.json)):
+
+| phase | mean | p50 | p95 | p99 |
+|---|---|---|---|---|
+| cold | 39.07 ms | 37.94 ms | **48.11 ms** | 53.19 ms |
+| warm | 1.71 ms | 1.64 ms | **2.11 ms** | 2.68 ms |
+
+22.8x speedup (46.0 ms saved); 39.82 q/s throughput; $0.000078 / 1k queries (~$0.08 / million) on AWS t4g.small ($0.0112/hr compute).
+
+</details>
+
+---
 
 ## Architecture
 
-See `docs/architecture/system-diagram.md` (Mermaid: ingest -> store -> retrieve -> generate -> eval).
+System pipeline from regulatory ingestion to citation-grounded answering:
 
-```
-Internet (RBI/SEBI)                  [untrusted data]
-   |
-   +-> fetch -> extract chain (fast/deep fallback) -> clean -> chunk -> embed (LRU cache) -> Postgres 18 + pgvector 0.8.6
-                                                                                               |
-   question -> API (key + rate limit + audit log) -> VectorStore port (HNSW + tsvector)
-                                                  -> RRF fusion -> query expansion & provision graph
-                                                  -> grounded generation & agentic research workspace
-```
-
-## Quickstart
-
-Two scripts from a bare machine to a queryable corpus:
-
-```bash
-cp .env.example .env                 # set DB_PASSWORD, DB_APP_PASSWORD, DOCSCOUT_API_KEY
-bash scripts/bootstrap.sh            # uv, Python 3.12, pre-commit, gitleaks, .venv, hooks
-bash scripts/dev_db_native.sh        # PostgreSQL 18 + pgvector 0.8.6, roles, extensions
-make migrate && make ingest          # 8 migrations; 35 documents, 230 chunks
-make serve                           # http://localhost:8000
+```mermaid
+flowchart LR
+    subgraph OFFLINE["Ingestion"]
+        SRC["Circulars"] --> FETCH["fetch"] --> EXTRACT["extract"] --> CLEAN["clean"] --> CHUNK["chunk"] --> EMBED["embed"] --> STORE[("Postgres 18.6")]
+    end
+    subgraph ONLINE["Query"]
+        Q["question"] --> API["FastAPI"] --> EXP["Expander"] --> RETR["Hybrid RRF"] --> GEN["generation"] --> ANS["answer"]
+        RETR --> STORE
+        RETR --> SRCH["search"]
+    end
+    subgraph EVAL["Evaluation"]
+        GOLD["gold set"] --> SCORE["scorers"] --> REP["results.json"] --> GATE["eval-gate"]
+    end
+    ANS -.-> EVAL
 ```
 
-The corpus payloads are committed, so `make ingest` runs offline and reproduces the exact
-bytes every published number was measured on.
+*System pipeline from ingestion to answering. See [system-diagram.md](docs/architecture/system-diagram.md) and [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md).*
 
-`scripts/dev_db_native.sh` is the default native path and needs no Docker: it installs
-PostgreSQL 18 and pgvector if absent, and executes `infra/initdb/` files.
-`docker-compose.yml` is the supported alternative where a daemon is available:
-
-```bash
-docker compose up -d     # PostgreSQL 18.6 + pgvector 0.8.6, same initdb scripts
+```text
+Ingest: RBI/SEBI -> fetch -> extract -> chunk -> embed -> Postgres
+Query:  Question -> FastAPI -> Expander -> Hybrid RRF -> Answer
 ```
 
-Verify the install:
+---
 
-```bash
-make verify-setup    # environment matrix
-make test            # full suite (448 test functions (555 collected cases incl. parametrization) passing)
-make eval            # retrieval baseline -> evals/reports/<UTC-ts>/
-make eval-gate       # fails build on a >1pp regression
-```
+## API
 
-### Container Deployment (P0-4)
+| Endpoint | Method | Auth | Description |
+|---|---|---|---|
+| `POST /v1/search` | POST | `X-API-Key` | Ranked passages with citations |
+| `POST /v1/answer` | POST | `X-API-Key` | Grounded answer with refusal |
+| `POST /v1/research` | POST | `X-API-Key` | Multi-step research agent |
+| `GET /v1/documents/{id}` | GET | `X-API-Key` | Document metadata and lineage |
+| `GET /healthz` | GET | None | Zero-DB liveness probe |
+| `GET /readyz` | GET | None | Readiness probe (pool, staleness) |
+| `POST /v1/admin/cache/invalidate` | POST | `X-API-Key` | Cache purge and index reload |
+| `GET /metrics` | GET | None | Prometheus metrics exposition |
 
-From a clean checkout with only `.env` edited:
+Protected endpoints require `X-API-Key`.
 
-```bash
-make deploy          # build api image -> up db -> migrate -> ingest -> up api -> curl /healthz
-curl -s localhost:8000/healthz   # status: ok, corpus_chunks: 230
-make destroy         # compose down -v + remove local image; proves nothing remains
-```
+---
 
-The image is pinned (`python:3.12-slim-trixie`, `uv sync --frozen`, non-root,
-`HEALTHCHECK /healthz`, no secrets in layers) and pre-warms BGE-small at build time into
-`/opt/hf-cache` so first boot does not download models at runtime.
+## Configuration
 
-## Repo Map
+Core runtime settings configured via `.env` (derived from [`.env.example`](.env.example)):
 
-| Path | Contents |
-|---|---|
-| `app/ingest/` | offline pipeline: fetch, extract chain, guard, clean, chunk, embed, store, scanner, refresh, scale harness |
-| `app/retrieval/` | retrieval port, hybrid search, RRF fusion, query expansion, metadata filtering, knowledge graph, reranking |
-| `app/generate/` | prompt assembly, citation grounding, refusal behavior, agentic research loop & workspace |
-| `app/evals/` | gold set, scorers, judges, calibration, gate |
-| `app/api/` | FastAPI surface: search, answer, research, workspaces, document resolution, health, metrics, admin |
-| `evals/gold/v1/` | versioned QA gold set (v2.0.0, 425 items) |
-| `evals/reports/` | timestamped eval runs |
-| `infra/` | DB init SQL, migrations (0001–0008), docker configuration |
-| `docs/decisions/` | 23 ADRs (Context, Decision, Consequences, Rejected alternatives) |
-| `docs/security/` | MCP and skills audits, injection canary log, audit logging |
-| `docs/setup/` | SETUP_REPORT.md and environment evidence |
-| `ui/` | interactive demo frontend |
+| Variable | Default | Description |
+|---|---|---|
+| `DB_PASSWORD` | *(required)* | Postgres admin password |
+| `DB_APP_PASSWORD` | *(required)* | Application DML password |
+| `DOCSCOUT_API_KEY` | *(required)* | API keys with rotation support |
+| `REDIS_URL` | `redis://localhost:6379/0` | Multi-worker cache and rate limiter |
+| `DOCSCOUT_CORPUS_STALENESS_BUDGET_HOURS` | `168.0` | Staleness budget for `/readyz` |
+| `DOCSCOUT_LOG_JSON` | `0` | Set 1 for JSON logs |
+
+---
 
 ## Commands
 
 | Command | Does |
 |---|---|
-| `make dev` | db up + local uvicorn `app.api.app:app` with reload |
-| `make deploy` | local container deploy: build api, migrate, ingest, serve, prove `/healthz` |
-| `make destroy` | tear down local compose services, volumes and image |
-| `make test` | pytest (full test suite, 448 test functions (555 collected cases incl. parametrization)) |
-| `make lint` / `make typecheck` | ruff / mypy strict |
-| `make eval` | full eval run -> `evals/reports/<ts>/` |
-| `make eval-gate` | regression gate against mean-of-3 baselines |
-| `make refresh` | offline corpus staleness audit and hash check |
-| `make refresh-check` | live conditional HTTP refresh check against regulatory hosts |
-| `make secret-scan` | gitleaks over full history |
-| `make audit-deps` | pip-audit and CycloneDX SBOM generation |
-| `make verify-setup` | environment verification matrix |
+| `make dev` | Run DB and API with reload |
+| `make deploy` | Full deploy: migrate, ingest, serve |
+| `make destroy` | Tear down local containers and image |
+| `make test` | Run test suite (448 passing) |
+| `make lint` | Run ruff checks |
+| `make typecheck` | Run strict mypy |
+| `make eval` | Run retrieval eval (365 items) |
+| `make eval-gate` | Run regression gate (< 1pp delta) |
 
-## Limitations
+---
 
-Written to be read by someone evaluating DocScout against operational standards:
+## Verification
 
-1. **The API is runnable as a local container; it is not hosted at a public cloud URL.**
-   `make deploy` builds the pinned image and serves `/healthz` (`status: ok`, `corpus_chunks: 230`)
-   where a Docker daemon exists. No public cloud resources or remote load balancers are provisioned by default.
+- `make test`: Full test suite (448 test functions, 555 collected cases across 41 modules).
+- `make eval`: Offline retrieval eval over gold set v2.0.0 (365 scored items).
+- `make eval-gate`: Regression gate fails if Recall, MRR, or nDCG@5 drops > 1pp (noise floor <= 1.0pp).
 
-2. **The serving process is single-worker by default, and its cache and rate limiter live in memory.**
-   Neither survives a restart and neither coordinates across processes. `GET /healthz` reports
-   `single_process: true`. Liveness and readiness are cleanly separated: `GET /healthz` performs
-   zero database I/O, while `GET /readyz` checks connection pooling, chunk availability, and staleness budgets.
-   A multi-worker deployment requires Redis (`REDIS_URL` in `.env.example`).
+<details><summary><b>Limitations</b></summary>
 
-3. **Reranking is implemented but disabled by default in serving.**
-   On the current corpus, hybrid retrieval already achieves recall@10 = 0.992. Cross-encoder reranking
-   costs 30x to 160x the p95 latency for a small recall@1 gain whose bootstrap confidence interval spans zero.
+1. **Local container deployment:** Shipped via `make deploy` or Docker; no public cloud URL.
+2. **Single-worker default:** In-process cache and rate limiter; multi-worker uses `REDIS_URL`.
+3. **Reranker disabled:** Hybrid reaches 0.992 Recall@10; reranker adds 30x-160x p95 for minimal gain.
+4. **Abstention selectivity:** Coverage AUC 0.730; 0.65 threshold gives 0.273 recall. Refusal handles rest.
+5. **In-memory BM25 index:** Startup index loads in memory; scales to thousands of chunks.
+6. **Compute-only cost:** $0.08 / million queries covers t4g.small compute only.
 
-4. **Abstention catches about a quarter of unanswerable questions at the retrieval layer.**
-   Evidence coverage scores AUC 0.730. At threshold 0.65, abstention recall is 0.273 with selective accuracy 0.869.
-   At the answer layer (`POST /v1/answer`), explicit refusal logic handles unanswerable questions.
+Boundaries:
+- 26 ADRs in [`docs/decisions/`](docs/decisions/).
+- Metadata filtering: `source`, `date_from`, `date_to`, `is_current`.
+- Superseded versions retained, excluded from search ([ADR-0014](docs/decisions/0014-cache-invalidation-on-supersession-and-readiness-split.md)).
+- Authoritative citations ([ADR-0018](docs/decisions/0018-human-readable-citation-rendering.md)), VectorStore port ([ADR-0019](docs/decisions/0019-retrieval-port-adapter.md)).
+- Provision graph and research agent ([ADR-0020](docs/decisions/0020-knowledge-graph-regulatory-provisions.md), [ADR-0021](docs/decisions/0021-tight-agentic-research-loop.md)).
 
-5. **The BM25 arm holds its term index in memory.**
-   It executes a startup query over stored chunks. Appropriate for thousands of chunks; multi-million chunk scale
-   would migrate to an external or extension-based engine (ParadeDB pg_search, OpenSearch).
+</details>
 
-6. **The cost figure is compute only.**
-   $0.08 per million queries covers one t4g.small serving retrieval; it is not an AWS quotation and does
-   not include storage, egress, or external LLM tokens.
+<details><summary><b>Supply Chain and Security</b></summary>
 
-7. **Decision lineage spans 23 ADRs.**
-   Every architectural choice is documented in `docs/decisions/` with rejected alternatives and measured reasons.
+- `make audit-deps`: [`dependency-audit.json`](docs/security/dependency-audit.json) and CycloneDX SBOM [`sbom.cdx.json`](docs/security/sbom.cdx.json).
+- Pinned base `python:3.12-slim-trixie`, `uv sync --frozen`, non-root user, zero credentials.
+- Append-only audit log in PostgreSQL ([ADR-0015](docs/decisions/0015-retrieval-audit-log-and-corpus-pii-scan.md)); queries and keys unlogged.
+- Ingestion PII scanner (`app.ingest.scanner`) with quarantine and masking.
 
-8. **Declarative metadata filtering is executed in-query.**
-   `POST /v1/search` accepts an optional `filter` supporting regulatory authority (`source`: `"RBI"`, `"SEBI"`),
-   date bounding (`date_from`, `date_to`), version currency (`is_current`), and document identifiers.
+</details>
 
-9. **Superseded document versions are retained but never retrieved by default.**
-   Superseded rows remain in PostgreSQL per audit retention guarantees (FR-4). When a document is superseded,
-   in-memory caches are purged immediately, BM25 indices reload, and generation counters advance (ADR-0014).
+<details><summary><b>Metrics and Observability</b></summary>
 
-10. **Citations carry authoritative document titles, publication dates, and canonical URLs (FR-14).**
-    Every retrieved `Passage` carries its official regulator circular `title`, `published_date`,
-    and `canonical_url` alongside stable content-derived `chunk_id` and character spans (ADR-0018, Migration 0006).
-    Dedicated endpoint `GET /v1/documents/{document_id}` resolves document metadata and version lineage.
-
-11. **Retrieval port and vector store decoupling (P2-1).**
-    `VectorStore` Protocol (`app/retrieval/port.py`) abstracts the underlying storage backend. `PgVectorStore`
-    is the tested production adapter; swapping backends requires implementing the port protocol without
-    touching search or fusion logic (ADR-0019).
-
-12. **Lightweight provision graph and agentic research loops (P2-2, P2-3).**
-    Multi-hop regulatory cross-referencing utilizes provision nodes and citations (`mode=graph-hybrid`, ADR-0020).
-    Complex comparative questions execute via `ResearchAgent` (`POST /v1/research`, ADR-0021) with workspace
-    artifact storage and 100% citation grounding.
-
-### Logs and Request Correlation
-
-Every record renders through one structlog pipeline:
-
-```bash
-DOCSCOUT_LOG_JSON=1 DOCSCOUT_LOG_LEVEL=INFO make serve
-```
-
-Each request binds a correlation ID returned as `X-Request-ID`:
-
-```json
-{"key_fingerprint":"afae76d828ca","mode":"hybrid","duration_ms":37.3,"retrieval_ms":37.18,
- "passages":2,"event":"search.completed","request_id":"req-prod-001","path":"/v1/search"}
-{"status":200,"duration_ms":40.81,"event":"http.request","request_id":"req-prod-001"}
-```
-
-Inbound `X-Request-ID` is validated for length and character safety. API keys are redacted by a pipeline processor;
-only truncated fingerprints are logged.
-
-### Knowing When the Corpus Cannot Answer
-
-14.1% of gold set v2.0.0 (60 of 425 items) is deliberately unanswerable:
-
-| signal | AUC |
-|---|---|
-| `rrf_top`: serving configuration score | **0.467** (worse than chance) |
-| `dense_margin` | 0.461 |
-| `bm25_top` | 0.655 |
-| **evidence coverage**: query terms found in top 5 passages | **0.730** |
-
-At threshold 0.65: abstention recall 0.273, false rejection rate 0.030, refusal precision 0.600, selective accuracy 0.869.
-Full sweep and details: [`docs/verification/0002-abstention-signal.md`](docs/verification/0002-abstention-signal.md).
-
-### Supply Chain
-
-```bash
-make audit-deps      # -> docs/security/dependency-audit.json, docs/security/sbom.cdx.json
-```
-
-`pip-audit` over the exported `uv.lock`, plus CycloneDX SBOM generation. The gate fails only on advisories
-affecting dependencies installed at runtime.
-
-### Test Quality: Mutation Score
-
-```bash
-make mutation        # -> evals/mutation/latest.json
-```
-
-| module | line coverage | mutants | killed | survived | mutation score |
-|---|---|---|---|---|---|
-| `app/evals/scorers.py` | 99% | 153 | 140 | 13 | **91.5%** |
-| `app/evals/stats.py` | 96% | 125 | 78 | 47 | **62.4%** |
-| total | - | 278 | 218 | 60 | **78.4%** |
-
-### Metrics
-
-`GET /metrics` serves Prometheus exposition:
+Prometheus exposition via `GET /metrics` (`/healthz` liveness; `/readyz` readiness):
 
 | metric | type | labels |
 |---|---|---|
-| `docscout_http_requests_total` | counter | `method`, `route`, `status` |
-| `docscout_http_request_duration_seconds` | histogram | `method`, `route` |
+| `docscout_http_requests_total` | counter | method, route, status |
+| `docscout_http_request_duration_seconds` | histogram | method, route |
 | `docscout_http_requests_in_flight` | gauge | - |
-| `docscout_retrieval_duration_seconds` | histogram | `mode` |
-| `docscout_cache_events_total` | counter | `result` (hit/miss) |
+| `docscout_retrieval_duration_seconds` | histogram | mode |
+| `docscout_cache_events_total` | counter | result |
 | `docscout_rate_limited_total` | counter | - |
 | `docscout_corpus_chunks` | gauge | - |
 | `docscout_corpus_last_checked_timestamp_seconds` | gauge | - |
@@ -435,48 +284,78 @@ make mutation        # -> evals/mutation/latest.json
 | `docscout_corpus_versions_superseded` | gauge | - |
 | `docscout_manifest_changed_total` | counter | - |
 
-### Corpus Freshness and Scheduled Refresh
+</details>
 
-Regulatory circulars are living legal artifacts. DocScout tracks corpus audit state in singleton table
-`corpus_sync_state` and provides offline manifest drift detection and live HTTP change checking:
+---
 
-```bash
-make refresh        # offline manifest audit and disk hash validation
-make refresh-check  # live check with conditional HTTP probes
-```
+## FAQ
 
-- Staleness budgeting: Configured via `DOCSCOUT_CORPUS_STALENESS_BUDGET_HOURS` (default 168.0 hours).
-- Operational `/readyz` and `/healthz`: Surface `last_checked_at`, `stale_hours`, `staleness_budget_hours`, and `is_stale`.
-- Scheduled workflow: `.github/workflows/corpus-refresh.yml` running weekly on Mondays at 03:00 UTC.
+<details><summary><b>Why is reranking switched off if it gains +2.3pp Recall@1?</b></summary>
 
-### Rebuilding Derived Data
+Cross-encoder adds 30x-160x p95 latency (39 ms to 1,185-6,276 ms) for +2.3pp Recall@1 with CI spanning zero, while degrading Recall@10 deep ([ADR-0009](docs/decisions/0009-cross-encoder-reranking.md), [`results.json`](evals/experiments/u10-rerank-20261002T062322Z/results.json)).
 
-Ingestion skips documents whose source `sha256` is unchanged. A change to cleaning, chunking, or embedding
-models requires a deliberate rebuild:
+</details>
 
+<details><summary><b>Why is the default serving process single-worker?</b></summary>
+
+In-memory cache and rate limiter eliminate network overhead (< 2.11 ms warm p95). Multi-worker setups enable `REDIS_URL` for shared state.
+
+</details>
+
+<details><summary><b>Why does retrieval abstention score 0.273 recall at threshold 0.65?</b></summary>
+
+Coverage yields AUC 0.730. At 0.65, it intercepts 27.3% of unanswerable queries at retrieval (86.9% selective accuracy); generator refuses the rest ([ADR-0011](docs/decisions/0011-answer-generation-and-calibrated-judge.md), [0002-abstention-signal.md](docs/verification/0002-abstention-signal.md)).
+
+</details>
+
+<details><summary><b>How do you rebuild derived data after modifying chunking or embedding models?</b></summary>
+
+Ingestion skips unchanged SHA-256 hashes. Force rebuild:
 ```bash
 psql "$MIGRATION_DATABASE_URL" -c "TRUNCATE chunks, document_versions, documents CASCADE;"
 make ingest && python -m app.ingest verify && make eval && make eval-gate
 ```
+Verified in `tests/test_refresh_lifecycle.py`.
 
-Tested end-to-end in `tests/test_refresh_lifecycle.py`.
+</details>
 
-## Security Posture
+---
 
-Corpus documents are treated as untrusted data, never instructions.
+## Repo Map
 
-### Retrieval Audit Forensics and Corpus Scanning (OWASP LLM09 / LLM02)
+| Path | Contents |
+|---|---|
+| `app/ingest/` | Fetch, extract, clean, chunk, embed, store |
+| `app/retrieval/` | Hybrid search, RRF fusion, expansion, graph |
+| `app/generate/` | Grounded generation, refusal, research agent |
+| `app/evals/` | Gold set schemas, scorers, calibration, gate |
+| `app/api/` | FastAPI routes: search, answer, research, docs |
+| `evals/` | Gold set v2.0.0 (425 items), reports, benchmarks |
+| `infra/` | Postgres init SQL, migrations (0001-0010), compose |
+| `docs/` | 26 ADRs, architecture, verification, security |
 
-- **Durable Append-Only Retrieval Audit Log**: Every query records an immutable event in PostgreSQL table `retrieval_audit_log`
-  with timestamp, key fingerprint, SHA-256 query hash, mode, k, returned chunk IDs, latency, cache hit, generated answer flag, and corpus generation.
-  - Query Privacy: Plaintext queries are never stored.
-  - Credential Isolation: Raw API keys are never stored; only truncated SHA-256 fingerprints are logged.
-  - Append-Only: `docscout_app` role has INSERT and SELECT only; UPDATE, DELETE, and TRUNCATE are denied.
-  - Fallback Sink: Thread-safe JSONL file logging via `DOCSCOUT_AUDIT_LOG_FILE`.
-  - Retention: 90-day retention documented in ADR-0015.
-- **Corpus Secret and PII Scanning at Ingestion**: Extracted text is scanned at ingestion (`app.ingest.scanner`)
-  for candidate API keys, private keys, SaaS tokens, and PII with automatic sample masking. Secrets trigger quarantine or rejection per policy.
+---
+
+## Contributing
+
+Contributions welcome via pull requests. Verify changes with `make lint`, `make typecheck`, and `make test`.
+
+---
 
 ## License
 
-MIT: see `LICENSE`.
+MIT. See [LICENSE](LICENSE).
+
+---
+
+## Acknowledgments
+
+PostgreSQL 18.6, pgvector 0.8.6, BAAI/bge-small-en-v1.5, FastAPI, rank-bm25, and structlog.
+
+---
+
+<footer>Assessment date: 2026-10-10 UTC · Commit 3a0725f · Verified against CI 38037523415 and bench evals/bench/20261002T054058Z/bench.json</footer>
+
+<!-- MARKDOWN LINKS AND IMAGES -->
+[ci-badge]: https://github.com/shivanshjain456/DocScout/actions/workflows/ci.yml/badge.svg?branch=master
+[ci-url]: https://github.com/shivanshjain456/DocScout/actions/workflows/ci.yml
