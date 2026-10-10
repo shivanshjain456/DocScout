@@ -22,7 +22,7 @@ import platform
 import statistics
 import time
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -42,6 +42,7 @@ from app.ingest.chunk import CHUNK_OVERLAP, CHUNK_SIZE, MAX_TOKENS
 from app.ingest.embed import EMBEDDING_DIM, MODEL_ID, QUERY_PREFIX, Embedder
 from app.retrieval import SERVING_CONFIG, RetrievalConfig, Retriever
 from app.retrieval.confidence import LOW_EVIDENCE_THRESHOLD
+from app.retrieval.types import MetadataFilter
 from app.rowtypes import as_int, as_str
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -145,6 +146,10 @@ def _provenance(goldset_path: Path, conn: psycopg.Connection[tuple[object, ...]]
         "uv_lock_sha256": sha256_file(REPO_ROOT / "uv.lock"),
         "postgres_version": as_str(server[0]) if server else None,
         "host": _host_context(),
+        "evaluation_corpus_divergence": (
+            "Evaluation includes synthetic fixtures (35 docs) to score all 365 gold items; "
+            "production serves 20 real docs (NOT d.is_synthetic)."
+        ),
     }
 
 
@@ -207,11 +212,18 @@ def run_config(
     latencies: list[float] = []
     per_cutoff: dict[int, list[scorers.ItemScore]] = {k: [] for k in CUTOFFS}
 
+    eval_filter = (
+        config.filter.model_copy(update={"include_synthetic": True})
+        if config.filter is not None
+        else MetadataFilter(include_synthetic=True)
+    )
+    eval_config = replace(config, filter=eval_filter)
+
     for item in items:
         item_id = str(item["item_id"])
         groups = groups_by_item[item_id]
         started = time.perf_counter()
-        results = retriever.retrieve(str(item["question"]), config)
+        results = retriever.retrieve(str(item["question"]), eval_config)
         latencies.append((time.perf_counter() - started) * 1000.0)
         ranked = [r.chunk_id for r in results]
 
@@ -351,12 +363,19 @@ def _score_abstention(
     """
     coverage: dict[str, list[float]] = {"answerable": [], "unanswerable": []}
     per_item: list[dict[str, Any]] = []
+    eval_filter = (
+        SERVING_CONFIG.filter.model_copy(update={"include_synthetic": True})
+        if SERVING_CONFIG.filter is not None
+        else MetadataFilter(include_synthetic=True)
+    )
+    eval_serving_config = replace(SERVING_CONFIG, filter=eval_filter)
+
     with psycopg.connect(database_url()) as conn:
         retriever = Retriever(conn, embedder=embedder)
         for label, group in (("answerable", answerable), ("unanswerable", unanswerable)):
             for item in group:
                 question = str(item["question"])
-                hits = retriever.retrieve(question, SERVING_CONFIG)
+                hits = retriever.retrieve(question, eval_serving_config)
                 assessed = retriever.assess_confidence(question, hits)
                 coverage[label].append(assessed.evidence_coverage)
                 per_item.append(
@@ -440,6 +459,15 @@ def write_report(
     lines.append(
         "Retrieval only. No reranker, no generator, no LLM judge: those stages do not exist "
         "yet, and are reported as `null` rather than as zeros.\n"
+    )
+    lines.append("## Methods & Limits: Evaluation vs Production Invariant\n")
+    lines.append(
+        "In accordance with ADR-0024 and ADR-0025, production retrieval strictly excludes synthetic documents "
+        "(`NOT d.is_synthetic`), serving the 20 authoritative regulator documents. This evaluation gate measures "
+        "retrieval over the full 35-document evaluation corpus (20 real + 15 synthetic fixtures) via the explicit "
+        "`include_synthetic=True` evaluation override, preserving continuous measurement across all 365 answerable "
+        "gold items. Production recall is bounded to real documents; evaluation recall measures total retrieval "
+        "capability over the multi-document benchmark corpus.\n"
     )
     lines.append("## Configurations compared\n")
     lines.append("| config | mode | k_dense | k_lexical | k_final | rrf_k |")

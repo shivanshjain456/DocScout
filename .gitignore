@@ -46,6 +46,7 @@ evals/bench/*
 !evals/reports/20261002T124408Z/
 !evals/reports/20261009T063624Z/
 !evals/reports/20261009T111050Z/
+!evals/reports/20261010T050559Z/
 # Ingest run reports. The working output of `make ingest` is untracked like every other
 # generated report; the curated evidence for a milestone is committed under
 # docs/corpus/evidence/ instead, so the repo keeps the run it cites and not every run.

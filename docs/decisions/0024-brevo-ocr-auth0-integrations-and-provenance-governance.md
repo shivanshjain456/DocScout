@@ -90,3 +90,4 @@ We introduce three production-grade integration subsystems alongside strict evid
 ### Negative / Trade-Offs
 - Large scanned PDFs (>3 pages or >1 MB) cannot be processed via free-tier OCR.Space and require operator notification or local OCR fallbacks.
 - Token verification requires outbound network connectivity to Auth0 JWKS endpoint upon initial key fetch (mitigated by key caching).
+- Production recall ≠ eval recall: production serves 20 docs (excluding synthetic fixtures via NOT d.is_synthetic), while the evaluation harness and regression gate evaluate the full 35-doc corpus via include_synthetic=True to maintain unbroken coverage across all 365 answerable gold set items (see ADR-0025).

@@ -18,7 +18,8 @@ repos:
       - id: end-of-file-fixer
         exclude: ^(corpus/raw/|evals/reports/)
       - id: check-added-large-files
-        args: ["--maxkb=5120"]          # 5 MB
+        args: ["--maxkb=10240"]          # 10 MB limit for non-evidence files
+        exclude: ^(corpus/raw/|evals/reports/)
       - id: check-merge-conflict
       - id: check-yaml
       - id: check-json

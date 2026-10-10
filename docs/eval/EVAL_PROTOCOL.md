@@ -430,3 +430,10 @@ agent, one author, and `metadata.json` records this as **self-agreement, not int
 reliability**. No Cohen's κ is reported, none can be computed from these two passes, and a test
 asserts the metadata does not claim one. §5 human double-labelling remains outstanding and is
 what any κ in this project must come from. All appear in `SPEC.md` §9.
+
+---
+
+## 9. Evaluation and Production Corpus Divergence Invariant (ADR-0024 & ADR-0025)
+
+**E-17 — SPECIFIED (2026-10-10 UTC). Evaluation vs. Production Corpus Invariant.**
+Production serving strictly excludes synthetic documents (WHERE NOT d.is_synthetic), serving only the 20 authoritative regulator gazette documents (ADR-0024). In contrast, the evaluation harness (pp/evals/runner.py) and CI regression gate evaluate the full 35-document corpus (including 15 synthetic fixtures) via an explicit MetadataFilter(include_synthetic=True) evaluation override. This guarantees continuous, uninterrupted measurement over all 365 answerable gold set items without invalidating the 237 synthetic-linked benchmark queries or altering the gold set denominator. Production recall is strictly bounded to real documents; evaluation recall measures holistic multi-document retrieval over the full evaluation corpus.
