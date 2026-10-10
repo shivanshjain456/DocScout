@@ -147,8 +147,11 @@ def normalise(name: str) -> str:
 
 
 def run(argv: list[str]) -> subprocess.CompletedProcess[str]:
+    cmd = list(argv)
+    if cmd and cmd[0] == "pip-audit":
+        cmd = [sys.executable, "-m", "pip_audit", *cmd[1:]]
     return subprocess.run(  # noqa: S603 - fixed argv built in this module
-        argv, capture_output=True, text=True, cwd=REPO_ROOT, check=False
+        cmd, capture_output=True, text=True, cwd=REPO_ROOT, check=False
     )
 
 
@@ -166,8 +169,17 @@ def export_requirements(dev: bool) -> list[str]:
         line = raw.strip()
         if not line or line.startswith("#") or line.startswith("-"):
             continue
-        # Drop environment markers: the audit is for this interpreter's resolution.
-        line = line.split(";", 1)[0].strip()
+        # Check environment markers if present; skip packages that do not apply to this platform
+        if ";" in line:
+            req_part, marker_part = line.split(";", 1)
+            try:  # noqa: S110
+                from packaging.markers import Marker
+
+                if not Marker(marker_part.strip()).evaluate():
+                    continue
+            except Exception:  # noqa: S110
+                pass
+            line = req_part.strip()
         match = LOCAL_VERSION.match(line)
         if match:
             line = match.group(1)

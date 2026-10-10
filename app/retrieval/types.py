@@ -38,6 +38,7 @@ class ChunkMeta:
     is_current: bool
     canonical_url: str | None = None
     title: str | None = None
+    is_synthetic: bool = False
 
 
 class MetadataFilter(BaseModel):
@@ -56,6 +57,7 @@ class MetadataFilter(BaseModel):
     is_current: bool | None = True
     document_ids: list[str] | None = None
     canonical_url: str | None = None
+    include_synthetic: bool = False
 
     def canonical_tuple(self) -> tuple[Any, ...]:
         """Deterministic hashable representation for query caching."""
@@ -76,6 +78,7 @@ class MetadataFilter(BaseModel):
             self.is_current,
             doc_ids,
             self.canonical_url,
+            self.include_synthetic,
         )
 
     def as_dict(self) -> dict[str, Any]:
@@ -84,6 +87,9 @@ class MetadataFilter(BaseModel):
     def matches(self, meta: ChunkMeta | None) -> bool:
         """Predicate evaluation against in-memory chunk metadata for BM25 pruning."""
         if meta is None:
+            return False
+
+        if not self.include_synthetic and meta.is_synthetic:
             return False
 
         if self.is_current is not None and meta.is_current != self.is_current:

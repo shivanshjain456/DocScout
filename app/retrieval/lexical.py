@@ -83,6 +83,7 @@ class BM25Index:
                    v.is_current,
                    d.canonical_url,
                    d.title,
+                   d.is_synthetic,
                    u.lexeme,
                    COALESCE(array_length(u.positions, 1), 1) AS tf
             FROM chunks AS c
@@ -101,6 +102,7 @@ class BM25Index:
             is_current,
             canon_url,
             doc_title,
+            is_synthetic,
             lexeme,
             tf,
         ) in rows:
@@ -115,7 +117,9 @@ class BM25Index:
                     is_current=bool(is_current),
                     canonical_url=as_str(canon_url) if canon_url is not None else None,
                     title=as_str(doc_title) if doc_title is not None else None,
+                    is_synthetic=bool(is_synthetic),
                 )
+
             count = as_int(tf)
             self._postings[as_str(lexeme)].append(_Posting(cid, count))
             self._doc_len[cid] += count

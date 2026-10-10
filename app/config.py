@@ -128,3 +128,153 @@ def extractor_mode() -> str:
         if val in {"auto", "fast", "pypdf", "deep", "docling", "mineru"}
         else DEFAULT_EXTRACTOR_MODE
     )
+
+
+# --- Auth0 OAuth 2.0 / OIDC Configuration ---
+
+
+def auth0_domain() -> str:
+    """Auth0 tenant domain (e.g., 'docscout.us.auth0.com')."""
+    load_dotenv()
+    return os.environ.get("AUTH0_DOMAIN", "").strip()
+
+
+def auth0_audience() -> str:
+    """Auth0 API audience identifier (e.g., 'https://api.docscout.local')."""
+    load_dotenv()
+    return os.environ.get("AUTH0_AUDIENCE", "https://api.docscout.local").strip()
+
+
+def auth0_client_id() -> str:
+    """Auth0 client application ID."""
+    load_dotenv()
+    return os.environ.get("AUTH0_CLIENT_ID", "").strip()
+
+
+def auth0_client_secret() -> str:
+    """Auth0 client secret (backend only, never shipped to browser)."""
+    load_dotenv()
+    return os.environ.get("AUTH0_CLIENT_SECRET", "").strip()
+
+
+def auth0_issuer() -> str:
+    """Auth0 OIDC token issuer URL."""
+    domain = auth0_domain()
+    if not domain:
+        return ""
+    base = domain if domain.startswith(("http://", "https://")) else f"https://{domain}"
+    return base.rstrip("/") + "/"
+
+
+def auth0_admin_roles() -> frozenset[str]:
+    """Roles in Auth0 custom claims granting admin permissions in DocScout."""
+    return frozenset({"admin", "administrator"})
+
+
+def auth0_admin_emails() -> frozenset[str]:
+    """Whitelisted email addresses granted automatic administrator role."""
+    load_dotenv()
+    raw = os.environ.get("DOCSCOUT_ADMIN_EMAILS", "")
+    return frozenset(email.strip().lower() for email in raw.split(",") if email.strip())
+
+
+# --- Brevo Transactional Email Configuration ---
+
+DEFAULT_BREVO_API_URL = "https://api.brevo.com/v3"
+DEFAULT_BREVO_DAILY_QUOTA = 300
+
+
+def brevo_api_key() -> str:
+    """Brevo transactional API key (formerly Sendinblue)."""
+    load_dotenv()
+    return os.environ.get("BREVO_API_KEY", "").strip()
+
+
+def brevo_api_url() -> str:
+    """Base URL for Brevo v3 REST API."""
+    load_dotenv()
+    return os.environ.get("BREVO_API_URL", DEFAULT_BREVO_API_URL).strip()
+
+
+def brevo_sender_email() -> str:
+    """Verified sender email for regulatory digests."""
+    load_dotenv()
+    return os.environ.get("BREVO_SENDER_EMAIL", "alerts@docscout.local").strip()
+
+
+def brevo_sender_name() -> str:
+    """Display name for regulatory digest sender."""
+    load_dotenv()
+    return os.environ.get("BREVO_SENDER_NAME", "DocScout Regulatory Alerts").strip()
+
+
+def brevo_webhook_secret() -> str:
+    """Shared secret token to verify incoming Brevo webhook delivery callbacks."""
+    load_dotenv()
+    return os.environ.get("BREVO_WEBHOOK_SECRET", "").strip()
+
+
+def brevo_daily_quota() -> int:
+    """Daily sending ceiling on Brevo free plan (default 300 emails/day)."""
+    load_dotenv()
+    raw = os.environ.get("BREVO_DAILY_QUOTA", "").strip()
+    try:
+        val = int(raw)
+        return val if val > 0 else DEFAULT_BREVO_DAILY_QUOTA
+    except ValueError:
+        return DEFAULT_BREVO_DAILY_QUOTA
+
+
+# --- OCR.Space Configuration ---
+
+DEFAULT_OCR_SPACE_URL = "https://api.ocr.space/parse/image"
+DEFAULT_OCR_SPACE_MAX_BYTES = 1_048_576  # 1 MB free plan ceiling
+DEFAULT_OCR_SPACE_MAX_PAGES = 3  # 3 pages free plan ceiling
+DEFAULT_OCR_SPACE_DAILY_QUOTA = 500  # 500 requests/day free tier ceiling
+
+
+def ocr_space_api_key() -> str:
+    """OCR.Space API key (free tier key or configured key)."""
+    load_dotenv()
+    return os.environ.get("OCR_SPACE_API_KEY", "").strip()
+
+
+def ocr_space_url() -> str:
+    """OCR.Space parsing endpoint."""
+    load_dotenv()
+    return os.environ.get("OCR_SPACE_URL", DEFAULT_OCR_SPACE_URL).strip()
+
+
+def ocr_space_max_bytes() -> int:
+    """Maximum eligible file size for OCR.Space free tier in bytes."""
+    return DEFAULT_OCR_SPACE_MAX_BYTES
+
+
+def ocr_space_max_pages() -> int:
+    """Maximum eligible page count for OCR.Space free tier."""
+    return DEFAULT_OCR_SPACE_MAX_PAGES
+
+
+def ocr_space_daily_quota() -> int:
+    """Daily request limit for OCR.Space free tier."""
+    return DEFAULT_OCR_SPACE_DAILY_QUOTA
+
+
+# --- Analyst Preferences & Unsubscribe Security ---
+
+
+def docscout_base_url() -> str:
+    """Public base URL of the DocScout service for generating unsubscribe links."""
+    load_dotenv()
+    return os.environ.get("DOCSCOUT_BASE_URL", "http://localhost:8000").rstrip("/")
+
+
+def docscout_unsubscribe_secret() -> str:
+    """Secret used for generating and validating tamper-proof unsubscribe tokens."""
+    load_dotenv()
+    val = os.environ.get("DOCSCOUT_UNSUBSCRIBE_SECRET", "").strip()
+    if val:
+        return val
+    # Fallback to key derived from database password or API key to preserve stability across restarts
+    raw = os.environ.get("DOCSCOUT_API_KEY", "docscout-default-secret")
+    return hashlib.sha256(f"unsubscribe:{raw}".encode()).hexdigest()

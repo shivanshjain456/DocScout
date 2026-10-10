@@ -43,6 +43,11 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api import demo, metrics
 from app.api.audit import RetrievalAuditRecord, hash_query, record_retrieval_event
+from app.api.auth0 import (
+    UserIdentity,
+    require_admin_user,
+    require_authenticated_user,
+)
 from app.api.cache import (
     DEFAULT_RESULT_TTL_SECONDS,
     TTLCache,
@@ -54,8 +59,12 @@ from app.api.models import (
     CacheInvalidateRequest,
     CacheInvalidateResponse,
     Confidence,
+    DigestDispatchResponse,
+    DiscoveryTriggerRequest,
+    DiscoveryTriggerResponse,
     DocumentResponse,
     LivenessResponse,
+    OCRInspectionResponse,
     Passage,
     Provenance,
     ReadinessResponse,
@@ -64,7 +73,14 @@ from app.api.models import (
     ResearchResponse,
     SearchRequest,
     SearchResponse,
+    SubscriptionCreateRequest,
+    SubscriptionResponse,
     Timings,
+    UnsubscribeResponse,
+    UserInterestCreate,
+    UserInterestResponse,
+    UserProfileResponse,
+    WebhookProcessResponse,
     WorkspaceCreateRequest,
     WorkspaceResponse,
 )
@@ -979,4 +995,525 @@ def get_artifact_endpoint(
     return ResearchResponse(
         artifact=artifact,
         workspace_id=artifact.workspace_id,
+    )
+
+
+# --- Analyst Identity & Watchlists ---
+
+
+@app.get(
+    "/v1/user/me",
+    response_model=UserProfileResponse,
+    tags=["identity"],
+)
+def get_current_user_profile(
+    user: UserIdentity = Depends(require_authenticated_user),
+) -> UserProfileResponse:
+    """Return profile and permissions for the currently authenticated Auth0 analyst."""
+    return UserProfileResponse(
+        user_id=str(user.user_id),
+        auth0_sub=user.auth0_sub,
+        email=user.email,
+        role=user.role,
+        display_name=user.display_name,
+        is_service_key=user.is_service_key,
+    )
+
+
+@app.get(
+    "/v1/user/interests",
+    response_model=list[UserInterestResponse],
+    tags=["identity"],
+)
+def list_user_interests(
+    request: Request,
+    user: UserIdentity = Depends(require_authenticated_user),
+) -> list[UserInterestResponse]:
+    """List saved research interests and watchlists for the authenticated analyst."""
+    state = request.app.state
+    with state.pool.connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT interest_id::text, user_id::text, topic, regulator, keywords, created_at::text
+              FROM user_interests
+             WHERE user_id = %s
+             ORDER BY created_at DESC
+            """,
+            (user.user_id,),
+        ).fetchall()
+
+    return [
+        UserInterestResponse(
+            interest_id=str(r[0]),
+            user_id=str(r[1]),
+            topic=str(r[2]),
+            regulator=str(r[3]),
+            keywords=list(r[4]) if r[4] else [],
+            created_at=str(r[5]),
+        )
+        for r in rows
+    ]
+
+
+@app.post(
+    "/v1/user/interests",
+    response_model=UserInterestResponse,
+    tags=["identity"],
+)
+def create_user_interest(
+    payload: UserInterestCreate,
+    request: Request,
+    user: UserIdentity = Depends(require_authenticated_user),
+) -> UserInterestResponse:
+    """Save a regulatory topic or keyword watchlist under analyst identity."""
+    state = request.app.state
+    with state.pool.connection() as conn:
+        with conn.transaction():
+            row = conn.execute(
+                """
+                INSERT INTO user_interests (user_id, topic, regulator, keywords)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (user_id, topic, regulator) DO UPDATE SET
+                    keywords = EXCLUDED.keywords
+                RETURNING interest_id::text, user_id::text, topic, regulator, keywords, created_at::text
+                """,
+                (user.user_id, payload.topic, payload.regulator, payload.keywords),
+            ).fetchone()
+
+    if row is None:
+        raise StarletteHTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="failed to save research interest",
+        )
+
+    return UserInterestResponse(
+        interest_id=str(row[0]),
+        user_id=str(row[1]),
+        topic=str(row[2]),
+        regulator=str(row[3]),
+        keywords=list(row[4]) if row[4] else [],
+        created_at=str(row[5]),
+    )
+
+
+@app.delete(
+    "/v1/user/interests/{interest_id}",
+    tags=["identity"],
+)
+def delete_user_interest(
+    interest_id: str,
+    request: Request,
+    user: UserIdentity = Depends(require_authenticated_user),
+) -> dict[str, str]:
+    """Delete a saved watchlist item, strictly bounded to user ownership."""
+    try:
+        int_uuid = uuid.UUID(interest_id)
+    except ValueError:
+        raise StarletteHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"interest {interest_id!r} not found",
+        ) from None
+
+    state = request.app.state
+    with state.pool.connection() as conn:
+        with conn.transaction():
+            res = conn.execute(
+                "DELETE FROM user_interests WHERE interest_id = %s AND user_id = %s",
+                (int_uuid, user.user_id),
+            )
+            if res.rowcount == 0:
+                raise StarletteHTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"interest {interest_id} not found or not owned by user",
+                )
+
+    return {"status": "deleted", "interest_id": interest_id}
+
+
+# --- Brevo Subscriptions & Regulatory Digests ---
+
+
+@app.get(
+    "/v1/subscriptions",
+    response_model=SubscriptionResponse,
+    tags=["digests"],
+)
+def get_subscription_endpoint(
+    request: Request,
+    user: UserIdentity = Depends(require_authenticated_user),
+) -> SubscriptionResponse:
+    """Retrieve regulatory digest subscription and topic preferences for current analyst."""
+    from app.config import docscout_base_url
+    from app.digests.engine import DigestEngine
+
+    state = request.app.state
+    engine = DigestEngine(state.pool)
+    sub = engine.get_user_subscription(user.user_id)
+    if sub is None:
+        raise StarletteHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="no active subscription found for user",
+        )
+
+    base = docscout_base_url()
+    unsub_url = f"{base}/v1/subscriptions/unsubscribe?token={sub.unsubscribe_token}"
+
+    return SubscriptionResponse(
+        subscription_id=str(sub.subscription_id),
+        user_id=str(sub.user_id),
+        email=sub.email,
+        frequency=sub.frequency,
+        is_active=sub.is_active,
+        topics=sub.topics,
+        regulators=sub.regulators,
+        consent_ts=sub.consent_ts.isoformat() if sub.consent_ts else "",
+        unsubscribe_url=unsub_url,
+    )
+
+
+@app.post(
+    "/v1/subscriptions",
+    response_model=SubscriptionResponse,
+    tags=["digests"],
+)
+def create_subscription_endpoint(
+    payload: SubscriptionCreateRequest,
+    request: Request,
+    user: UserIdentity = Depends(require_authenticated_user),
+) -> SubscriptionResponse:
+    """Create or update a topic-based digest subscription with explicit consent."""
+    if not payload.consent:
+        raise StarletteHTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Explicit user consent (consent=true) is required to receive regulatory digests.",
+        )
+
+    from app.config import docscout_base_url
+    from app.digests.engine import DigestEngine
+
+    state = request.app.state
+    client_ip = request.client.host if request.client else None
+    engine = DigestEngine(state.pool)
+    sub = engine.upsert_subscription(
+        user_id=user.user_id,
+        email=user.email,
+        frequency=payload.frequency,
+        topics=payload.topics,
+        regulators=payload.regulators,
+        consent_ip=client_ip,
+        is_active=True,
+    )
+
+    base = docscout_base_url()
+    unsub_url = f"{base}/v1/subscriptions/unsubscribe?token={sub.unsubscribe_token}"
+
+    return SubscriptionResponse(
+        subscription_id=str(sub.subscription_id),
+        user_id=str(sub.user_id),
+        email=sub.email,
+        frequency=sub.frequency,
+        is_active=sub.is_active,
+        topics=sub.topics,
+        regulators=sub.regulators,
+        consent_ts=sub.consent_ts.isoformat() if sub.consent_ts else "",
+        unsubscribe_url=unsub_url,
+    )
+
+
+@app.delete(
+    "/v1/subscriptions",
+    tags=["digests"],
+)
+def deactivate_subscription_endpoint(
+    request: Request,
+    user: UserIdentity = Depends(require_authenticated_user),
+) -> dict[str, str]:
+    """Disable digest notifications for the current analyst."""
+    state = request.app.state
+    with state.pool.connection() as conn:
+        with conn.transaction():
+            conn.execute(
+                "UPDATE subscriptions SET is_active = false, updated_at = now() WHERE user_id = %s",
+                (user.user_id,),
+            )
+    return {"status": "deactivated"}
+
+
+@app.get(
+    "/v1/subscriptions/unsubscribe",
+    response_model=UnsubscribeResponse,
+    tags=["digests"],
+)
+def one_click_unsubscribe(
+    token: str,
+    request: Request,
+) -> UnsubscribeResponse:
+    """One-click unsubscribe endpoint accessible directly from digest email headers and footers."""
+    from app.digests.engine import DigestEngine
+
+    state = request.app.state
+    engine = DigestEngine(state.pool)
+    success = engine.unsubscribe_by_token(token)
+    if not success:
+        raise StarletteHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Unsubscribe token is invalid or subscription is already disabled",
+        )
+
+    return UnsubscribeResponse(
+        status="ok",
+        detail="Successfully unsubscribed from DocScout regulatory alert digests.",
+    )
+
+
+@app.post(
+    "/v1/admin/digests/dispatch",
+    response_model=DigestDispatchResponse,
+    tags=["admin"],
+)
+def dispatch_digests_endpoint(
+    request: Request,
+    frequency: str = "weekly",
+    since_hours: float = 168.0,
+    admin: UserIdentity = Depends(require_admin_user),
+) -> DigestDispatchResponse:
+    """Admin endpoint: trigger grounded regulatory digest compilation and Brevo transmission."""
+    from app.digests.engine import DigestEngine
+
+    state = request.app.state
+    engine = DigestEngine(state.pool)
+    valid_freq = "weekly" if frequency not in ("immediate", "daily", "weekly") else frequency
+    count = engine.process_pending_digests(frequency=valid_freq, since_hours=since_hours)  # type: ignore[arg-type]
+
+    return DigestDispatchResponse(
+        status="ok",
+        frequency=valid_freq,
+        dispatched_notifications=count,
+    )
+
+
+@app.post(
+    "/v1/webhooks/brevo",
+    response_model=WebhookProcessResponse,
+    tags=["webhooks"],
+)
+async def brevo_webhook_endpoint(
+    request: Request,
+    secret: str | None = None,
+) -> WebhookProcessResponse:
+    """Handle Brevo transactional delivery callbacks (delivered, bounced, spam)."""
+    from app.digests.webhook import process_brevo_event, verify_webhook_secret
+
+    if not verify_webhook_secret(request, secret):
+        raise StarletteHTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid or missing webhook authentication secret",
+        )
+
+    try:
+        body = await request.json()
+    except Exception as exc:
+        raise StarletteHTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"invalid JSON payload: {exc}",
+        ) from exc
+
+    state = request.app.state
+    res = process_brevo_event(state.pool, body if isinstance(body, dict) else {})
+    return WebhookProcessResponse(
+        status=res.get("status", "ok"),
+        event=res.get("event", "unknown"),
+        processed=bool(res.get("processed", True)),
+    )
+
+
+# --- OCR.Space Inspection & Fallback ---
+
+
+@app.get(
+    "/v1/documents/{document_id}/ocr",
+    response_model=OCRInspectionResponse,
+    tags=["documents"],
+)
+def get_document_ocr(
+    document_id: str,
+    request: Request,
+    user: UserIdentity = Depends(require_authenticated_user),
+) -> OCRInspectionResponse:
+    """Inspect OCR.Space processing status and extracted text cache for a document."""
+    try:
+        doc_uuid = uuid.UUID(document_id)
+    except ValueError:
+        raise StarletteHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"document {document_id!r} not found",
+        ) from None
+
+    state = request.app.state
+    with state.pool.connection() as conn:
+        row = conn.execute(
+            """
+            SELECT v.sha256, o.status, o.engine, o.pages_processed, o.extracted_text,
+                   o.error_detail, o.latency_ms
+              FROM documents d
+              JOIN document_versions v ON d.document_id = v.document_id AND v.is_current
+              LEFT JOIN ocr_extractions o ON o.sha256 = v.sha256
+             WHERE d.document_id = %s
+            """,
+            (doc_uuid,),
+        ).fetchone()
+
+    if row is None:
+        raise StarletteHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"document {document_id} not found",
+        )
+
+    sha = str(row[0])
+    ocr_status = str(row[1]) if row[1] else "NOT_PROCESSED"
+    engine = str(row[2]) if row[2] else "none"
+    pages = int(row[3] or 0)
+    text = str(row[4] or "")
+    err = str(row[5]) if row[5] else None
+    lat = float(row[6] or 0.0)
+
+    from app.ingest.clean import clean_char_count
+
+    return OCRInspectionResponse(
+        sha256=sha,
+        status=ocr_status,
+        engine=engine,
+        pages_processed=pages,
+        clean_char_count=clean_char_count(text),
+        extracted_text_sample=text[:300],
+        latency_ms=lat,
+        error_detail=err,
+        cached=row[1] is not None,
+    )
+
+
+@app.post(
+    "/v1/documents/{document_id}/ocr",
+    response_model=OCRInspectionResponse,
+    tags=["admin"],
+)
+def trigger_document_ocr(
+    document_id: str,
+    request: Request,
+    admin: UserIdentity = Depends(require_admin_user),
+) -> OCRInspectionResponse:
+    """Admin endpoint: trigger bounded OCR.Space extraction for an eligible document."""
+    try:
+        doc_uuid = uuid.UUID(document_id)
+    except ValueError:
+        raise StarletteHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"document {document_id!r} not found",
+        ) from None
+
+    state = request.app.state
+    with state.pool.connection() as conn:
+        row = conn.execute(
+            """
+            SELECT d.canonical_url, v.sha256
+              FROM documents d
+              JOIN document_versions v ON d.document_id = v.document_id AND v.is_current
+             WHERE d.document_id = %s
+            """,
+            (doc_uuid,),
+        ).fetchone()
+
+    if row is None:
+        raise StarletteHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"document {document_id} not found",
+        )
+
+    sha = str(row[1])
+
+    # Fetch on-disk or local PDF payload
+    from app.config import REPO_ROOT
+    from app.ingest.clean import clean_char_count
+    from app.ingest.ocr_space import OCRSpaceClient
+
+    pdf_path = None
+    for p in (REPO_ROOT / "corpus" / "raw").glob("*.PDF"):
+        if sha[:12] in p.name:
+            pdf_path = p
+            break
+    if not pdf_path:
+        for p in (REPO_ROOT / "corpus" / "raw").glob("*.pdf"):
+            if sha[:12] in p.name:
+                pdf_path = p
+                break
+
+    if not pdf_path or not pdf_path.exists():
+        raise StarletteHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"raw PDF artifact for document {document_id} not available on disk",
+        )
+
+    pdf_bytes = pdf_path.read_bytes()
+    with state.pool.connection() as conn:
+        client = OCRSpaceClient()
+        res = client.parse_pdf(pdf_bytes, conn)
+
+    return OCRInspectionResponse(
+        sha256=res.sha256,
+        status=res.status,
+        engine=res.engine,
+        pages_processed=res.pages_processed,
+        clean_char_count=clean_char_count(res.extracted_text),
+        extracted_text_sample=res.extracted_text[:300],
+        latency_ms=res.latency_ms,
+        error_detail=res.error_detail,
+        cached=res.cached,
+    )
+
+
+# --- Regulatory Discovery ---
+
+
+@app.post(
+    "/v1/admin/discovery/run",
+    response_model=DiscoveryTriggerResponse,
+    tags=["admin"],
+)
+def run_discovery_endpoint(
+    payload: DiscoveryTriggerRequest,
+    request: Request,
+    admin: UserIdentity = Depends(require_admin_user),
+) -> DiscoveryTriggerResponse:
+    """Admin endpoint: trigger live discovery crawl of newly published RBI/SEBI circulars."""
+    from app.ingest.discovery import RegulatoryDiscoveryEngine
+
+    state = request.app.state
+    with state.pool.connection() as conn:
+        engine = RegulatoryDiscoveryEngine(conn)
+        report = engine.run_discovery(
+            rbi_limit=payload.rbi_limit,
+            sebi_limit=payload.sebi_limit,
+            dry_run=payload.dry_run,
+        )
+
+    return DiscoveryTriggerResponse(
+        status="ok",
+        discovered_total=report.discovered_total,
+        new_documents=report.new_documents,
+        content_revisions=report.content_revisions,
+        unchanged=report.unchanged,
+        failed=report.failed,
+        items=[
+            {
+                "url": it.url,
+                "source": it.source,
+                "classification": it.classification,
+                "http_status": it.http_status,
+                "sha256": it.sha256,
+                "detail": it.detail,
+                "document_id": it.document_id,
+                "version_id": it.version_id,
+            }
+            for it in report.items
+        ],
     )

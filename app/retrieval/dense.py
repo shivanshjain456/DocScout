@@ -59,6 +59,11 @@ def search(
     elif is_curr is False:
         where_clauses.append("NOT v.is_current")
 
+    # Synthetic artifact exclusion invariant
+    inc_synth = filter.include_synthetic if filter is not None else False
+    if not inc_synth:
+        where_clauses.append("NOT d.is_synthetic")
+
     if filter is not None:
         if filter.source is not None:
             if isinstance(filter.source, str):

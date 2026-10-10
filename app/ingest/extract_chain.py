@@ -332,11 +332,21 @@ class ExtractionChain:
         self,
         fast_extractor: PdfExtractor | None = None,
         deep_extractor: PdfExtractor | None = None,
+        ocr_extractor: PdfExtractor | None = None,
         mode: str | None = None,
     ) -> None:
         self.fast_extractor = fast_extractor or FastPypdfExtractor()
         self.deep_extractor = deep_extractor or DeepFallbackExtractor()
+        self._ocr_extractor = ocr_extractor
         self.mode = mode or extractor_mode()
+
+    @property
+    def ocr_extractor(self) -> PdfExtractor:
+        if self._ocr_extractor is None:
+            from app.ingest.ocr_space import OCRSpaceFallbackExtractor
+
+            self._ocr_extractor = OCRSpaceFallbackExtractor()
+        return self._ocr_extractor
 
     def extract_pdf(self, data: bytes) -> Extraction:
         """Extract text from PDF data honoring the configured extractor mode."""
@@ -347,6 +357,8 @@ class ExtractionChain:
             return self.fast_extractor.extract_pdf(data)
         if mode in ("deep", "docling", "mineru"):
             return self.deep_extractor.extract_pdf(data)
+        if mode in ("ocr", "ocr.space"):
+            return self.ocr_extractor.extract_pdf(data)
 
         # 2. 'auto' mode: run fast path, evaluate fidelity, escalate on deficiency
         fast_extraction: Extraction | None = None
@@ -362,23 +374,39 @@ class ExtractionChain:
         # Escalate to deep fallback extractor
         try:
             deep_extraction = self.deep_extractor.extract_pdf(data)
-            # If deep extraction produced valid text, return it
+            # If deep extraction produced valid text with acceptable fidelity, return it
             if deep_extraction.text.strip():
-                return deep_extraction
-        except Exception as deep_exc:
-            # If deep extractor also fails and we had a fast extraction, return fast
-            if fast_extraction is not None:
-                return fast_extraction
-            raise ExtractionError(
-                f"Both fast and deep extractors failed to parse PDF: {type(deep_exc).__name__}: {deep_exc}"
-            ) from deep_exc
+                fidelity = evaluate_fidelity(deep_extraction, data)
+                if fidelity.is_acceptable:
+                    return deep_extraction
+        except Exception:  # noqa: S110
+            pass
 
-        # If deep extraction was empty but fast had text, return fast
-        return (
-            fast_extraction
-            if fast_extraction is not None
-            else Extraction(text="", pages=0, extractor="failed")
-        )
+        # Escalate to bounded OCR.Space fallback if scanned or below character floor
+        try:
+            from app.config import ocr_space_api_key
+            from app.ingest.ocr_space import evaluate_ocr_eligibility
+
+            if ocr_space_api_key():
+                preflight = evaluate_ocr_eligibility(data)
+                if preflight.is_eligible:
+                    ocr_res = self.ocr_extractor.extract_pdf(data)
+                    if ocr_res.text.strip() and len(ocr_res.text) > (
+                        len(fast_extraction.text) if fast_extraction else 0
+                    ):
+                        return ocr_res
+        except Exception:  # noqa: S110
+            pass
+
+        # If OCR wasn't applicable/succeeded, return deep if it had text
+        if "deep_extraction" in locals() and deep_extraction and deep_extraction.text.strip():
+            return deep_extraction
+
+        # If fast had text, return fast
+        if fast_extraction is not None:
+            return fast_extraction
+
+        return Extraction(text="", pages=0, extractor="failed")
 
 
 _GLOBAL_CHAIN: ExtractionChain | None = None

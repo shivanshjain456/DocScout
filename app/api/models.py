@@ -15,7 +15,7 @@ deliberate:
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
@@ -241,3 +241,119 @@ class ResearchResponse(BaseModel):
 
     artifact: ResearchArtifact
     workspace_id: str
+
+
+# --- Analyst Identity & Research Interests ---
+
+
+class UserProfileResponse(BaseModel):
+    user_id: str
+    auth0_sub: str
+    email: str
+    role: str
+    display_name: str | None = None
+    is_service_key: bool = False
+
+
+class UserInterestCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    topic: Annotated[
+        str,
+        StringConstraints(min_length=2, max_length=200, strip_whitespace=True),
+    ]
+    regulator: Literal["RBI", "SEBI", "ALL"] = "ALL"
+    keywords: list[str] = Field(default_factory=list)
+
+
+class UserInterestResponse(BaseModel):
+    interest_id: str
+    user_id: str
+    topic: str
+    regulator: str
+    keywords: list[str]
+    created_at: str
+
+
+# --- Brevo Subscriptions & Regulatory Digests ---
+
+
+def _default_regulators() -> list[Literal["RBI", "SEBI", "ALL"]]:
+    return ["ALL"]
+
+
+class SubscriptionCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    frequency: Literal["immediate", "daily", "weekly"] = "weekly"
+    topics: list[str] = Field(default_factory=lambda: ["ALL"])
+    regulators: list[Literal["RBI", "SEBI", "ALL"]] = Field(default_factory=_default_regulators)
+    consent: bool = Field(
+        ...,
+        description="Explicit user consent required for regulatory email alerts.",
+    )
+
+
+class SubscriptionResponse(BaseModel):
+    subscription_id: str
+    user_id: str
+    email: str
+    frequency: str
+    is_active: bool
+    topics: list[str]
+    regulators: list[str]
+    consent_ts: str
+    unsubscribe_url: str
+
+
+class UnsubscribeResponse(BaseModel):
+    status: str
+    detail: str
+
+
+class DigestDispatchResponse(BaseModel):
+    status: str
+    frequency: str
+    dispatched_notifications: int
+
+
+class WebhookProcessResponse(BaseModel):
+    status: str
+    event: str
+    processed: bool
+
+
+# --- OCR.Space Inspection & Fallback ---
+
+
+class OCRInspectionResponse(BaseModel):
+    sha256: str
+    status: str
+    engine: str
+    pages_processed: int
+    clean_char_count: int
+    extracted_text_sample: str
+    latency_ms: float
+    error_detail: str | None = None
+    cached: bool = False
+
+
+# --- Regulatory Discovery ---
+
+
+class DiscoveryTriggerRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    rbi_limit: Annotated[int, Field(default=5, ge=1, le=20)] = 5
+    sebi_limit: Annotated[int, Field(default=5, ge=1, le=20)] = 5
+    dry_run: bool = False
+
+
+class DiscoveryTriggerResponse(BaseModel):
+    status: str
+    discovered_total: int
+    new_documents: int
+    content_revisions: int
+    unchanged: int
+    failed: int
+    items: list[dict[str, Any]]

@@ -294,8 +294,11 @@ def store_document(conn: psycopg.Connection[Any], prepared: PreparedDocument) ->
             if row is None:
                 inserted = conn.execute(
                     """
-                    INSERT INTO documents (canonical_url, source, authority, detail_page, title, published_date)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+                    INSERT INTO documents (
+                        canonical_url, source, authority, detail_page, title, published_date,
+                        is_synthetic
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
                     RETURNING document_id
                     """,
                     (
@@ -305,6 +308,7 @@ def store_document(conn: psycopg.Connection[Any], prepared: PreparedDocument) ->
                         doc.detail_page,
                         doc.title,
                         doc.published_date,
+                        doc.is_synthetic,
                     ),
                 ).fetchone()
                 if inserted is None:  # pragma: no cover - RETURNING always yields a row
@@ -313,15 +317,21 @@ def store_document(conn: psycopg.Connection[Any], prepared: PreparedDocument) ->
                 action = Action.INSERTED
             else:
                 document_id = UUID(str(row[0]))
-                if doc.title is not None or doc.published_date is not None:
+                if doc.title is not None or doc.published_date is not None or doc.is_synthetic:
                     conn.execute(
                         """
                         UPDATE documents
                            SET title = COALESCE(%s, documents.title),
-                               published_date = COALESCE(%s, documents.published_date)
+                               published_date = COALESCE(%s, documents.published_date),
+                               is_synthetic = COALESCE(%s, documents.is_synthetic)
                          WHERE document_id = %s
                         """,
-                        (doc.title, doc.published_date, document_id),
+                        (
+                            doc.title,
+                            doc.published_date,
+                            doc.is_synthetic,
+                            document_id,
+                        ),
                     )
                 # FR-4: demote the previous current version in the same transaction.
                 demoted = conn.execute(

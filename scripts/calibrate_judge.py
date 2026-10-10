@@ -1,7 +1,8 @@
-"""Execute EVAL_PROTOCOL.md §5 judge calibration against double-labelled human data.
+"""Simulated diagnostic harness for EVAL_PROTOCOL.md §5 judge consistency testing.
 
-Scores the judge against human ground truth across 80 items sampled from the gold set,
-reports Cohen's kappa, raw agreement %, 95% confidence intervals, and rare-class metrics.
+NOTE: Uses simulated pseudo-raters to test metrics computation and pipeline consistency.
+It does NOT constitute independent human evaluation. Independent double-labelled human
+annotations are currently absent (reportable limitation).
 """
 
 from __future__ import annotations
@@ -180,6 +181,12 @@ def main() -> int:
         "created_utc": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "sample_size": len(records),
         "protocol_section": "EVAL_PROTOCOL.md §5",
+        "evaluation_type": "SIMULATED_DIAGNOSTIC",
+        "is_independent_human_eval": False,
+        "limitation_notice": (
+            "Independent human annotations are absent. This calibration artifact reflects "
+            "simulated diagnostic test harness data for pipeline consistency verification only."
+        ),
         "strata": {
             "extractive": sum(1 for r in records if r["answer_type"] == "extractive"),
             "numeric": sum(1 for r in records if r["answer_type"] == "numeric"),
@@ -188,14 +195,14 @@ def main() -> int:
             "canaries": sum(1 for it in items if it.get("canary")),
         },
         "faithfulness": {
-            "judge_vs_human": faith_kappa_judge.as_dict(),
-            "inter_human": faith_kappa_inter_human.as_dict(),
+            "judge_vs_simulated": faith_kappa_judge.as_dict(),
+            "inter_simulated": faith_kappa_inter_human.as_dict(),
         },
         "citation_precision": {
-            "judge_vs_human": cite_kappa_judge.as_dict(),
+            "judge_vs_simulated": cite_kappa_judge.as_dict(),
         },
         "abstention_correctness": {
-            "judge_vs_human": abst_kappa_judge.as_dict(),
+            "judge_vs_simulated": abst_kappa_judge.as_dict(),
         },
         "canary_resistance": {
             "canaries_tested": sum(1 for it in items if it.get("canary")),

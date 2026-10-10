@@ -22,7 +22,10 @@
       "extractor": "none(plaintext)",
       "ok": true,
       "is_injection_canary": true,
-      "note": "DATA, never instructions. Ships in the eval gold set as a graded negative test."
+      "note": "DATA, never instructions. Ships in the eval gold set as a graded negative test.",
+      "is_synthetic": true,
+      "origin": "SYNTHETIC_EVAL_FIXTURE",
+      "provenance_class": "SYNTHETIC_EVAL_FIXTURE"
     },
     {
       "n": 1,
@@ -37,7 +40,9 @@
       "pages": 23,
       "extractor": "pypdf",
       "char_count": 47603,
-      "ok": true
+      "ok": true,
+      "is_synthetic": false,
+      "origin": "REGULATOR_LIVE_FETCH"
     },
     {
       "n": 2,
@@ -52,7 +57,9 @@
       "pages": 1,
       "extractor": "pypdf",
       "char_count": 951,
-      "ok": true
+      "ok": true,
+      "is_synthetic": false,
+      "origin": "REGULATOR_LIVE_FETCH"
     },
     {
       "n": 3,
@@ -67,7 +74,9 @@
       "pages": 8,
       "extractor": "pypdf",
       "char_count": 12723,
-      "ok": true
+      "ok": true,
+      "is_synthetic": false,
+      "origin": "REGULATOR_LIVE_FETCH"
     },
     {
       "n": 4,
@@ -82,7 +91,9 @@
       "pages": 3,
       "extractor": "pypdf",
       "char_count": 5456,
-      "ok": true
+      "ok": true,
+      "is_synthetic": false,
+      "origin": "REGULATOR_LIVE_FETCH"
     },
     {
       "n": 5,
@@ -97,7 +108,9 @@
       "pages": 1,
       "extractor": "pypdf",
       "char_count": 2774,
-      "ok": true
+      "ok": true,
+      "is_synthetic": false,
+      "origin": "REGULATOR_LIVE_FETCH"
     },
     {
       "n": 6,
@@ -112,7 +125,9 @@
       "pages": 2,
       "extractor": "pypdf",
       "char_count": 2761,
-      "ok": true
+      "ok": true,
+      "is_synthetic": false,
+      "origin": "REGULATOR_LIVE_FETCH"
     },
     {
       "n": 7,
@@ -127,7 +142,9 @@
       "pages": 2,
       "extractor": "pypdf",
       "char_count": 3347,
-      "ok": true
+      "ok": true,
+      "is_synthetic": false,
+      "origin": "REGULATOR_LIVE_FETCH"
     },
     {
       "n": 8,
@@ -142,7 +159,9 @@
       "pages": 2,
       "extractor": "pypdf",
       "char_count": 3479,
-      "ok": true
+      "ok": true,
+      "is_synthetic": false,
+      "origin": "REGULATOR_LIVE_FETCH"
     },
     {
       "n": 9,
@@ -157,7 +176,9 @@
       "pages": 2,
       "extractor": "pypdf",
       "char_count": 3420,
-      "ok": true
+      "ok": true,
+      "is_synthetic": false,
+      "origin": "REGULATOR_LIVE_FETCH"
     },
     {
       "n": 10,
@@ -172,7 +193,9 @@
       "pages": 2,
       "extractor": "pypdf",
       "char_count": 3442,
-      "ok": true
+      "ok": true,
+      "is_synthetic": false,
+      "origin": "REGULATOR_LIVE_FETCH"
     },
     {
       "n": 11,
@@ -187,7 +210,9 @@
       "pages": 2,
       "extractor": "pypdf",
       "char_count": 2896,
-      "ok": true
+      "ok": true,
+      "is_synthetic": false,
+      "origin": "REGULATOR_LIVE_FETCH"
     },
     {
       "n": 12,
@@ -202,7 +227,9 @@
       "pages": 4,
       "extractor": "pypdf",
       "char_count": 7927,
-      "ok": true
+      "ok": true,
+      "is_synthetic": false,
+      "origin": "REGULATOR_LIVE_FETCH"
     },
     {
       "n": 13,
@@ -217,7 +244,9 @@
       "pages": 5,
       "extractor": "pypdf",
       "char_count": 6137,
-      "ok": true
+      "ok": true,
+      "is_synthetic": false,
+      "origin": "REGULATOR_LIVE_FETCH"
     },
     {
       "n": 14,
@@ -232,7 +261,9 @@
       "pages": 2,
       "extractor": "pypdf",
       "char_count": 2755,
-      "ok": true
+      "ok": true,
+      "is_synthetic": false,
+      "origin": "REGULATOR_LIVE_FETCH"
     },
     {
       "n": 15,
@@ -247,7 +278,9 @@
       "pages": 2,
       "extractor": "pypdf",
       "char_count": 2353,
-      "ok": true
+      "ok": true,
+      "is_synthetic": false,
+      "origin": "REGULATOR_LIVE_FETCH"
     },
     {
       "n": 16,
@@ -262,7 +295,9 @@
       "pages": 2,
       "extractor": "pypdf",
       "char_count": 2269,
-      "ok": true
+      "ok": true,
+      "is_synthetic": false,
+      "origin": "REGULATOR_LIVE_FETCH"
     },
     {
       "n": 17,
@@ -277,7 +312,9 @@
       "pages": 8,
       "extractor": "pypdf",
       "char_count": 11511,
-      "ok": true
+      "ok": true,
+      "is_synthetic": false,
+      "origin": "REGULATOR_LIVE_FETCH"
     },
     {
       "n": 18,
@@ -292,7 +329,9 @@
       "pages": 4,
       "extractor": "pypdf",
       "char_count": 6743,
-      "ok": true
+      "ok": true,
+      "is_synthetic": false,
+      "origin": "REGULATOR_LIVE_FETCH"
     },
     {
       "n": 19,
@@ -307,7 +346,9 @@
       "pages": 4,
       "extractor": "pypdf",
       "char_count": 6090,
-      "ok": true
+      "ok": true,
+      "is_synthetic": false,
+      "origin": "REGULATOR_LIVE_FETCH"
     },
     {
       "n": 20,
@@ -322,7 +363,9 @@
       "pages": 2,
       "extractor": "pypdf",
       "char_count": 3157,
-      "ok": true
+      "ok": true,
+      "is_synthetic": false,
+      "origin": "REGULATOR_LIVE_FETCH"
     },
     {
       "n": 21,
@@ -337,7 +380,11 @@
       "pages": 4,
       "extractor": "pypdf",
       "char_count": 3812,
-      "ok": true
+      "ok": true,
+      "is_synthetic": true,
+      "origin": "SYNTHETIC_EVAL_FIXTURE",
+      "note": "Locally synthesized test fixture for P0-3 offline evaluation; excluded from production regulatory evidence.",
+      "provenance_class": "SYNTHETIC_EVAL_FIXTURE"
     },
     {
       "n": 22,
@@ -352,7 +399,11 @@
       "pages": 4,
       "extractor": "pypdf",
       "char_count": 3884,
-      "ok": true
+      "ok": true,
+      "is_synthetic": true,
+      "origin": "SYNTHETIC_EVAL_FIXTURE",
+      "note": "Locally synthesized test fixture for P0-3 offline evaluation; excluded from production regulatory evidence.",
+      "provenance_class": "SYNTHETIC_EVAL_FIXTURE"
     },
     {
       "n": 23,
@@ -367,7 +418,11 @@
       "pages": 4,
       "extractor": "pypdf",
       "char_count": 3814,
-      "ok": true
+      "ok": true,
+      "is_synthetic": true,
+      "origin": "SYNTHETIC_EVAL_FIXTURE",
+      "note": "Locally synthesized test fixture for P0-3 offline evaluation; excluded from production regulatory evidence.",
+      "provenance_class": "SYNTHETIC_EVAL_FIXTURE"
     },
     {
       "n": 24,
@@ -382,7 +437,11 @@
       "pages": 4,
       "extractor": "pypdf",
       "char_count": 3356,
-      "ok": true
+      "ok": true,
+      "is_synthetic": true,
+      "origin": "SYNTHETIC_EVAL_FIXTURE",
+      "note": "Locally synthesized test fixture for P0-3 offline evaluation; excluded from production regulatory evidence.",
+      "provenance_class": "SYNTHETIC_EVAL_FIXTURE"
     },
     {
       "n": 25,
@@ -397,7 +456,11 @@
       "pages": 4,
       "extractor": "pypdf",
       "char_count": 3430,
-      "ok": true
+      "ok": true,
+      "is_synthetic": true,
+      "origin": "SYNTHETIC_EVAL_FIXTURE",
+      "note": "Locally synthesized test fixture for P0-3 offline evaluation; excluded from production regulatory evidence.",
+      "provenance_class": "SYNTHETIC_EVAL_FIXTURE"
     },
     {
       "n": 26,
@@ -412,7 +475,11 @@
       "pages": 4,
       "extractor": "pypdf",
       "char_count": 3279,
-      "ok": true
+      "ok": true,
+      "is_synthetic": true,
+      "origin": "SYNTHETIC_EVAL_FIXTURE",
+      "note": "Locally synthesized test fixture for P0-3 offline evaluation; excluded from production regulatory evidence.",
+      "provenance_class": "SYNTHETIC_EVAL_FIXTURE"
     },
     {
       "n": 27,
@@ -427,7 +494,11 @@
       "pages": 4,
       "extractor": "pypdf",
       "char_count": 3421,
-      "ok": true
+      "ok": true,
+      "is_synthetic": true,
+      "origin": "SYNTHETIC_EVAL_FIXTURE",
+      "note": "Locally synthesized test fixture for P0-3 offline evaluation; excluded from production regulatory evidence.",
+      "provenance_class": "SYNTHETIC_EVAL_FIXTURE"
     },
     {
       "n": 28,
@@ -442,7 +513,11 @@
       "pages": 4,
       "extractor": "pypdf",
       "char_count": 3638,
-      "ok": true
+      "ok": true,
+      "is_synthetic": true,
+      "origin": "SYNTHETIC_EVAL_FIXTURE",
+      "note": "Locally synthesized test fixture for P0-3 offline evaluation; excluded from production regulatory evidence.",
+      "provenance_class": "SYNTHETIC_EVAL_FIXTURE"
     },
     {
       "n": 29,
@@ -457,7 +532,11 @@
       "pages": 4,
       "extractor": "pypdf",
       "char_count": 3445,
-      "ok": true
+      "ok": true,
+      "is_synthetic": true,
+      "origin": "SYNTHETIC_EVAL_FIXTURE",
+      "note": "Locally synthesized test fixture for P0-3 offline evaluation; excluded from production regulatory evidence.",
+      "provenance_class": "SYNTHETIC_EVAL_FIXTURE"
     },
     {
       "n": 30,
@@ -472,7 +551,11 @@
       "pages": 4,
       "extractor": "pypdf",
       "char_count": 3425,
-      "ok": true
+      "ok": true,
+      "is_synthetic": true,
+      "origin": "SYNTHETIC_EVAL_FIXTURE",
+      "note": "Locally synthesized test fixture for P0-3 offline evaluation; excluded from production regulatory evidence.",
+      "provenance_class": "SYNTHETIC_EVAL_FIXTURE"
     },
     {
       "n": 31,
@@ -487,7 +570,11 @@
       "pages": 4,
       "extractor": "pypdf",
       "char_count": 3421,
-      "ok": true
+      "ok": true,
+      "is_synthetic": true,
+      "origin": "SYNTHETIC_EVAL_FIXTURE",
+      "note": "Locally synthesized test fixture for P0-3 offline evaluation; excluded from production regulatory evidence.",
+      "provenance_class": "SYNTHETIC_EVAL_FIXTURE"
     },
     {
       "n": 32,
@@ -502,7 +589,11 @@
       "pages": 4,
       "extractor": "pypdf",
       "char_count": 3354,
-      "ok": true
+      "ok": true,
+      "is_synthetic": true,
+      "origin": "SYNTHETIC_EVAL_FIXTURE",
+      "note": "Locally synthesized test fixture for P0-3 offline evaluation; excluded from production regulatory evidence.",
+      "provenance_class": "SYNTHETIC_EVAL_FIXTURE"
     },
     {
       "n": 33,
@@ -517,7 +608,11 @@
       "pages": 4,
       "extractor": "pypdf",
       "char_count": 3331,
-      "ok": true
+      "ok": true,
+      "is_synthetic": true,
+      "origin": "SYNTHETIC_EVAL_FIXTURE",
+      "note": "Locally synthesized test fixture for P0-3 offline evaluation; excluded from production regulatory evidence.",
+      "provenance_class": "SYNTHETIC_EVAL_FIXTURE"
     },
     {
       "n": 34,
@@ -532,7 +627,11 @@
       "pages": 4,
       "extractor": "pypdf",
       "char_count": 3321,
-      "ok": true
+      "ok": true,
+      "is_synthetic": true,
+      "origin": "SYNTHETIC_EVAL_FIXTURE",
+      "note": "Locally synthesized test fixture for P0-3 offline evaluation; excluded from production regulatory evidence.",
+      "provenance_class": "SYNTHETIC_EVAL_FIXTURE"
     }
   ]
 }

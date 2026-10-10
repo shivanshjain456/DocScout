@@ -29,7 +29,7 @@ import hashlib
 import json
 from collections.abc import Iterator
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 from app.config import REPO_ROOT
@@ -75,6 +75,8 @@ class SourceDocument:
     is_injection_canary: bool
     title: str | None = None
     published_date: date | None = None
+    is_synthetic: bool = False
+    provenance_class: str = "REGULATOR_LIVE_FETCH"
 
     @property
     def bytes_len(self) -> int:
@@ -151,13 +153,28 @@ def iter_manifest_documents(
         if raw_date is not None:
             pub_date = date.fromisoformat(str(raw_date)) if isinstance(raw_date, str) else raw_date  # type: ignore[assignment]
 
+        raw_fetch_ts = record.get("fetch_ts")
+        if raw_fetch_ts is not None and str(raw_fetch_ts) != "None":
+            fetch_ts = datetime.fromisoformat(str(raw_fetch_ts))
+        else:
+            fetch_ts = datetime(1970, 1, 1, tzinfo=UTC)
+
+        is_synth = bool(record.get("is_synthetic", False)) or bool(
+            record.get("is_injection_canary", False)
+        )
+        prov_class = str(
+            record.get("provenance_class")
+            or record.get("origin")
+            or ("SYNTHETIC_EVAL_FIXTURE" if is_synth else "REGULATOR_LIVE_FETCH")
+        )
+
         yield SourceDocument(
             url=url,
             source=source,
             sha256=digest,
             content=content,
             media_type=_media_type_for(local_path),
-            fetch_ts=datetime.fromisoformat(str(record["fetch_ts"])),
+            fetch_ts=fetch_ts,
             http_status=(
                 int(str(record["http_status"])) if record.get("http_status") is not None else None
             ),
@@ -168,5 +185,7 @@ def iter_manifest_documents(
             is_injection_canary=bool(record.get("is_injection_canary", False)),
             title=title,
             published_date=pub_date,
+            is_synthetic=is_synth,
+            provenance_class=prov_class,
         )
         yielded += 1
