@@ -1,10 +1,13 @@
 # DocScout UI
 
-This directory contains the minimal React 19 + TypeScript + Vite frontend console for DocScout,
-querying `/v1/search` with citation rendering, confidence metrics, and request tracing.
+This directory contains the full-stack React 19 + TypeScript + Vite frontend console for DocScout.
 
-DocScout also provides a comprehensive, self-contained server-rendered interactive regulatory console
-directly from the FastAPI service at `GET /` (`app/api/demo.py`), which requires no separate Node or Vite process.
+**Tabs:** Search (hybrid-rrf) · Identity · Digests · OCR · Research (server demo at `GET /` has full parity).
+
+Surfaces citation-grounded hybrid retrieval, Auth0 analyst identity profiles (`/v1/user/me`),
+Brevo regulatory alert subscriptions (`/v1/subscriptions`, 300/day quota, one-click unsubscribe),
+OCR.Space inspection and fallback triggers (`/v1/documents/{id}/ocr`, 1MB/3p limit),
+and deterministic agentic research synthesis (`/v1/research`).
 
 ## Development
 
