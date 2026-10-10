@@ -59,6 +59,8 @@ evidence, and pinned by a regression test that fails when the fix is removed.
 
 ### Live Demo and Serving
 
+![DocScout demo](docs/assets/demo.png)
+
 ```bash
 make serve      # http://localhost:8000: demo UI, /docs, /healthz, /readyz
 ```
