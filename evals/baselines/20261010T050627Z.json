@@ -2,7 +2,7 @@
   "schema": "docscout.eval.baseline/1",
   "run_utc": "2026-10-10T05:06:27Z",
   "report_dir": "evals/reports/20261010T050559Z",
-  "git_commit": "00e94fdca70bfda994f1b76291b0236bd77f8ccf",
+  "git_commit": "2b5eaa8b8fc586c26b8f279ff01823c272a42c07",
   "goldset_version": "2.0.0",
   "goldset_sha256": "1a640cce7d27bf2de3a1390e858cd7537cfd8e25fe03bea1260d12f8c4e9a3b5",
   "corpus_manifest_digest": "3c7a585f24068d838f425318dd6150e8fb67e5a9f6acaa0982a33c2077d2b663",
