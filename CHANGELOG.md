@@ -3,7 +3,7 @@
 All notable changes to DocScout are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [1.0.0] — 2026-10-10
 
 ### Added
 - **P2 Non-Regression & Operational Close-Out (P2-GUARD).** Comprehensive verification of all 12
@@ -37,6 +37,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
   providing single production adapter `PgVectorStore`, pluggable backend registry in
   `config/retrieval.json`, and proved exact numerical equivalence ($\Delta \text{recall@5} = 0.000$)
   against raw SQL baseline across 365 gold queries.
+
+### Fixed
+- **Evaluation Protocol Renumbering (E-17→E-18).** Renumbered duplicate E-17 rule in `docs/eval/EVAL_PROTOCOL.md` and related ADRs to E-18, establishing clear evaluation corpus divergence invariant for synthetic fixtures.
+- **Evaluation Baseline Provenance Pin.** Aligned baseline `git_commit` in `evals/baselines/20261010T050627Z.json` to `2b5eaa8` HEAD.
+- **Supply-Chain SBOM Audit Reconciliation.** Reconciled committed CycloneDX SBOM (`docs/security/sbom.cdx.json`, 172 components, UUID serial) and `dependency-audit.json` against locked dependencies (`uv.lock` SHA-256).
+- **README Baseline & Test Count Harmonization.** Aligned evaluation baseline evidence links to latest `evals/reports/20261010T050559Z/` and harmonized suite count claims to 448 test functions (555 collected cases incl. parametrization).
+- **Minimal Interactive Search Console.** Replaced placeholder frontend scaffold in `ui/src/App.tsx` with minimal, functional citation-grounded regulatory search console querying `/v1/search`.
 - **Human-Readable Citation Rendering (P1-5, ADR-0018, FR-14).** Populated authoritative
   titles and publication dates across all 35 documents in PostgreSQL (Migration 0006),
   added canonical metadata catalog in pp/ingest/metadata.py, enriched Passage and
