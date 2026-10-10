@@ -15,6 +15,8 @@ hybrid retrieval (BM25 + dense vectors), cross-encoder reranking, answer generat
 
 > **Status: Production operational RAG service.** P0, P1, and P2 capabilities verified, tested (448 test functions (555 collected cases incl. parametrization) passing), and containerized.
 > Benchmarked against top open-source RAG architectures (Onyx, RAGFlow, Dify, Khoj, FastGPT).
+>
+> **Executive & Hiring Review:** For a 90-second technical narrative, verifiable evidence links, architecture pillars, and copy-paste resume bank, see [`docs/portfolio/ONE_PAGER.md`](docs/portfolio/ONE_PAGER.md).
 
 ## Results
 
