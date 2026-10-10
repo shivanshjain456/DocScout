@@ -3,7 +3,7 @@
 - **Status:** accepted
 - **Date:** 2026-10-10
 - **Deciders:** Core Engineering / Antigravity Agent
-- **Related:** ADR-0024, EVAL_PROTOCOL §E-12, §E-17
+- **Related:** ADR-0024, EVAL_PROTOCOL §E-12, §E-18
 
 ## Context
 
@@ -22,7 +22,7 @@ We adopt **Option A: Evaluation-Only Override with Full Disclosure**.
 Specifically:
 1. `app/evals/runner.py` is updated so that all benchmark retrieval executions construct and pass `MetadataFilter(include_synthetic=True)` (`run_config` and `_score_abstention`).
 2. Production code paths (`app/api/app.py`, `app/digests/*`, search endpoints) retain their strict `NOT d.is_synthetic` default.
-3. The relationship between production and evaluation corpora is formally codified in `docs/eval/EVAL_PROTOCOL.md §E-17`, this ADR, and every eval report header:
+3. The relationship between production and evaluation corpora is formally codified in `docs/eval/EVAL_PROTOCOL.md §E-18`, this ADR, and every eval report header:
    *Production recall ≠ evaluation recall: production serves 20 authoritative documents; the evaluation harness and regression gate evaluate the full 35-document corpus (including 15 synthetic fixtures) to measure holistic retrieval across all 365 answerable gold items.*
 
 ## Consequences
