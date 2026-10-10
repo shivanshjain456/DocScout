@@ -5,7 +5,9 @@
 ![Tests](https://img.shields.io/badge/tests-448%20functions%20(555%20cases)-brightgreen)
 ![Python](https://img.shields.io/badge/python-3.12-blue)
 
-> **Clone → queryable in 90 seconds:** `cp .env.example .env && make deploy && curl -s localhost:8000/healthz` · **5/5 green at** [`38035178859`](https://github.com/shivanshjain456/DocScout/actions/runs/38035178859)
+> **Clone → queryable in 90 seconds:** `cp .env.example .env && make deploy && curl -s localhost:8000/healthz` · **5/5 green at** [`38037523415`](https://github.com/shivanshjain456/DocScout/actions/runs/38037523415)
+>
+> **Without clone:** `docker run -p 8000:8000 ghcr.io/shivanshjain456/docscout:1.0.1` (or `ghcr.io/shivanshjain456/docscout:latest`) — then `curl -s localhost:8000/healthz`
 
 
 Citation-grounded question answering over Indian financial-regulatory circulars (RBI + SEBI), with
@@ -133,6 +135,9 @@ flowchart LR
 ### Live Demo and Serving
 
 ![DocScout demo](docs/assets/demo.png)
+![DocScout UI Console](docs/assets/ui-console.png)
+
+**Without clone:** `docker run -p 8000:8000 ghcr.io/shivanshjain456/docscout:1.0.1` (or `ghcr.io/shivanshjain456/docscout:latest`) — then `curl -s localhost:8000/healthz`
 
 ```bash
 make serve      # http://localhost:8000: demo UI, /docs, /healthz, /readyz

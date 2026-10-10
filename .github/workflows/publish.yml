@@ -1,0 +1,35 @@
+name: Publish Docker Image
+
+on:
+  push:
+    tags:
+      - '1.*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        run: |
+          TAG_NAME="${GITHUB_REF_NAME}"
+          docker build \
+            -t ghcr.io/shivanshjain456/docscout:${TAG_NAME} \
+            -t ghcr.io/shivanshjain456/docscout:latest \
+            .
+          docker push ghcr.io/shivanshjain456/docscout:${TAG_NAME}
+          docker push ghcr.io/shivanshjain456/docscout:latest

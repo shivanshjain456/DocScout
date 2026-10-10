@@ -22,6 +22,8 @@
 
 FROM python:3.12-slim-trixie@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f
 
+LABEL org.opencontainers.image.source=https://github.com/shivanshjain456/DocScout
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     UV_SYSTEM_PYTHON=0 \
