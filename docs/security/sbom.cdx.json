@@ -141,12 +141,6 @@
       "version": "3.1.2"
     },
     {
-      "bom-ref": "pkg:pypi/colorama@0.4.6",
-      "name": "colorama",
-      "type": "library",
-      "version": "0.4.6"
-    },
-    {
       "bom-ref": "pkg:pypi/courlan@1.4.0",
       "name": "courlan",
       "type": "library",
@@ -163,6 +157,24 @@
       "name": "cryptography",
       "type": "library",
       "version": "50.0.2"
+    },
+    {
+      "bom-ref": "pkg:pypi/cuda-bindings@13.4.3",
+      "name": "cuda-bindings",
+      "type": "library",
+      "version": "13.4.3"
+    },
+    {
+      "bom-ref": "pkg:pypi/cuda-pathfinder@1.8.3",
+      "name": "cuda-pathfinder",
+      "type": "library",
+      "version": "1.8.3"
+    },
+    {
+      "bom-ref": "pkg:pypi/cuda-toolkit@13.0.3.0",
+      "name": "cuda-toolkit",
+      "type": "library",
+      "version": "13.0.3.0"
     },
     {
       "bom-ref": "pkg:pypi/dataclasses-json@0.6.7",
@@ -469,6 +481,96 @@
       "name": "numpy",
       "type": "library",
       "version": "2.5.3"
+    },
+    {
+      "bom-ref": "pkg:pypi/nvidia-cublas@13.1.1.3",
+      "name": "nvidia-cublas",
+      "type": "library",
+      "version": "13.1.1.3"
+    },
+    {
+      "bom-ref": "pkg:pypi/nvidia-cuda-cupti@13.0.85",
+      "name": "nvidia-cuda-cupti",
+      "type": "library",
+      "version": "13.0.85"
+    },
+    {
+      "bom-ref": "pkg:pypi/nvidia-cuda-nvrtc@13.0.88",
+      "name": "nvidia-cuda-nvrtc",
+      "type": "library",
+      "version": "13.0.88"
+    },
+    {
+      "bom-ref": "pkg:pypi/nvidia-cuda-runtime@13.0.96",
+      "name": "nvidia-cuda-runtime",
+      "type": "library",
+      "version": "13.0.96"
+    },
+    {
+      "bom-ref": "pkg:pypi/nvidia-cudnn-cu13@9.24.0.43",
+      "name": "nvidia-cudnn-cu13",
+      "type": "library",
+      "version": "9.24.0.43"
+    },
+    {
+      "bom-ref": "pkg:pypi/nvidia-cufft@12.0.0.61",
+      "name": "nvidia-cufft",
+      "type": "library",
+      "version": "12.0.0.61"
+    },
+    {
+      "bom-ref": "pkg:pypi/nvidia-cufile@1.15.1.6",
+      "name": "nvidia-cufile",
+      "type": "library",
+      "version": "1.15.1.6"
+    },
+    {
+      "bom-ref": "pkg:pypi/nvidia-curand@10.4.0.35",
+      "name": "nvidia-curand",
+      "type": "library",
+      "version": "10.4.0.35"
+    },
+    {
+      "bom-ref": "pkg:pypi/nvidia-cusolver@12.0.4.66",
+      "name": "nvidia-cusolver",
+      "type": "library",
+      "version": "12.0.4.66"
+    },
+    {
+      "bom-ref": "pkg:pypi/nvidia-cusparse@12.6.3.3",
+      "name": "nvidia-cusparse",
+      "type": "library",
+      "version": "12.6.3.3"
+    },
+    {
+      "bom-ref": "pkg:pypi/nvidia-cusparselt-cu13@0.8.1",
+      "name": "nvidia-cusparselt-cu13",
+      "type": "library",
+      "version": "0.8.1"
+    },
+    {
+      "bom-ref": "pkg:pypi/nvidia-nccl-cu13@2.30.7",
+      "name": "nvidia-nccl-cu13",
+      "type": "library",
+      "version": "2.30.7"
+    },
+    {
+      "bom-ref": "pkg:pypi/nvidia-nvjitlink@13.4.92",
+      "name": "nvidia-nvjitlink",
+      "type": "library",
+      "version": "13.4.92"
+    },
+    {
+      "bom-ref": "pkg:pypi/nvidia-nvshmem-cu13@3.4.5",
+      "name": "nvidia-nvshmem-cu13",
+      "type": "library",
+      "version": "3.4.5"
+    },
+    {
+      "bom-ref": "pkg:pypi/nvidia-nvtx@13.0.85",
+      "name": "nvidia-nvtx",
+      "type": "library",
+      "version": "13.0.85"
     },
     {
       "bom-ref": "pkg:pypi/openai@2.54.0",
@@ -831,6 +933,12 @@
       "version": "5.17.0"
     },
     {
+      "bom-ref": "pkg:pypi/triton@3.8.0",
+      "name": "triton",
+      "type": "library",
+      "version": "3.8.0"
+    },
+    {
       "bom-ref": "pkg:pypi/truststore@0.10.4",
       "name": "truststore",
       "type": "library",
@@ -861,12 +969,6 @@
       "version": "4.16.0"
     },
     {
-      "bom-ref": "pkg:pypi/tzdata@2026.4",
-      "name": "tzdata",
-      "type": "library",
-      "version": "2026.4"
-    },
-    {
       "bom-ref": "pkg:pypi/tzlocal@5.4.4",
       "name": "tzlocal",
       "type": "library",
@@ -889,6 +991,12 @@
       "name": "uvicorn",
       "type": "library",
       "version": "0.54.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/uvloop@0.23.0",
+      "name": "uvloop",
+      "type": "library",
+      "version": "0.23.0"
     },
     {
       "bom-ref": "pkg:pypi/watchfiles@1.3.0",
@@ -998,9 +1106,6 @@
       "ref": "pkg:pypi/cloudpickle@3.1.2"
     },
     {
-      "ref": "pkg:pypi/colorama@0.4.6"
-    },
-    {
       "ref": "pkg:pypi/courlan@1.4.0"
     },
     {
@@ -1008,6 +1113,15 @@
     },
     {
       "ref": "pkg:pypi/cryptography@50.0.2"
+    },
+    {
+      "ref": "pkg:pypi/cuda-bindings@13.4.3"
+    },
+    {
+      "ref": "pkg:pypi/cuda-pathfinder@1.8.3"
+    },
+    {
+      "ref": "pkg:pypi/cuda-toolkit@13.0.3.0"
     },
     {
       "ref": "pkg:pypi/dataclasses-json@0.6.7"
@@ -1161,6 +1275,51 @@
     },
     {
       "ref": "pkg:pypi/numpy@2.5.3"
+    },
+    {
+      "ref": "pkg:pypi/nvidia-cublas@13.1.1.3"
+    },
+    {
+      "ref": "pkg:pypi/nvidia-cuda-cupti@13.0.85"
+    },
+    {
+      "ref": "pkg:pypi/nvidia-cuda-nvrtc@13.0.88"
+    },
+    {
+      "ref": "pkg:pypi/nvidia-cuda-runtime@13.0.96"
+    },
+    {
+      "ref": "pkg:pypi/nvidia-cudnn-cu13@9.24.0.43"
+    },
+    {
+      "ref": "pkg:pypi/nvidia-cufft@12.0.0.61"
+    },
+    {
+      "ref": "pkg:pypi/nvidia-cufile@1.15.1.6"
+    },
+    {
+      "ref": "pkg:pypi/nvidia-curand@10.4.0.35"
+    },
+    {
+      "ref": "pkg:pypi/nvidia-cusolver@12.0.4.66"
+    },
+    {
+      "ref": "pkg:pypi/nvidia-cusparse@12.6.3.3"
+    },
+    {
+      "ref": "pkg:pypi/nvidia-cusparselt-cu13@0.8.1"
+    },
+    {
+      "ref": "pkg:pypi/nvidia-nccl-cu13@2.30.7"
+    },
+    {
+      "ref": "pkg:pypi/nvidia-nvjitlink@13.4.92"
+    },
+    {
+      "ref": "pkg:pypi/nvidia-nvshmem-cu13@3.4.5"
+    },
+    {
+      "ref": "pkg:pypi/nvidia-nvtx@13.0.85"
     },
     {
       "ref": "pkg:pypi/openai@2.54.0"
@@ -1343,6 +1502,9 @@
       "ref": "pkg:pypi/transformers@5.17.0"
     },
     {
+      "ref": "pkg:pypi/triton@3.8.0"
+    },
+    {
       "ref": "pkg:pypi/truststore@0.10.4"
     },
     {
@@ -1358,9 +1520,6 @@
       "ref": "pkg:pypi/typing_extensions@4.16.0"
     },
     {
-      "ref": "pkg:pypi/tzdata@2026.4"
-    },
-    {
       "ref": "pkg:pypi/tzlocal@5.4.4"
     },
     {
@@ -1371,6 +1530,9 @@
     },
     {
       "ref": "pkg:pypi/uvicorn@0.54.0"
+    },
+    {
+      "ref": "pkg:pypi/uvloop@0.23.0"
     },
     {
       "ref": "pkg:pypi/watchfiles@1.3.0"
@@ -1392,7 +1554,7 @@
     }
   ],
   "metadata": {},
-  "serialNumber": "urn:uuid:de413449-7620-516b-901c-c6b238231fbd",
+  "serialNumber": "urn:uuid:23b25adb-6ffe-598a-90f6-f2de252be404",
   "specVersion": "1.4",
   "version": 1
 }
