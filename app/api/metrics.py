@@ -256,6 +256,17 @@ INTENT_ROUTING_LATENCY = Histogram(
     buckets=LATENCY_BUCKETS,
 )
 
+HYDE_INVOCATIONS_TOTAL = Counter(
+    "docscout_hyde_invocations_total",
+    "Count of HyDE hypothetical passage generations (FEAT-014).",
+)
+
+HYDE_GENERATION_SECONDS = Histogram(
+    "docscout_hyde_generation_seconds",
+    "Latency of HyDE hypothetical passage generation in seconds (FEAT-014).",
+    buckets=LATENCY_BUCKETS,
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

@@ -231,9 +231,21 @@ class Retriever:
             lexical_query = effective_query
 
         if config.expand_query:
-            expanded = self.expander.expand(effective_query, mode=config.expansion_mode)
-            dense_query = expanded.dense_query
-            lexical_query = expanded.lexical_query
+            if config.expansion_mode == "hyde":
+                from app.retrieval.hyde import get_default_hyde_generator
+
+                dense_query = get_default_hyde_generator().generate_hypothesis(effective_query)
+                lexical_query = effective_query
+            elif config.expansion_mode == "combined":
+                from app.retrieval.hyde import get_default_hyde_generator
+
+                expanded = self.expander.expand(effective_query, mode="synonym")
+                dense_query = get_default_hyde_generator().generate_hypothesis(effective_query)
+                lexical_query = expanded.lexical_query
+            else:
+                expanded = self.expander.expand(effective_query, mode=config.expansion_mode)
+                dense_query = expanded.dense_query
+                lexical_query = expanded.lexical_query
 
         store = self.get_vector_store(config.vector_store_adapter)
 
