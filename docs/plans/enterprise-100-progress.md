@@ -19,7 +19,7 @@
 - [x] FEAT-007: Dynamic Definition Tooltips in Console UI
 - [x] FEAT-008: Relationship-Filtered Search API
 - [x] FEAT-009: Graph Degree Centrality Query Boosting
-- [ ] FEAT-010: Automated Regulatory Ontology Ingestion Pipeline
+- [x] FEAT-010: Automated Regulatory Ontology Ingestion Pipeline
 
 ### Pillar 2: Query Intelligence, Disambiguation & Intent Routing
 - [ ] FEAT-011: Context-Aware Token Disambiguation Engine
@@ -144,6 +144,7 @@
 | FEAT-007 | 49db4bc | PASS | Accessible term annotator, WCAG 2.2 AA tooltips & dictionary endpoint |
 | FEAT-008 | a97963c | PASS | Relationship-constrained retrieval pruning with supersedes/requires/enables filters |
 | FEAT-009 | 05a7ae5 | PASS | Precomputed graph degree & PageRank centrality non-linear query boosting |
+| FEAT-010 | e140ee8 | PASS | Automated definitions mining, candidate staging queue & admin review API |
 
 ---
 
