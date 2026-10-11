@@ -43,6 +43,7 @@ from psycopg_pool import ConnectionPool
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api import demo, metrics
+from app.api.admin_ontology import router as admin_ontology_router
 from app.api.audit import RetrievalAuditRecord, hash_query, record_retrieval_event
 from app.api.auth0 import (
     UserIdentity,
@@ -221,6 +222,8 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url=None,
 )
+
+app.include_router(admin_ontology_router)
 
 
 @app.middleware("http")

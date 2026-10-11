@@ -215,6 +215,17 @@ CENTRALITY_BOOSTED_QUERIES_TOTAL = Counter(
     ("query_type",),
 )
 
+ONTOLOGY_CANDIDATES_DISCOVERED = Counter(
+    "docscout_ontology_candidates_discovered_total",
+    "Total regulatory terms discovered and staged for ontology inclusion (FEAT-010).",
+)
+
+ONTOLOGY_CANDIDATES_REVIEWED = Counter(
+    "docscout_ontology_candidates_reviewed_total",
+    "Total ontology candidate terms reviewed by human administrators (FEAT-010).",
+    ("action",),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

@@ -87,7 +87,8 @@ def test_metadata_filter_canonical_tuple() -> None:
     f2 = MetadataFilter(taxonomy_layers=["architecture-and-data", "security-and-trust"])
     assert f1.canonical_tuple() == f2.canonical_tuple()
     tup = f1.canonical_tuple()
-    assert tup[-1] == ("architecture-and-data", "security-and-trust")
+    assert ("architecture-and-data", "security-and-trust") in tup
+    assert tup[7] == ("architecture-and-data", "security-and-trust")
 
 
 def test_metadata_filter_matches_layer_purity() -> None:
