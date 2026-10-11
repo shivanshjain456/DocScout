@@ -27,7 +27,7 @@
 - [x] FEAT-013: Intent-Driven Query Classification & Routing
 - [x] FEAT-014: Regulatory HyDE (Hypothetical Document Embeddings)
 - [x] FEAT-015: Audience & Difficulty Banding Filter
-- [ ] FEAT-016: Query Tagging & Metadata Constrained Retrieval
+- [x] FEAT-016: Query Tagging & Metadata Constrained Retrieval
 - [ ] FEAT-017: Multi-Turn Conversational Coreference Resolver
 - [ ] FEAT-018: Typo-Tolerant Regulatory Token Normalizer
 - [ ] FEAT-019: Interactive Search Query Suggestions
@@ -150,6 +150,7 @@
 | FEAT-013 | c50d814 | PASS | 21 diagnostic taxonomy intents + statutory incident readiness router with prescriptive firstMove, p95 <= 2.5ms |
 | FEAT-014 | da9df4a | PASS | Structured statutory clause synthesis, RBI/SEBI circular formatting, capped at 120 tokens, p95 <= 1.0ms |
 | FEAT-015 | 9eefb03 | PASS | 4-tier taxonomy difficulty banding (foundational <=150w, intermediate, advanced, expert <=512w), p95 <= 0.1ms |
+| FEAT-016 | ba3ea60 | PASS | 45-tag domain taxonomy inverted index, metadata WHERE clause, 100% eval accuracy, p95 <= 0.05ms |
 
 ---
 
