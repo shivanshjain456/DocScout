@@ -221,8 +221,17 @@ class Retriever:
 
         dense_query = query
         lexical_query = query
+        effective_query = query
+        if getattr(config, "enable_disambiguation", True):
+            from app.retrieval.disambiguation import get_token_disambiguator
+
+            disambiguator = get_token_disambiguator()
+            effective_query, _ = disambiguator.disambiguate_query(query)
+            dense_query = effective_query
+            lexical_query = effective_query
+
         if config.expand_query:
-            expanded = self.expander.expand(query, mode=config.expansion_mode)
+            expanded = self.expander.expand(effective_query, mode=config.expansion_mode)
             dense_query = expanded.dense_query
             lexical_query = expanded.lexical_query
 

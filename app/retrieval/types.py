@@ -242,6 +242,8 @@ class RetrievalConfig:
     enable_centrality_boost: bool = True
     centrality_weight: float = 0.15
     broad_query_threshold: float = 0.4
+    enable_disambiguation: bool = True
+    disambiguation_min_confidence: float = 0.70
 
     def __post_init__(self) -> None:
         if self.rerank and self.rerank_top_n < self.k_final:
@@ -265,6 +267,10 @@ class RetrievalConfig:
         if not (0.0 <= self.broad_query_threshold <= 1.0):
             raise ValueError(
                 f"broad_query_threshold must be in [0.0, 1.0], got {self.broad_query_threshold}"
+            )
+        if not (0.0 <= self.disambiguation_min_confidence <= 1.0):
+            raise ValueError(
+                f"disambiguation_min_confidence must be in [0.0, 1.0], got {self.disambiguation_min_confidence}"
             )
 
     def as_dict(self) -> dict[str, object]:
@@ -293,6 +299,8 @@ class RetrievalConfig:
             "enable_centrality_boost": self.enable_centrality_boost,
             "centrality_weight": self.centrality_weight,
             "broad_query_threshold": self.broad_query_threshold,
+            "enable_disambiguation": self.enable_disambiguation,
+            "disambiguation_min_confidence": self.disambiguation_min_confidence,
         }
 
 

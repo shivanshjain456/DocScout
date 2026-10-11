@@ -60,6 +60,8 @@ class SearchRequest(BaseModel):
     # Graph degree centrality query boosting (FEAT-009)
     enable_centrality_boost: bool = True
     centrality_weight: Annotated[float, Field(ge=0.0, le=0.3)] = 0.15
+    # Context-aware token disambiguation (FEAT-011)
+    enable_disambiguation: bool = True
 
 
 class Passage(BaseModel):

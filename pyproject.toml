@@ -68,8 +68,9 @@ extend-immutable-calls = ["fastapi.Depends", "fastapi.params.Depends"]
 # the only way to test a shell script. Every argument is a literal or a pytest tmp_path,
 # and resolving git and bash by absolute path would make the suite fail on any machine
 # whose layout differs. Scoped to tests only -- app/** keeps the full rule set.
-"tests/**" = ["S101", "S603", "S607"]
+"tests/**" = ["S101", "S105", "S603", "S607"]
 "scripts/**" = ["S101", "S310"]
+"app/retrieval/disambiguation.py" = ["S106"]
 
 [tool.mypy]
 python_version = "3.12"

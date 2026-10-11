@@ -226,6 +226,18 @@ ONTOLOGY_CANDIDATES_REVIEWED = Counter(
     ("action",),
 )
 
+TOKENS_DISAMBIGUATED_TOTAL = Counter(
+    "docscout_tokens_disambiguated_total",
+    "Count of polysemous tokens disambiguated pre-retrieval (FEAT-011).",
+    ("token", "resolved_sense"),
+)
+
+DISAMBIGUATION_LATENCY = Histogram(
+    "docscout_disambiguation_latency_seconds",
+    "Latency of query token disambiguation in seconds (FEAT-011).",
+    buckets=LATENCY_BUCKETS,
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

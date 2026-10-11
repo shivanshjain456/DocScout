@@ -488,6 +488,7 @@ def _config_for(payload: SearchRequest) -> RetrievalConfig:
             relationship_filter=payload.relationship_filter,
             enable_centrality_boost=payload.enable_centrality_boost,
             centrality_weight=payload.centrality_weight,
+            enable_disambiguation=payload.enable_disambiguation,
         )
     # Single-arm modes are the documented ADR-0006 ablation, reachable so the A/B can be
     # reproduced against the running service.
@@ -503,6 +504,7 @@ def _config_for(payload: SearchRequest) -> RetrievalConfig:
         relationship_filter=payload.relationship_filter,
         enable_centrality_boost=payload.enable_centrality_boost,
         centrality_weight=payload.centrality_weight,
+        enable_disambiguation=payload.enable_disambiguation,
     )
 
 
@@ -538,6 +540,7 @@ def search(
         payload.relationship_filter,
         payload.enable_centrality_boost,
         payload.centrality_weight,
+        payload.enable_disambiguation,
     )
 
     if payload.relationship_filter is not None:
