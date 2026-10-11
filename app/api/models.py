@@ -17,7 +17,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from app.generate.models import GeneratedAnswer, ResearchArtifact
 from app.retrieval.types import MetadataFilter
@@ -64,6 +64,8 @@ class SearchRequest(BaseModel):
     enable_disambiguation: bool = True
     # Intent-driven query classification & routing (FEAT-013)
     enable_intent_routing: bool = True
+    # Audience & difficulty banding filter (FEAT-015)
+    difficulty_band: Literal["foundational", "intermediate", "advanced", "expert"] | None = None
 
 
 class Passage(BaseModel):
@@ -86,6 +88,15 @@ class Passage(BaseModel):
     published_date: str | None = None
     matching_relationships: list[str] = Field(default_factory=list)
     centrality_boost: float = 0.0
+    difficulty_level: str | None = None
+
+    @model_validator(mode="after")
+    def _adapt_difficulty_window(self) -> Passage:
+        if self.difficulty_level and self.text:
+            from app.retrieval.difficulty import adapt_snippet
+
+            self.text = adapt_snippet(self.text, self.difficulty_level)
+        return self
 
 
 class Provenance(BaseModel):

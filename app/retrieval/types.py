@@ -194,6 +194,7 @@ class Retrieved:
     published_date: str | None = None
     matching_relationships: list[str] = field(default_factory=list)
     centrality_boost: float = 0.0
+    difficulty_level: str | None = None
 
 
 @dataclass(frozen=True)
@@ -244,6 +245,7 @@ class RetrievalConfig:
     broad_query_threshold: float = 0.4
     enable_disambiguation: bool = True
     disambiguation_min_confidence: float = 0.70
+    difficulty_band: str | None = None
 
     def __post_init__(self) -> None:
         if self.rerank and self.rerank_top_n < self.k_final:
@@ -301,6 +303,7 @@ class RetrievalConfig:
             "broad_query_threshold": self.broad_query_threshold,
             "enable_disambiguation": self.enable_disambiguation,
             "disambiguation_min_confidence": self.disambiguation_min_confidence,
+            "difficulty_band": self.difficulty_band,
         }
 
 

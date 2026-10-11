@@ -493,6 +493,7 @@ def _config_for(payload: SearchRequest) -> RetrievalConfig:
             enable_centrality_boost=payload.enable_centrality_boost,
             centrality_weight=payload.centrality_weight,
             enable_disambiguation=payload.enable_disambiguation,
+            difficulty_band=payload.difficulty_band,
         )
     # Single-arm modes are the documented ADR-0006 ablation, reachable so the A/B can be
     # reproduced against the running service.
@@ -509,6 +510,7 @@ def _config_for(payload: SearchRequest) -> RetrievalConfig:
         enable_centrality_boost=payload.enable_centrality_boost,
         centrality_weight=payload.centrality_weight,
         enable_disambiguation=payload.enable_disambiguation,
+        difficulty_band=payload.difficulty_band,
     )
 
 
@@ -546,6 +548,7 @@ def search(
         payload.centrality_weight,
         payload.enable_disambiguation,
         payload.enable_intent_routing,
+        payload.difficulty_band,
     )
 
     if payload.relationship_filter is not None:
@@ -575,14 +578,15 @@ def search(
                     corpus_generation=req_generation,
                 ),
             )
-        except Exception:  # noqa: BLE001 - audit failure must never break search
-            logger.warning("search.audit_event_failed", exc_info=True)
+        except Exception as exc:  # noqa: BLE001 - audit failure must never break search
+            logger.warning("search.audit_event_failed", error=str(exc))
         logger.info(
             "search.cache_hit",
             key_fingerprint=fingerprint,
             mode=payload.mode,
             k=payload.k,
             filter=payload.filter.as_dict() if payload.filter else None,
+            difficulty_band=payload.difficulty_band,
             duration_ms=round(total_ms, 2),
         )
         return SearchResponse(
@@ -651,6 +655,7 @@ def search(
             ),
             matching_relationships=hit.matching_relationships,
             centrality_boost=round(hit.centrality_boost, 6),
+            difficulty_level=payload.difficulty_band,
         )
         for hit in hits
     ]
@@ -680,8 +685,12 @@ def search(
 
     intent_classification: IntentClassification | None = None
     if payload.enable_intent_routing:
-        intent_router = getattr(state, "intent_router", None) or get_default_intent_router()
-        intent_classification = intent_router.classify(payload.query)
+        intent_router = getattr(state, "intent_router", None)
+        if not intent_router or not hasattr(intent_router, "classify"):
+            intent_router = get_default_intent_router()
+        res_intent = intent_router.classify(payload.query)
+        if isinstance(res_intent, IntentClassification):
+            intent_classification = res_intent
 
     result = CachedResult(
         passages=passages,
@@ -717,14 +726,15 @@ def search(
                 corpus_generation=req_generation,
             ),
         )
-    except Exception:  # noqa: BLE001 - audit failure must never break search
-        logger.warning("search.audit_event_failed", exc_info=True)
+    except Exception as exc:  # noqa: BLE001 - audit failure must never break search
+        logger.warning("search.audit_event_failed", error=str(exc))
     logger.info(
         "search.completed",
         key_fingerprint=fingerprint,
         mode=payload.mode,
         k=payload.k,
         filter=payload.filter.as_dict() if payload.filter else None,
+        difficulty_band=payload.difficulty_band,
         duration_ms=round(total_ms, 2),
         retrieval_ms=round(retrieval_ms, 2),
         generation_ms=round(generation_ms, 2),

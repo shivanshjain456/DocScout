@@ -401,6 +401,11 @@ class Retriever:
             row = meta.get(chunk_id)
             matching_rels = [config.relationship_filter] if config.relationship_filter else []
             boost_val = boost_records.get(chunk_id, 0.0)
+            text_val = row.text if row else ""
+            if config.difficulty_band and text_val:
+                from app.retrieval.difficulty import adapt_snippet
+
+                text_val = adapt_snippet(text_val, config.difficulty_band)
             results.append(
                 Retrieved(
                     chunk_id=chunk_id,
@@ -408,7 +413,7 @@ class Retriever:
                     score=float(score),
                     document_id=row.document_id if row else "",
                     source=row.source if row else "",
-                    text=row.text if row else "",
+                    text=text_val,
                     arm_ranks=dict(arm_ranks),
                     canonical_url=row.canonical_url if row else None,
                     char_start=row.char_start if row else 0,
@@ -417,6 +422,7 @@ class Retriever:
                     published_date=row.published_date if row else None,
                     matching_relationships=matching_rels,
                     centrality_boost=float(boost_val),
+                    difficulty_level=config.difficulty_band,
                 )
             )
         return results
