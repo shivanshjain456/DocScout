@@ -11,7 +11,7 @@
 
 ### Pillar 1: Regulatory Knowledge Graph & Semantic Ontology
 - [x] FEAT-001: Graph-Augmented Retrieval (GAR)
-- [ ] FEAT-002: Regulatory Concept Hierarchy & Entity Linking
+- [x] FEAT-002: Regulatory Concept Hierarchy & Entity Linking
 - [ ] FEAT-003: Edge-Weighted RRF Hybrid Fusion
 - [ ] FEAT-004: Interactive Concept Subgraph Projection
 - [ ] FEAT-005: Circular Citation Graph Extractor
@@ -136,6 +136,7 @@
 | FEAT | Commit SHA | eval-gate | Notes |
 |---|---|---|---|
 | FEAT-001 | 14e57ad | PASS | Multi-hop statutory graph traversal with edge decay |
+| FEAT-002 | 1fc1017 | PASS | 35-node statutory entity taxonomy and Trie-based linker |
 
 ---
 
