@@ -93,6 +93,10 @@ def search(
             where_clauses.append("c.taxonomy_layer = ANY(%(taxonomy_layers)s)")
             params["taxonomy_layers"] = list(filter.taxonomy_layers)
 
+        if filter.tags is not None:
+            where_clauses.append("c.tags && %(tags)s")
+            params["tags"] = list(filter.tags)
+
     where_sql = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
 
     query = f"""

@@ -267,6 +267,12 @@ HYDE_GENERATION_SECONDS = Histogram(
     buckets=LATENCY_BUCKETS,
 )
 
+TAGS_EXTRACTED_TOTAL = Counter(
+    "docscout_tags_extracted_total",
+    "Count of taxonomy domain tags extracted from search queries (FEAT-016).",
+    ("tag",),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

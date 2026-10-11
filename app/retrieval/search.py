@@ -14,8 +14,13 @@ from different code than the hybrid number, and the comparison would not be clea
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import psycopg
 import structlog
+
+if TYPE_CHECKING:
+    from app.retrieval.query_tagger import QueryTagger
 
 from app.ingest.embed import Embedder
 from app.retrieval import confidence as confidence_module
@@ -96,6 +101,14 @@ class Retriever:
         if self._expander is None:
             self._expander = get_default_expander()
         return self._expander
+
+    @property
+    def query_tagger(self) -> QueryTagger:
+        if getattr(self, "_query_tagger", None) is None:
+            from app.retrieval.query_tagger import get_default_query_tagger
+
+            self._query_tagger = get_default_query_tagger()
+        return self._query_tagger
 
     def _rerank(
         self,
@@ -218,6 +231,15 @@ class Retriever:
         arms: dict[str, list[str]] = {}
         raw_scores: dict[str, float] = {}
         filter_spec = config.filter
+        if getattr(config, "auto_constrain_tags", False) and len(query.strip()) >= 3:
+            try:
+                extracted = self.query_tagger.extract_tags(query)
+                if extracted:
+                    self.query_tagger.record_metrics(extracted)
+                    filter_spec = self.query_tagger.translate_to_filter(extracted, filter_spec)
+                    logger.debug("search.auto_constrained_by_tags", query=query, tags=extracted)
+            except Exception as exc:
+                logger.warning("query_tagger_failed", error=str(exc))
 
         dense_query = query
         lexical_query = query

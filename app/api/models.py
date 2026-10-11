@@ -66,6 +66,8 @@ class SearchRequest(BaseModel):
     enable_intent_routing: bool = True
     # Audience & difficulty banding filter (FEAT-015)
     difficulty_band: Literal["foundational", "intermediate", "advanced", "expert"] | None = None
+    # Automatic query tagging & metadata constraining (FEAT-016)
+    auto_constrain_tags: bool = False
 
 
 class Passage(BaseModel):
@@ -157,6 +159,7 @@ class SearchResponse(BaseModel):
     answer: GeneratedAnswer | None = None
     filter: MetadataFilter | None = None
     intent: IntentClassification | None = None
+    extracted_tags: list[str] = Field(default_factory=list)
 
 
 class LivenessResponse(BaseModel):

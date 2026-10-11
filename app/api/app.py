@@ -28,7 +28,7 @@ import time
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from threading import Lock
@@ -135,6 +135,7 @@ class CachedResult:
     provenance: Provenance
     answer: GeneratedAnswer | None = None
     intent: IntentClassification | None = None
+    extracted_tags: list[str] = field(default_factory=list)
 
 
 @asynccontextmanager
@@ -494,6 +495,7 @@ def _config_for(payload: SearchRequest) -> RetrievalConfig:
             centrality_weight=payload.centrality_weight,
             enable_disambiguation=payload.enable_disambiguation,
             difficulty_band=payload.difficulty_band,
+            auto_constrain_tags=payload.auto_constrain_tags,
         )
     # Single-arm modes are the documented ADR-0006 ablation, reachable so the A/B can be
     # reproduced against the running service.
@@ -511,6 +513,7 @@ def _config_for(payload: SearchRequest) -> RetrievalConfig:
         centrality_weight=payload.centrality_weight,
         enable_disambiguation=payload.enable_disambiguation,
         difficulty_band=payload.difficulty_band,
+        auto_constrain_tags=payload.auto_constrain_tags,
     )
 
 
@@ -549,6 +552,7 @@ def search(
         payload.enable_disambiguation,
         payload.enable_intent_routing,
         payload.difficulty_band,
+        payload.auto_constrain_tags,
     )
 
     if payload.relationship_filter is not None:
@@ -587,6 +591,7 @@ def search(
             k=payload.k,
             filter=payload.filter.as_dict() if payload.filter else None,
             difficulty_band=payload.difficulty_band,
+            extracted_tags=cached.extracted_tags,
             duration_ms=round(total_ms, 2),
         )
         return SearchResponse(
@@ -605,6 +610,7 @@ def search(
             answer=cached.answer,
             filter=payload.filter,
             intent=cached.intent,
+            extracted_tags=cached.extracted_tags,
         )
 
     # A bypassed cache is not a miss: counting it as one would make the hit ratio depend
@@ -692,12 +698,26 @@ def search(
         if isinstance(res_intent, IntentClassification):
             intent_classification = res_intent
 
+    extracted_tags: list[str] = []
+    if len(payload.query.strip()) >= 3:
+        try:
+            tagger = getattr(state, "query_tagger", None)
+            if not tagger or not hasattr(tagger, "extract_tags"):
+                from app.retrieval.query_tagger import get_default_query_tagger
+
+                tagger = get_default_query_tagger()
+            extracted_tags = tagger.extract_tags(payload.query)
+            tagger.record_metrics(extracted_tags)
+        except Exception as exc:
+            logger.warning("query_tagger_failed", error=str(exc))
+
     result = CachedResult(
         passages=passages,
         confidence=confidence,
         provenance=provenance,
         answer=generated_answer,
         intent=intent_classification,
+        extracted_tags=extracted_tags,
     )
     if payload.use_cache:
         # Check that generation hasn't moved while request was in flight
@@ -735,6 +755,7 @@ def search(
         k=payload.k,
         filter=payload.filter.as_dict() if payload.filter else None,
         difficulty_band=payload.difficulty_band,
+        extracted_tags=result.extracted_tags,
         duration_ms=round(total_ms, 2),
         retrieval_ms=round(retrieval_ms, 2),
         generation_ms=round(generation_ms, 2),
@@ -758,6 +779,7 @@ def search(
         answer=result.answer,
         filter=payload.filter,
         intent=result.intent,
+        extracted_tags=result.extracted_tags,
     )
 
 

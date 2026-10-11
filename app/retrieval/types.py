@@ -62,6 +62,7 @@ class ChunkMeta:
     title: str | None = None
     is_synthetic: bool = False
     taxonomy_layer: str | None = None
+    tags: list[str] = field(default_factory=list)
 
 
 class MetadataFilter(BaseModel):
@@ -69,7 +70,7 @@ class MetadataFilter(BaseModel):
 
     Enables bounding regulatory retrieval by authority (RBI, SEBI), issuance
     date windows (date_from, date_to), version status (is_current), specific
-    document UUIDs / canonical URLs, or taxonomy layers.
+    document UUIDs / canonical URLs, taxonomy layers, or domain tags (FEAT-016).
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -85,6 +86,7 @@ class MetadataFilter(BaseModel):
     relationship_filter: (
         Literal["supersedes", "requires", "enables", "complements", "specializedBy"] | None
     ) = None
+    tags: list[str] | None = None
 
     @field_validator("taxonomy_layers")
     @classmethod
@@ -113,6 +115,10 @@ class MetadataFilter(BaseModel):
         if self.taxonomy_layers:
             layers = tuple(sorted(self.taxonomy_layers))
 
+        tags_tuple: tuple[str, ...] | None = None
+        if self.tags:
+            tags_tuple = tuple(sorted(self.tags))
+
         return (
             src,
             self.date_from.isoformat() if self.date_from else None,
@@ -122,6 +128,7 @@ class MetadataFilter(BaseModel):
             self.canonical_url,
             self.include_synthetic,
             layers,
+            tags_tuple,
             self.relationship_filter,
         )
 
@@ -164,6 +171,11 @@ class MetadataFilter(BaseModel):
 
         if self.taxonomy_layers is not None:
             if meta.taxonomy_layer is None or meta.taxonomy_layer not in self.taxonomy_layers:
+                return False
+
+        if self.tags is not None:
+            chunk_tags = getattr(meta, "tags", None) or []
+            if not any(t in chunk_tags for t in self.tags):
                 return False
 
         return True
@@ -246,6 +258,7 @@ class RetrievalConfig:
     enable_disambiguation: bool = True
     disambiguation_min_confidence: float = 0.70
     difficulty_band: str | None = None
+    auto_constrain_tags: bool = False
 
     def __post_init__(self) -> None:
         if self.rerank and self.rerank_top_n < self.k_final:
@@ -304,6 +317,7 @@ class RetrievalConfig:
             "enable_disambiguation": self.enable_disambiguation,
             "disambiguation_min_confidence": self.disambiguation_min_confidence,
             "difficulty_band": self.difficulty_band,
+            "auto_constrain_tags": self.auto_constrain_tags,
         }
 
 
