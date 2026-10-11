@@ -62,6 +62,8 @@ class SearchRequest(BaseModel):
     centrality_weight: Annotated[float, Field(ge=0.0, le=0.3)] = 0.15
     # Context-aware token disambiguation (FEAT-011)
     enable_disambiguation: bool = True
+    # Intent-driven query classification & routing (FEAT-013)
+    enable_intent_routing: bool = True
 
 
 class Passage(BaseModel):
@@ -122,6 +124,17 @@ class Timings(BaseModel):
     cache_hit: bool
 
 
+class IntentClassification(BaseModel):
+    """Diagnostic intent routing metadata and prescriptive first move (FEAT-013)."""
+
+    intent_id: str
+    label: str
+    primary_domain: str
+    first_move: str
+    confidence: float
+    recommended_terms: list[str]
+
+
 class SearchResponse(BaseModel):
     query: str
     mode: str
@@ -132,6 +145,7 @@ class SearchResponse(BaseModel):
     timings: Timings
     answer: GeneratedAnswer | None = None
     filter: MetadataFilter | None = None
+    intent: IntentClassification | None = None
 
 
 class LivenessResponse(BaseModel):

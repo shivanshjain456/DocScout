@@ -67,6 +67,7 @@ from app.api.models import (
     DocumentResponse,
     GraphEdge,
     GraphNode,
+    IntentClassification,
     LivenessResponse,
     OCRInspectionResponse,
     Passage,
@@ -105,6 +106,7 @@ from app.ingest.store import get_sync_state
 from app.observability import configure_logging, get_logger, normalise_request_id
 from app.retrieval import SERVING_CONFIG, RetrievalConfig
 from app.retrieval import Retriever as Retriever
+from app.retrieval.intent_router import get_default_intent_router
 from app.retrieval.lexical import BM25Index
 from app.retrieval.types import MetadataFilter
 from app.rowtypes import as_int
@@ -132,6 +134,7 @@ class CachedResult:
     confidence: Confidence
     provenance: Provenance
     answer: GeneratedAnswer | None = None
+    intent: IntentClassification | None = None
 
 
 @asynccontextmanager
@@ -174,6 +177,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.embedding_cache = TTLCache[str, Any](maxsize=EMBEDDING_CACHE_SIZE, ttl=None)
     app.state.manifest_digest = sha256_file(REPO_ROOT / "corpus" / "raw" / "manifest.json")
     app.state.generator = get_generator()
+    app.state.intent_router = get_default_intent_router()
 
     metrics.CORPUS_CHUNKS.set(app.state.corpus_chunks)
 
@@ -541,6 +545,7 @@ def search(
         payload.enable_centrality_boost,
         payload.centrality_weight,
         payload.enable_disambiguation,
+        payload.enable_intent_routing,
     )
 
     if payload.relationship_filter is not None:
@@ -595,6 +600,7 @@ def search(
             ),
             answer=cached.answer,
             filter=payload.filter,
+            intent=cached.intent,
         )
 
     # A bypassed cache is not a miss: counting it as one would make the hit ratio depend
@@ -672,11 +678,17 @@ def search(
         generated_answer = generator.generate(payload.query, passages)
         generation_ms = (time.perf_counter() - gen_start) * 1000.0
 
+    intent_classification: IntentClassification | None = None
+    if payload.enable_intent_routing:
+        intent_router = getattr(state, "intent_router", None) or get_default_intent_router()
+        intent_classification = intent_router.classify(payload.query)
+
     result = CachedResult(
         passages=passages,
         confidence=confidence,
         provenance=provenance,
         answer=generated_answer,
+        intent=intent_classification,
     )
     if payload.use_cache:
         # Check that generation hasn't moved while request was in flight
@@ -718,6 +730,7 @@ def search(
         generation_ms=round(generation_ms, 2),
         passages=len(result.passages),
         generated_answer=generated_answer is not None,
+        intent_id=intent_classification.intent_id if intent_classification else None,
     )
     return SearchResponse(
         query=payload.query,
@@ -734,6 +747,7 @@ def search(
         ),
         answer=result.answer,
         filter=payload.filter,
+        intent=result.intent,
     )
 
 

@@ -244,6 +244,18 @@ ACRONYMS_EXPANDED_TOTAL = Counter(
     ("acronym",),
 )
 
+QUERIES_BY_INTENT_TOTAL = Counter(
+    "docscout_queries_by_intent_total",
+    "Count of queries classified by diagnostic intent (FEAT-013).",
+    ("intent_id",),
+)
+
+INTENT_ROUTING_LATENCY = Histogram(
+    "docscout_intent_routing_latency_seconds",
+    "Latency of query diagnostic intent routing in seconds (FEAT-013).",
+    buckets=LATENCY_BUCKETS,
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.
