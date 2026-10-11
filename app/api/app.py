@@ -32,10 +32,11 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from threading import Lock
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 import structlog
-from fastapi import Depends, FastAPI, Request, status
+from fastapi import Depends, FastAPI, Query, Request, status
+from fastapi import Path as FastApiPath
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from psycopg_pool import ConnectionPool
@@ -63,6 +64,8 @@ from app.api.models import (
     DiscoveryTriggerRequest,
     DiscoveryTriggerResponse,
     DocumentResponse,
+    GraphEdge,
+    GraphNode,
     LivenessResponse,
     OCRInspectionResponse,
     Passage,
@@ -73,6 +76,7 @@ from app.api.models import (
     ResearchResponse,
     SearchRequest,
     SearchResponse,
+    SubgraphResponse,
     SubscriptionCreateRequest,
     SubscriptionResponse,
     Timings,
@@ -1516,4 +1520,192 @@ def run_discovery_endpoint(
             }
             for it in report.items
         ],
+    )
+
+
+# --- Knowledge Graph Subgraph Projection (FEAT-004) ---
+
+
+@app.get(
+    "/v1/graph/subgraph/{doc_id}",
+    response_model=SubgraphResponse,
+    tags=["graph"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "document or concept not found"},
+        422: {"description": "invalid parameters"},
+    },
+)
+def get_subgraph_endpoint(
+    doc_id: Annotated[str, FastApiPath(pattern=r"^doc-[a-z0-9\-]+$")],
+    request: Request,
+    depth: Annotated[int, Query(ge=1, le=2)] = 2,
+    max_nodes: Annotated[int, Query(ge=5, le=50)] = 25,
+    fingerprint: str = Depends(require_api_key),
+) -> SubgraphResponse:
+    """Extract and project a 2-hop concept subgraph around a regulatory document."""
+    state = request.app.state
+
+    # 1. Try querying PostgreSQL knowledge graph tables if database pool is available
+    found_in_db = False
+    db_nodes: list[GraphNode] = []
+    db_edges: list[GraphEdge] = []
+
+    if hasattr(state, "pool") and state.pool is not None:
+        try:
+            with state.pool.connection() as conn:
+                row = conn.execute(
+                    """
+                    SELECT node_id, label, node_type
+                      FROM graph_nodes
+                     WHERE node_id = %s OR node_id = %s
+                     LIMIT 1
+                    """,
+                    (doc_id, f"doc:{doc_id.removeprefix('doc-')}"),
+                ).fetchone()
+
+                if row is not None:
+                    found_in_db = True
+                    root_node_id = str(row[0])
+                    root_label = str(row[1])
+                    root_type = str(row[2])
+                    db_nodes.append(
+                        GraphNode(id=doc_id, label=root_label, domain="regulatory", level=root_type)
+                    )
+
+                    edge_rows = conn.execute(
+                        """
+                        SELECT source_node_id, target_node_id, relation
+                          FROM graph_edges
+                         WHERE source_node_id = %s OR target_node_id = %s
+                         LIMIT %s
+                        """,
+                        (root_node_id, root_node_id, max_nodes),
+                    ).fetchall()
+
+                    seen_node_ids = {doc_id, root_node_id}
+                    for e_src, e_tgt, rel in edge_rows:
+                        db_edges.append(
+                            GraphEdge(source=str(e_src), target=str(e_tgt), relation=str(rel))
+                        )
+                        seen_node_ids.add(str(e_src))
+                        seen_node_ids.add(str(e_tgt))
+
+                    if len(seen_node_ids) > 1:
+                        other_ids = [
+                            nid for nid in seen_node_ids if nid not in (doc_id, root_node_id)
+                        ]
+                        n_rows = conn.execute(
+                            "SELECT node_id, label, node_type FROM graph_nodes WHERE node_id = ANY(%s) LIMIT %s",
+                            (other_ids, max(0, max_nodes - len(db_nodes))),
+                        ).fetchall()
+                        for nid, nlbl, ntyp in n_rows:
+                            db_nodes.append(
+                                GraphNode(
+                                    id=str(nid),
+                                    label=str(nlbl),
+                                    domain="regulatory",
+                                    level=str(ntyp),
+                                )
+                            )
+        except Exception:
+            logger.warning("graph_subgraph_db_lookup_failed", doc_id=doc_id, exc_info=True)
+
+    if found_in_db:
+        return SubgraphResponse(nodes=db_nodes[:max_nodes], edges=db_edges, root_id=doc_id)
+
+    # 2. Check canonical document seeds & statutory entities (FEAT-002 taxonomy hierarchy)
+    from app.retrieval.entity_linker import STATUTORY_ENTITIES
+
+    known_docs: dict[str, dict[str, Any]] = {
+        "doc-noti280digitallending": {
+            "label": "Digital Lending Guidelines (RBI/2022-23/111)",
+            "entities": ["commercial_bank", "nbfc", "payment_system_operator"],
+        },
+        "doc-noti27401102026": {
+            "label": "RBI Master Direction on IT Governance",
+            "entities": ["commercial_bank", "nbfc"],
+        },
+        "doc-sebi-lodr": {
+            "label": "SEBI Listing Obligations & Disclosure Requirements",
+            "entities": ["sebi_market_intermediary"],
+        },
+    }
+
+    doc_info = known_docs.get(doc_id)
+    if doc_info is None:
+        clean_name = doc_id.removeprefix("doc-").replace("-", "_")
+        entity_match = next((e for e in STATUTORY_ENTITIES if e.entity_id == clean_name), None)
+        if entity_match is not None:
+            doc_info = {
+                "label": entity_match.canonical_name,
+                "entities": [entity_match.entity_id],
+            }
+
+    if doc_info is None:
+        raise StarletteHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"document or concept {doc_id!r} not found in knowledge graph",
+        )
+
+    nodes_map: dict[str, GraphNode] = {
+        doc_id: GraphNode(
+            id=doc_id, label=str(doc_info["label"]), domain="regulatory", level="statutory"
+        ),
+    }
+    edges_list: list[GraphEdge] = []
+    entity_dict = {e.entity_id: e for e in STATUTORY_ENTITIES}
+
+    # Hop 1: Connect doc to linked entities
+    for ent_id in doc_info["entities"]:
+        ent = entity_dict.get(ent_id)
+        if ent is not None and len(nodes_map) < max_nodes:
+            nodes_map[ent.entity_id] = GraphNode(
+                id=ent.entity_id, label=ent.canonical_name, domain="regulatory", level="entity"
+            )
+            edges_list.append(GraphEdge(source=doc_id, target=ent.entity_id, relation="governs"))
+
+    # Hop 2: Connect entities to their parents / children if depth >= 2
+    if depth >= 2:
+        for ent_id in list(doc_info["entities"]):
+            ent = entity_dict.get(ent_id)
+            if ent is None:
+                continue
+            for ch_id in ent.child_ids:
+                if len(nodes_map) >= max_nodes:
+                    break
+                ch = entity_dict.get(ch_id)
+                if ch is not None:
+                    if ch.entity_id not in nodes_map:
+                        nodes_map[ch.entity_id] = GraphNode(
+                            id=ch.entity_id,
+                            label=ch.canonical_name,
+                            domain="regulatory",
+                            level="subclass",
+                        )
+                    edges_list.append(
+                        GraphEdge(source=ent.entity_id, target=ch.entity_id, relation="subclass_of")
+                    )
+            for p_id in ent.parent_ids:
+                if len(nodes_map) >= max_nodes:
+                    break
+                p = entity_dict.get(p_id)
+                if p is not None:
+                    if p.entity_id not in nodes_map:
+                        nodes_map[p.entity_id] = GraphNode(
+                            id=p.entity_id,
+                            label=p.canonical_name,
+                            domain="regulatory",
+                            level="category",
+                        )
+                    edges_list.append(
+                        GraphEdge(
+                            source=p.entity_id, target=ent.entity_id, relation="super_category"
+                        )
+                    )
+
+    return SubgraphResponse(
+        nodes=list(nodes_map.values())[:max_nodes],
+        edges=edges_list,
+        root_id=doc_id,
     )

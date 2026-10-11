@@ -66,18 +66,20 @@ def tri_arm_fusion(
 
         for index, item in enumerate(items):
             rank = index + 1
-            chunk_id = item[0] if isinstance(item, (tuple, list)) else item
-            edge_bonus = 1.0
-            if (
-                isinstance(item, (tuple, list))
-                and len(item) > 1
-                and isinstance(item[1], (int, float))
-            ):
-                # If explicit proximity score is present in the arm tuple
-                edge_bonus = 1.0 + (float(item[1]) * 0.1)
+            if isinstance(item, (tuple, list)):
+                chunk_id = item[0]
+                edge_bonus = 1.0 + (float(item[1]) * 0.1) if len(item) > 1 else 1.0
+            else:
+                chunk_id = item
+                edge_bonus = 1.0
 
-            scores[chunk_id] = scores.get(chunk_id, 0.0) + (weight * edge_bonus) / (rrf_k + rank)
-            ranks.setdefault(chunk_id, {})[arm] = rank
+            term = (weight * edge_bonus) / (rrf_k + rank)
+            if chunk_id in scores:
+                scores[chunk_id] += term
+                ranks[chunk_id][arm] = rank
+            else:
+                scores[chunk_id] = term
+                ranks[chunk_id] = {arm: rank}
 
     # Deterministic tie-breaking on chunk_id string
     fused = sorted(scores.items(), key=lambda kv: (-kv[1], kv[0]))

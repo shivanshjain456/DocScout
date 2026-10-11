@@ -357,3 +357,25 @@ class DiscoveryTriggerResponse(BaseModel):
     unchanged: int
     failed: int
     items: list[dict[str, Any]]
+
+
+# --- Knowledge Graph Subgraph Projection (FEAT-004) ---
+
+
+class GraphNode(BaseModel):
+    id: str
+    label: str
+    domain: str = "regulatory"
+    level: str = "statutory"
+
+
+class GraphEdge(BaseModel):
+    source: str
+    target: str
+    relation: str
+
+
+class SubgraphResponse(BaseModel):
+    nodes: list[GraphNode]
+    edges: list[GraphEdge]
+    root_id: str
