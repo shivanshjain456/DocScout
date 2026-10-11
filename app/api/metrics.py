@@ -113,6 +113,12 @@ GAR_TRAVERSAL_DURATION = Histogram(
     buckets=LATENCY_BUCKETS,
 )
 
+ENTITIES_LINKED = Counter(
+    "docscout_entities_linked_total",
+    "Entities linked in user queries by entity type.",
+    ("entity_type",),
+)
+
 CORPUS_CHUNKS = Gauge(
     "docscout_corpus_chunks",
     "Chunks currently retrievable, i.e. belonging to a current document version.",
