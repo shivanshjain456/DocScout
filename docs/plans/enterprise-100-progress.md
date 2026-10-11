@@ -15,7 +15,7 @@
 - [x] FEAT-003: Edge-Weighted RRF Hybrid Fusion
 - [x] FEAT-004: Interactive Concept Subgraph Projection
 - [x] FEAT-005: Circular Citation Graph Extractor
-- [ ] FEAT-006: Taxonomy Layer-Partitioned Search Indexes
+- [x] FEAT-006: Taxonomy Layer-Partitioned Search Indexes
 - [ ] FEAT-007: Dynamic Definition Tooltips in Console UI
 - [ ] FEAT-008: Relationship-Filtered Search API
 - [ ] FEAT-009: Graph Degree Centrality Query Boosting
@@ -140,6 +140,7 @@
 | FEAT-003 | c0c78d3 | PASS | Edge-weighted tri-arm RRF with deterministic tie-breaking |
 | FEAT-004 | 38cd36c | PASS | Interactive concept subgraph projection endpoint & React UI |
 | FEAT-005 | c7567a7 | PASS | Regex circular citation extractor, manifest resolver & DB migration |
+| FEAT-006 | 068bf89 | PASS | 9-layer index partitioning, enum validation & SQL prune clauses |
 
 ---
 
