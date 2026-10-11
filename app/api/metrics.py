@@ -203,6 +203,12 @@ UNRESOLVED_CITATIONS_TOTAL = Gauge(
     "Current count of extracted citations not resolved to an internal document ID.",
 )
 
+RELATIONSHIP_QUERIES_TOTAL = Counter(
+    "docscout_relationship_queries_total",
+    "Count of search queries filtered by relationship (FEAT-008).",
+    ("relation",),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

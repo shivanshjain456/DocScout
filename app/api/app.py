@@ -105,6 +105,7 @@ from app.observability import configure_logging, get_logger, normalise_request_i
 from app.retrieval import SERVING_CONFIG, RetrievalConfig
 from app.retrieval import Retriever as Retriever
 from app.retrieval.lexical import BM25Index
+from app.retrieval.types import MetadataFilter
 from app.rowtypes import as_int
 
 logger = get_logger("docscout.api")
@@ -463,6 +464,12 @@ def readyz(request: Request, response: Response) -> ReadinessResponse:
 
 def _config_for(payload: SearchRequest) -> RetrievalConfig:
     """Build the retrieval configuration, keeping the serving default authoritative."""
+    filt = payload.filter
+    if filt is None and payload.relationship_filter is not None:
+        filt = MetadataFilter(relationship_filter=payload.relationship_filter)
+    elif filt is not None and payload.relationship_filter is not None:
+        filt = filt.model_copy(update={"relationship_filter": payload.relationship_filter})
+
     if payload.mode == "hybrid":
         return RetrievalConfig(
             name=SERVING_CONFIG.name,
@@ -472,9 +479,10 @@ def _config_for(payload: SearchRequest) -> RetrievalConfig:
             k_final=payload.k,
             rrf_k=SERVING_CONFIG.rrf_k,
             anchor_arm_top1=SERVING_CONFIG.anchor_arm_top1,
-            filter=payload.filter,
+            filter=filt,
             expand_query=payload.expand_query,
             expansion_mode=payload.expansion_mode,
+            relationship_filter=payload.relationship_filter,
         )
     # Single-arm modes are the documented ADR-0006 ablation, reachable so the A/B can be
     # reproduced against the running service.
@@ -484,9 +492,10 @@ def _config_for(payload: SearchRequest) -> RetrievalConfig:
         k_dense=SERVING_CONFIG.k_dense,
         k_lexical=SERVING_CONFIG.k_lexical,
         k_final=payload.k,
-        filter=payload.filter,
+        filter=filt,
         expand_query=payload.expand_query,
         expansion_mode=payload.expansion_mode,
+        relationship_filter=payload.relationship_filter,
     )
 
 
@@ -519,7 +528,16 @@ def search(
         filter_key,
         payload.expand_query,
         payload.expansion_mode,
+        payload.relationship_filter,
     )
+
+    if payload.relationship_filter is not None:
+        metrics.RELATIONSHIP_QUERIES_TOTAL.labels(relation=payload.relationship_filter).inc()
+        logger.info(
+            "search.relationship_filter",
+            relationship_filter=payload.relationship_filter,
+            query=payload.query,
+        )
 
     cached: CachedResult | None = state.result_cache.get(cache_key) if payload.use_cache else None
     if cached is not None:
@@ -613,6 +631,7 @@ def search(
                 if isinstance(getattr(hit, "published_date", None), str)
                 else None
             ),
+            matching_relationships=hit.matching_relationships,
         )
         for hit in hits
     ]

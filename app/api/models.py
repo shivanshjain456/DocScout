@@ -53,6 +53,10 @@ class SearchRequest(BaseModel):
     # Domain query understanding and expansion (P1-3).
     expand_query: bool = False
     expansion_mode: Literal["none", "synonym", "hyde", "combined"] = "none"
+    # Ontological relationship filter constraining retrieval (FEAT-008)
+    relationship_filter: (
+        Literal["supersedes", "requires", "enables", "complements", "specializedBy"] | None
+    ) = None
 
 
 class Passage(BaseModel):
@@ -73,6 +77,7 @@ class Passage(BaseModel):
     text: str
     title: str | None = None
     published_date: str | None = None
+    matching_relationships: list[str] = Field(default_factory=list)
 
 
 class Provenance(BaseModel):

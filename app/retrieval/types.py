@@ -33,6 +33,15 @@ VALID_TAXONOMY_LAYERS: tuple[str, ...] = (
     "security-and-trust",
 )
 
+# 5 canonical relationship edge kinds from term-taxonomy.json (FEAT-008)
+VALID_RELATIONSHIP_FILTERS: tuple[str, ...] = (
+    "supersedes",
+    "requires",
+    "enables",
+    "complements",
+    "specializedBy",
+)
+
 # Reciprocal Rank Fusion's smoothing constant. 60 is the value from Cormack et al. (2009),
 # which is also what every mainstream implementation defaults to. It is not tuned here: it
 # is held fixed so the dense/lexical/hybrid comparison varies one thing at a time.
@@ -73,6 +82,9 @@ class MetadataFilter(BaseModel):
     canonical_url: str | None = None
     include_synthetic: bool = False
     taxonomy_layers: list[str] | None = None
+    relationship_filter: (
+        Literal["supersedes", "requires", "enables", "complements", "specializedBy"] | None
+    ) = None
 
     @field_validator("taxonomy_layers")
     @classmethod
@@ -110,6 +122,7 @@ class MetadataFilter(BaseModel):
             self.canonical_url,
             self.include_synthetic,
             layers,
+            self.relationship_filter,
         )
 
     def as_dict(self) -> dict[str, Any]:
@@ -179,6 +192,7 @@ class Retrieved:
     char_end: int = 0
     title: str | None = None
     published_date: str | None = None
+    matching_relationships: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -223,6 +237,7 @@ class RetrievalConfig:
     gar_max_hops: int = 1
     gar_decay_factor: float = 0.5
     enforce_layer_pruning: bool = True
+    relationship_filter: str | None = None
 
     def __post_init__(self) -> None:
         if self.rerank and self.rerank_top_n < self.k_final:
@@ -262,6 +277,7 @@ class RetrievalConfig:
             "gar_max_hops": self.gar_max_hops,
             "gar_decay_factor": self.gar_decay_factor,
             "enforce_layer_pruning": self.enforce_layer_pruning,
+            "relationship_filter": self.relationship_filter,
         }
 
 

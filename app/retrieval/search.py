@@ -15,6 +15,7 @@ from different code than the hybrid number, and the comparison would not be clea
 from __future__ import annotations
 
 import psycopg
+import structlog
 
 from app.ingest.embed import Embedder
 from app.retrieval import confidence as confidence_module
@@ -28,6 +29,8 @@ from app.retrieval.types import RetrievalConfig, Retrieved
 
 # Backwards compatibility alias
 _ChunkRow = ChunkRow
+
+logger = structlog.get_logger(__name__)
 
 
 class Retriever:
@@ -166,6 +169,51 @@ class Retriever:
         passage_terms = [self.bm25.lexemes_of(hit.chunk_id) for hit in results]
         return confidence_module.assess(terms, passage_terms)
 
+    def _find_relationship_chunks(self, relation_type: str) -> set[str]:
+        """Resolve chunk IDs matching the specified ontological relationship (FEAT-008)."""
+        matching: set[str] = set()
+        if self._conn is not None:
+            # 1. Join taxonomy_edges on relation_type
+            try:
+                edge_rows = self._conn.execute(
+                    """
+                    SELECT e.chunk_id::text, c.chunk_id::text
+                    FROM taxonomy_edges e
+                    LEFT JOIN chunks c ON c.document_id = e.document_id
+                    JOIN documents d ON d.document_id = COALESCE(e.document_id, c.document_id)
+                    WHERE e.relation_type = %s AND NOT d.is_synthetic
+                    """,
+                    (relation_type,),
+                ).fetchall()
+                for e_cid, c_cid in edge_rows:
+                    if e_cid:
+                        matching.add(str(e_cid))
+                    if c_cid:
+                        matching.add(str(c_cid))
+            except Exception:
+                logger.debug("taxonomy_edges_query_skipped", exc_info=True)
+
+            # 2. If 'supersedes', also join circular_citations
+            if relation_type == "supersedes":
+                try:
+                    cit_rows = self._conn.execute(
+                        """
+                        SELECT c.chunk_id::text
+                        FROM circular_citations cc
+                        JOIN chunks c ON c.document_id = cc.source_document_id
+                        JOIN documents d ON d.document_id = cc.source_document_id
+                        WHERE (cc.relation_type = 'supersedes' OR cc.relation_type IS NULL)
+                          AND NOT d.is_synthetic
+                        """,
+                    ).fetchall()
+                    for (cid,) in cit_rows:
+                        if cid:
+                            matching.add(str(cid))
+                except Exception:
+                    logger.debug("circular_citations_query_skipped", exc_info=True)
+
+        return matching
+
     def retrieve(self, query: str, config: RetrievalConfig) -> list[Retrieved]:
         arms: dict[str, list[str]] = {}
         raw_scores: dict[str, float] = {}
@@ -193,6 +241,17 @@ class Retriever:
             arms["lexical"] = [cid for cid, _ in hits]
             for cid, score in hits:
                 raw_scores.setdefault(cid, score)
+
+        # Relationship-filtered constraint (FEAT-008)
+        if config.relationship_filter is not None:
+            rel_chunks = self._find_relationship_chunks(config.relationship_filter)
+            # If relationship join yields zero matches, return empty result list with confidence 0.0
+            if not rel_chunks:
+                return []
+            for arm_name in list(arms.keys()):
+                arms[arm_name] = [cid for cid in arms[arm_name] if cid in rel_chunks]
+            if not any(arms.values()):
+                return []
 
         if config.mode == "graph-hybrid" or (config.mode == "hybrid" and config.enable_gar):
             seed_ids: list[str] = []
@@ -257,6 +316,7 @@ class Retriever:
         results: list[Retrieved] = []
         for index, (chunk_id, score, arm_ranks) in enumerate(top):
             row = meta.get(chunk_id)
+            matching_rels = [config.relationship_filter] if config.relationship_filter else []
             results.append(
                 Retrieved(
                     chunk_id=chunk_id,
@@ -271,6 +331,7 @@ class Retriever:
                     char_end=row.char_end if row else 0,
                     title=row.title if row else None,
                     published_date=row.published_date if row else None,
+                    matching_relationships=matching_rels,
                 )
             )
         return results
