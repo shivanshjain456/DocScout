@@ -13,7 +13,7 @@
 - [x] FEAT-001: Graph-Augmented Retrieval (GAR)
 - [x] FEAT-002: Regulatory Concept Hierarchy & Entity Linking
 - [x] FEAT-003: Edge-Weighted RRF Hybrid Fusion
-- [ ] FEAT-004: Interactive Concept Subgraph Projection
+- [x] FEAT-004: Interactive Concept Subgraph Projection
 - [ ] FEAT-005: Circular Citation Graph Extractor
 - [ ] FEAT-006: Taxonomy Layer-Partitioned Search Indexes
 - [ ] FEAT-007: Dynamic Definition Tooltips in Console UI
@@ -138,6 +138,7 @@
 | FEAT-001 | 14e57ad | PASS | Multi-hop statutory graph traversal with edge decay |
 | FEAT-002 | 1fc1017 | PASS | 35-node statutory entity taxonomy and Trie-based linker |
 | FEAT-003 | c0c78d3 | PASS | Edge-weighted tri-arm RRF with deterministic tie-breaking |
+| FEAT-004 | 38cd36c | PASS | Interactive concept subgraph projection endpoint & React UI |
 
 ---
 
