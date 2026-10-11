@@ -238,6 +238,12 @@ DISAMBIGUATION_LATENCY = Histogram(
     buckets=LATENCY_BUCKETS,
 )
 
+ACRONYMS_EXPANDED_TOTAL = Counter(
+    "docscout_acronyms_expanded_total",
+    "Count of acronyms expanded in search queries (FEAT-012).",
+    ("acronym",),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.
