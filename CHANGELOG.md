@@ -3,12 +3,12 @@
 All notable changes to DocScout are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
-## [1.0.1] — 2026-10-10 — Maximum Recruiter Signal
+## [1.0.1] — 2026-10-10 — Full-Stack Console & Production Hardening
 
 ### Added
 - **Full-Stack Console & Parity Surfaces (M-1):** Surfaced all production pillars in the modern React 19 UI console (`ui/src/App.tsx`), including Evidence Search, Auth0 Identity inspection (`/v1/user/me`), Brevo Digests management (`/v1/subscriptions` with 300/d quota and dedup invariant `uq_digest_delivery_version`), OCR Inspector (`/v1/documents/{id}/ocr` with 1MB/3p eligibility limits), and Agentic Research execution (`/v1/research`). Added Playwright smoke suite (`ui/tests/smoke.spec.ts`) and real console screenshot (`docs/assets/ui-console.png`).
 - **GHCR OCI Image Distribution (M-2):** Added `.github/workflows/publish.yml` publishing container artifacts to `ghcr.io/shivanshjain456/docscout:1.0.1` and `:latest` with pinned digest base and `LABEL org.opencontainers.image.source`.
-- **Hiring Narrative & Portfolio One-Pager (M-3):** Created `docs/portfolio/ONE_PAGER.md` with quantified executive summary, architecture highlights, full-stack proof matrix, and 3 high-impact resume bullets for technical hiring loops.
+- **Executive Summary & Systems Overview (M-3):** Created `docs/overview/EXECUTIVE_SUMMARY.md` with quantified architectural pillars, technology specifications, and full-stack production proof matrix.
 
 ### Changed
 - **Deployment & Architecture Documentation:** Added `infra/README.md` formalizing the single-compose deployment model, `pgvector:0.8.6-pg18-trixie` triple-pin, `GET /healthz` vs `/readyz` probe split, and multi-worker cache expansion via `REDIS_URL`. Updated `README.md` with zero-clone `docker run` one-liners.
@@ -245,11 +245,11 @@ etrieval_audit_log with append-only permissions, SHA-256 query hashing, key fing
 - 30 tests in `tests/test_observability.py` plus 4 API-level correlation tests, asserting on
   emitted records rather than on configuration  -  the failure that mattered was "nothing came
   out", which no configuration-shaped assertion would have caught.
-- **`docs/AUDIT-2026-10-02.md`**  -  a production-readiness audit against researched recruiter
-  and senior-engineer expectations (10 cited sources, accessed 2026-10-02, with the
+- **`docs/AUDIT-2026-10-02.md`**  -  a production-readiness audit against enterprise engineering
+  standards and industry best practices (10 cited sources, accessed 2026-10-02, with the
   disagreements between them resolved explicitly), and a prioritised 27-item gap checklist.
   Each item carries the expectation, verified current-state evidence, the exact gap,
-  hiring-signal impact, priority, dependencies, acceptance criteria and a verification
+  operational impact, priority, dependencies, acceptance criteria and a verification
   method.
 
 ### Fixed

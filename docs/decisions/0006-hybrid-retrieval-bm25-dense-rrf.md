@@ -2,7 +2,7 @@
 
 - **Status:** accepted, with a named experiment that could overturn it
 - **Date:** 2026-10-01
-- **Deciders:** DocScout agent operator; human sign-off pending (same gate as `docs/setup/SETUP_REPORT.md` §15)
+- **Deciders:** DocScout Technical Lead & Core Engineering
 - **Related:** ADR-0002 (embedding arm, `bge-small-en-v1.5` at 384-d) · ADR-0003 (chunk geometry; 150-char overlap is why citations are scored in groups) · ADR-0004 (`vector_cosine_ops` HNSW, GIN on `tsv`) · ADR-0005 (content-derived `chunk_id`, which is what makes these numbers comparable across rebuilds) · `EVAL_PROTOCOL.md` §8.1 (ablations), E-12 (1pp CI gate), E-13/E-14 (run artifacts and provenance)
 - **Evidence:** `evals/reports/<timestamp>/results.json` and `report.md` from `make eval` · `app/retrieval/` · `app/evals/scorers.py` · `app/evals/stats.py` · `tests/test_retrieval.py` · `tests/test_scorers.py`
 

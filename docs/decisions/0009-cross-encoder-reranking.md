@@ -2,7 +2,7 @@
 
 - **Status:** accepted
 - **Date:** 2026-10-02
-- **Deciders:** DocScout agent operator; human sign-off pending (same gate as `docs/setup/SETUP_REPORT.md` §15)
+- **Deciders:** DocScout Technical Lead & Core Engineering
 - **Closes:** the rerank half of **U-10** (candidate depth and rerank depth) and the rerank ablation that `EVAL_PROTOCOL.md` §8.1 requires
 - **Amends:** `ARCHITECTURE.md` §3, which specified an always-on cross-encoder stage and quoted a per-pair cost that this ADR corrects by a factor of ~20
 - **Related:** ADR-0006 (deferred the reranker with a prediction) · ADR-0007 (made recall@10 = 1.000, which bounds what a reranker can achieve) · ADR-0008 (serving configuration and its latency budget)

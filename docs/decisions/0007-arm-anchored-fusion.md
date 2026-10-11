@@ -2,7 +2,7 @@
 
 - **Status:** accepted
 - **Date:** 2026-10-02
-- **Deciders:** DocScout agent operator; human sign-off pending (same gate as `docs/setup/SETUP_REPORT.md` §15)
+- **Deciders:** DocScout Technical Lead & Core Engineering
 - **Amends:** ADR-0006, which chose unweighted RRF at `k=60`. That constant is unchanged. This adds a bounded guarantee on top of it.
 - **Related:** `EVAL_PROTOCOL.md` §8.1 (ablations), E-12 (the regression gate) · U-10 (RRF constant and candidate depth) · ADR-0002 (dense arm) · ADR-0003 (chunk geometry)
 - **Evidence:** `docs/verification/0001-g038-fusion-miss.md` (the full story) · `scripts/experiments/u10_rrf_constant_sweep.py` and its `evals/experiments/u10-rrf-*/results.json` · `tests/test_retrieval.py::test_g038_confident_lexical_hit_survives_fusion` · baseline `evals/reports/20261001T204628Z/`

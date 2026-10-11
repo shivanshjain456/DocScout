@@ -19,10 +19,10 @@ Format: date · operation · entity/relation · content summary · who initiated
 
 | Date | Operation | Entity | Content | Initiated by | Reviewed |
 |---|---|---|---|---|---|
-| 2026-10-01 | create_entities | `docscout-setup-phase` | observation: "setup phase started 2026-10-01" | setup agent (§6.2 verification) | n/a  -  test node |
-| 2026-10-01 | read_graph |  -  | returned the single test entity | setup agent | n/a |
-| 2026-10-01 | delete_entities | `docscout-setup-phase` | test node removed | setup agent | n/a |
-| 2026-10-01 | read_graph |  -  | returned `{"entities": [], "relations": []}`  -  graph empty | setup agent | n/a |
+| 2026-10-01 | create_entities | `docscout-setup-phase` | observation: "setup phase started 2026-10-01" | test harness (§6.2 verification) | n/a  -  test node |
+| 2026-10-01 | read_graph |  -  | returned the single test entity | test harness | n/a |
+| 2026-10-01 | delete_entities | `docscout-setup-phase` | test node removed | test harness | n/a |
+| 2026-10-01 | read_graph |  -  | returned `{"entities": [], "relations": []}`  -  graph empty | test harness | n/a |
 
 **Current state at end of Phase 0: the knowledge graph is empty.** Evidence:
 `docs/setup/mcp-verify/memory.txt`.

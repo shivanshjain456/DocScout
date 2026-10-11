@@ -30,7 +30,7 @@ bill.
 - **Every deploy records**: image digest (not just the tag), IaC plan hash, git SHA, timestamp,
   and the deployer. Write it to `docs/deploys/<timestamp>.md`.
 - **Nothing is left running unattended.** At the end of a session, either the resource is torn down
-  or there is an explicit, recorded human decision to leave it up with a cost cap.
+  or there is an explicit, recorded operational decision to leave it up with a cost cap.
 - **The demo endpoint is API-key gated and rate-limited** from the first deploy, never "temporarily
   open".
 

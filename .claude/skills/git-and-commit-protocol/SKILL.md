@@ -27,7 +27,7 @@ parameters, judge model, threshold values, SDK version pins, cloud provider.
 
 ADR lives at `docs/decisions/NNNN-<slug>.md` using `docs/decisions/0000-template.md`, with sections
 Context / Decision / Consequences / **Rejected alternatives**. The rejected-alternatives section is
-mandatory and must name real options with real reasons  -  it is the portfolio's key AI-resistant
+mandatory and must name real options with real reasons  -  it is the project's key architectural
 artifact. The ADR is referenced in the commit body (`Refs: ADR-0007`).
 
 ## Before every push

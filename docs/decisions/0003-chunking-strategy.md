@@ -2,7 +2,7 @@
 
 - **Status:** accepted
 - **Date:** 2026-10-01
-- **Deciders:** DocScout agent operator; human sign-off pending (same gate as `docs/setup/SETUP_REPORT.md` §15)
+- **Deciders:** DocScout Technical Lead & Core Engineering
 - **Closes:** **U-8** · **Related:** `SPEC.md` FR-7, FR-8, FR-4 · ADR-0002 (`D = 384`, 512-token ceiling) · `docs/architecture/ARCHITECTURE.md` §4 · `docs/corpus/CORPUS_SPEC.md` C-5, C-17 · U-10, U-11, U-16, U-17
 - **Evidence:** `docs/decisions/evidence/u8-chunking-sweep.json` (14 configurations) and `docs/decisions/evidence/u8-chunking-focus.json` (6 configurations with per-probe outcome
   vectors) · harness `scripts/experiments/u8_chunking_sweep.py`

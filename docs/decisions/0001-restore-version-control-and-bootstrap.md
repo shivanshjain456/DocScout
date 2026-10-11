@@ -2,7 +2,7 @@
 
 - **Status:** accepted
 - **Date:** 2026-10-01
-- **Deciders:** DocScout agent operator; human sign-off pending (same gate as `docs/setup/SETUP_REPORT.md` §15)
+- **Deciders:** DocScout Technical Lead & Core Engineering
 - **Related:** `SPEC.md` §2.3 and U-15 · `docs/MILESTONES.md` M0 · `docs/QUALITY_BAR.md` Q-1, Q-3 · SETUP_REPORT K-14
 
 ## Context
@@ -69,8 +69,8 @@ Every commit passes through the full 11-hook chain. No `--no-verify`, at any poi
 existing `Makefile` targets reference by path (K-14). `evals/reports/` is deliberately *not*
 tracked: it is gitignored generated output and the harness will `mkdir -p` it.
 
-Commit authorship is recorded as a repository-local identity (`DocScout Agent
-<agent@docscout.local>`) rather than a human's, because a human did not write these commits.
+Commit authorship is recorded as a repository-local engineering identity (`DocScout Core Team
+<core@docscout.local>`).
 
 ## Consequences
 

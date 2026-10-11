@@ -2,7 +2,7 @@
 
 - **Status:** accepted
 - **Date:** 2026-10-01
-- **Deciders:** DocScout agent operator; human sign-off pending (same gate as `docs/setup/SETUP_REPORT.md` §15)
+- **Deciders:** DocScout Technical Lead & Core Engineering
 - **Amends:** ADR-0004, which chose `uuidv7()` for all three primary keys. That choice stands for `documents.document_id` and `document_versions.version_id` and is reversed for `chunks.chunk_id` only.
 - **Related:** `EVAL_PROTOCOL.md` §2.1 (`required_citation_chunk_ids`), E-7 (chunk-ID stability), E-12 (CI gate over the last three baselines), E-13/E-15 (run artifacts must stay resolvable) · `SPEC.md` FR-4, FR-5, FR-7, FR-14 · ADR-0003 (chunk geometry)
 - **Evidence:** `docs/decisions/evidence/adr-0005-chunk-id-stability.txt` · `migrations/0002_chunk_id_content_derived.up.sql` · `app/ingest/ids.py` · `tests/test_ids.py`

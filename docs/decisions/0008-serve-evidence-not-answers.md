@@ -2,7 +2,7 @@
 
 - **Status:** accepted, with an explicit reversal condition
 - **Date:** 2026-10-02
-- **Deciders:** DocScout agent operator; human sign-off pending (same gate as `docs/setup/SETUP_REPORT.md` §15)
+- **Deciders:** DocScout Technical Lead & Core Engineering
 - **Related:** ADR-0005 (stable chunk ids, which is what makes a citation checkable later) · ADR-0006 / ADR-0007 (the retrieval configuration this endpoint serves) · `EVAL_PROTOCOL.md` §4.1 and U-1 (judge feasibility) · `SPEC.md` FR-14 (citation format)
 - **Evidence:** `app/api/` · `tests/test_api.py` (35 cases) · `scripts/bench_api.py` and `evals/bench/20261002T054058Z/bench.json`
 

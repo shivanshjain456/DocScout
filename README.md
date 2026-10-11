@@ -80,7 +80,7 @@ curl -s -H "X-API-Key: $DOCSCOUT_API_KEY" http://localhost:8000/v1/documents/doc
   <img src="docs/assets/ui-console.png" width="800" alt="DocScout UI Console search identity and digest operations">
 </p>
 
-React console for Search, Citations, Auth0, Brevo, and OCR. Narrative: [ONE_PAGER.md](docs/portfolio/ONE_PAGER.md).
+React console for Search, Citations, Auth0, Brevo, and OCR. Architecture Summary: [EXECUTIVE_SUMMARY.md](docs/overview/EXECUTIVE_SUMMARY.md).
 
 ---
 

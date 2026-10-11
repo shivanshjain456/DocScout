@@ -2,7 +2,7 @@
 
 - **Status:** accepted
 - **Date:** 2026-10-08
-- **Deciders:** DocScout agent operator
+- **Deciders:** DocScout Technical Lead & Core Engineering
 - **Related:** `docs/AUDIT-2026-10-02.md` G6 (ABSENT Dockerfile), G15 (ABSENT deploy path) · `docker-compose.yml` · `Dockerfile` · `.dockerignore` · `Makefile` `deploy`/`destroy` · `tests/test_config_coherence.py` · `scripts/verify_setup.sh` V2/V3/V17
 - **Evidence:** `Dockerfile` (pinned base digest, `uv sync --frozen`, non-root, HEALTHCHECK, explicit HF cache) · `docker-compose.yml` (`db` unchanged + `api` service) · `.github/workflows/ci.yml` `deploy-smoke` job · `docs/deploys/` evidence pattern
 

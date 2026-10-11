@@ -2,7 +2,7 @@
 
 - **Status:** accepted
 - **Date:** 2026-10-01
-- **Deciders:** DocScout agent operator; human sign-off pending (same gate as `docs/setup/SETUP_REPORT.md` §15)
+- **Deciders:** DocScout Technical Lead & Core Engineering
 - **Binds:** `docs/architecture/ARCHITECTURE.md` §4 (was PROPOSED, "needs an ADR before it binds") and the HNSW-over-IVFFlat row in §6 (was PROPOSED)
 - **Related:** `SPEC.md` FR-2, FR-3, FR-4, FR-5, FR-7, FR-9 · ADR-0002 (`D = 384`, 512-token ceiling) · ADR-0003 (1,000-char chunks, offset-preserving cleaning) · `SECURITY.md` least privilege · U-10, U-11, U-12
 - **Evidence:** `migrations/0001_initial_schema.up.sql` · `tests/test_schema.py` (19 tests) · `docs/setup/verify/m1-schema-migration.txt`

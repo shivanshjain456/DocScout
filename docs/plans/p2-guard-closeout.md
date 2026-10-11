@@ -10,7 +10,7 @@ Every capability across **P0** (blocking operational maturity), **P1** (expected
 - **Evaluation Baseline:** Gold evaluation dataset v2.0.0 comprising 425 items (365 answerable, 60 unanswerable, 3 prompt injection canaries) evaluated with leakage stratification and paired bootstrap confidence intervals.
 - **Serving Path:** `hybrid-rrf` via `VectorStore` port adapter with zero retrieval regression ($\Delta \text{recall@5} = 0.000$, $\text{Recall@5} = 0.966$, $\text{Recall@10} = 0.992$, $\text{MRR} = 0.854$, $\text{nDCG@5} = 0.867$, cold $p95 = 48.11\text{ ms}$, warm $p95 = 2.11\text{ ms}$).
 - **Evidence Integrity:** Every single performance claim, benchmark number, calibration score, and architectural invariant is backed by raw committed artifacts in `evals/reports/`, `evals/bench/`, `evals/calibration/`, and `loadtests/reports/`.
-- **Zero Scaffolding / Zero Slop:** All code paths are production-functional with strict typing (`mypy` strict), clean linting (`ruff`), and comprehensive test coverage. Zero mentions of recruiters, portfolios, or demos.
+- **Zero Scaffolding / Zero Slop:** All code paths are production-functional with strict typing (`mypy` strict), clean linting (`ruff`), and comprehensive test coverage. Zero mock implementations or ungrounded claims.
 
 ---
 

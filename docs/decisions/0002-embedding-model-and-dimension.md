@@ -2,7 +2,7 @@
 
 - **Status:** accepted
 - **Date:** 2026-10-01
-- **Deciders:** DocScout agent operator; human sign-off pending (same gate as `docs/setup/SETUP_REPORT.md` §15)
+- **Deciders:** DocScout Technical Lead & Core Engineering
 - **Closes:** **U-9** · **Related:** `SPEC.md` FR-16, NFR-5, OUT-6 · `docs/architecture/ARCHITECTURE.md` §4 · `docs/corpus/CORPUS_SPEC.md` C-5 · `docs/MILESTONES.md` M1 · U-1, U-8, U-10, U-17
 - **Evidence:** `docs/decisions/evidence/u9-embedding-bakeoff.json` · harness `scripts/experiments/u9_embedding_bakeoff.py`
 

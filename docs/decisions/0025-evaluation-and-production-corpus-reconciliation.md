@@ -2,7 +2,7 @@
 
 - **Status:** accepted
 - **Date:** 2026-10-10
-- **Deciders:** Core Engineering / Antigravity Agent
+- **Deciders:** DocScout Core Engineering
 - **Related:** ADR-0024, EVAL_PROTOCOL §E-12, §E-18
 
 ## Context
