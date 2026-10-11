@@ -17,7 +17,7 @@
 - [x] FEAT-005: Circular Citation Graph Extractor
 - [x] FEAT-006: Taxonomy Layer-Partitioned Search Indexes
 - [x] FEAT-007: Dynamic Definition Tooltips in Console UI
-- [ ] FEAT-008: Relationship-Filtered Search API
+- [x] FEAT-008: Relationship-Filtered Search API
 - [ ] FEAT-009: Graph Degree Centrality Query Boosting
 - [ ] FEAT-010: Automated Regulatory Ontology Ingestion Pipeline
 
@@ -142,6 +142,7 @@
 | FEAT-005 | c7567a7 | PASS | Regex circular citation extractor, manifest resolver & DB migration |
 | FEAT-006 | 068bf89 | PASS | 9-layer index partitioning, enum validation & SQL prune clauses |
 | FEAT-007 | 49db4bc | PASS | Accessible term annotator, WCAG 2.2 AA tooltips & dictionary endpoint |
+| FEAT-008 | a97963c | PASS | Relationship-constrained retrieval pruning with supersedes/requires/enables filters |
 
 ---
 
