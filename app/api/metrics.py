@@ -119,6 +119,11 @@ ENTITIES_LINKED = Counter(
     ("entity_type",),
 )
 
+TRI_ARM_FUSIONS = Counter(
+    "docscout_tri_arm_fusions_total",
+    "Total tri-arm reciprocal rank fusions computed.",
+)
+
 CORPUS_CHUNKS = Gauge(
     "docscout_corpus_chunks",
     "Chunks currently retrievable, i.e. belonging to a current document version.",
