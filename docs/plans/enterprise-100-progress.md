@@ -24,7 +24,7 @@
 ### Pillar 2: Query Intelligence, Disambiguation & Intent Routing
 - [x] FEAT-011: Context-Aware Token Disambiguation Engine
 - [x] FEAT-012: 296-Term Regulatory & Systems Acronym Expander
-- [ ] FEAT-013: Intent-Driven Query Classification & Routing
+- [x] FEAT-013: Intent-Driven Query Classification & Routing
 - [ ] FEAT-014: Regulatory HyDE (Hypothetical Document Embeddings)
 - [ ] FEAT-015: Audience & Difficulty Banding Filter
 - [ ] FEAT-016: Query Tagging & Metadata Constrained Retrieval
@@ -147,6 +147,7 @@
 | FEAT-010 | e140ee8 | PASS | Automated definitions mining, candidate staging queue & admin review API |
 | FEAT-011 | 82900b5 | PASS | Context-aware token disambiguation engine with 8 canonical + statutory rules & p95 <= 0.8ms |
 | FEAT-012 | 24b2054 | PASS | 296-term systems & regulatory acronym catalog, bidirectional expansion, p95 <= 0.5ms |
+| FEAT-013 | c50d814 | PASS | 21 diagnostic taxonomy intents + statutory incident readiness router with prescriptive firstMove, p95 <= 2.5ms |
 
 ---
 
