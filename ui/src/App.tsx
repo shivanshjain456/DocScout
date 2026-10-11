@@ -3,6 +3,7 @@
 // Brevo digests (300/d quota per app/digests/brevo_client.py:48),
 // OCR.Space inspection (1MB/3p per app/ingest/ocr_space.py:58), and agentic research.
 import { useState, useEffect } from 'react'
+import { TermAnnotator } from './components/TermAnnotator'
 
 interface Passage {
   rank: number
@@ -61,6 +62,7 @@ export default function App() {
   const [searchData, setSearchData] = useState<SearchResponse | null>(null)
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchErr, setSearchErr] = useState<string | null>(null)
+  const [highlightTerms, setHighlightTerms] = useState(true)
 
   // Subsystem states
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -267,10 +269,14 @@ export default function App() {
 
           {searchData && (
             <div>
-              <div style={{ display: 'flex', gap: 16, fontSize: 12, color: '#8b949e', marginBottom: 14 }}>
+              <div style={{ display: 'flex', gap: 16, fontSize: 12, color: '#8b949e', marginBottom: 14, alignItems: 'center', flexWrap: 'wrap' }}>
                 <span>Req ID: <code>{searchData.requestId || 'n/a'}</code></span>
                 <span>Evidence Coverage: <b>{((searchData.confidence?.evidence_coverage || 0) * 100).toFixed(1)}%</b></span>
                 <span style={{ color: searchData.confidence?.low_evidence ? '#d29922' : '#3fb950' }}>{searchData.confidence?.low_evidence ? 'Low Evidence' : 'Citation Grounded'}</span>
+                <label style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: '#c9d1d9' }}>
+                  <input type="checkbox" checked={highlightTerms} onChange={(e) => setHighlightTerms(e.target.checked)} />
+                  <span>Highlight Taxonomy Terms</span>
+                </label>
               </div>
 
               <div style={{ display: 'grid', gap: 14 }}>
@@ -282,7 +288,9 @@ export default function App() {
                       </a>
                       <span style={{ fontSize: 12, color: '#8b949e' }}>{p.published_date || 'Undated'}</span>
                     </div>
-                    <p style={{ margin: '8px 0', fontSize: 13.5, lineHeight: 1.55, whiteSpace: 'pre-wrap', color: '#c9d1d9' }}>{p.text}</p>
+                    <p style={{ margin: '8px 0', fontSize: 13.5, lineHeight: 1.55, whiteSpace: 'pre-wrap', color: '#c9d1d9' }}>
+                      <TermAnnotator content={p.text} highlight={highlightTerms} />
+                    </p>
                     <div style={{ fontSize: 11, color: '#8b949e' }}>
                       Span: [{p.char_start}..{p.char_end}] &middot; Chunk: <code>{p.chunk_id}</code>
                     </div>

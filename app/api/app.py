@@ -1709,3 +1709,12 @@ def get_subgraph_endpoint(
         edges=edges_list,
         root_id=doc_id,
     )
+
+
+@app.get("/v1/taxonomy/dictionary")
+def get_taxonomy_dictionary_endpoint(response: Response) -> dict[str, Any]:
+    """Public taxonomy dictionary serving canonical terms, definitions, and anchors (FEAT-007)."""
+    from app.retrieval.taxonomy_loader import get_taxonomy_dictionary
+
+    response.headers["Cache-Control"] = "public, max-age=86400"
+    return get_taxonomy_dictionary()

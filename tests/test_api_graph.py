@@ -88,3 +88,19 @@ def test_subgraph_valid_projection(graph_client: TestClient) -> None:
     assert "label" in first_node
     assert "domain" in first_node
     assert "level" in first_node
+
+
+def test_taxonomy_dictionary_endpoint(graph_client: TestClient) -> None:
+    """GET /v1/taxonomy/dictionary serves public definitions with Cache-Control."""
+    resp = graph_client.get("/v1/taxonomy/dictionary")
+    assert resp.status_code == 200
+    assert "public" in resp.headers.get("Cache-Control", "")
+    data = resp.json()
+    assert isinstance(data, dict)
+    assert len(data) > 0
+    # Statutory entity should be present
+    assert "commercial_bank" in data
+    bank_item = data["commercial_bank"]
+    assert bank_item["id"] == "commercial_bank"
+    assert "Commercial Bank" in bank_item["term"]
+    assert "definition" in bank_item
