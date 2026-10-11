@@ -16,7 +16,7 @@
 - [x] FEAT-004: Interactive Concept Subgraph Projection
 - [x] FEAT-005: Circular Citation Graph Extractor
 - [x] FEAT-006: Taxonomy Layer-Partitioned Search Indexes
-- [ ] FEAT-007: Dynamic Definition Tooltips in Console UI
+- [x] FEAT-007: Dynamic Definition Tooltips in Console UI
 - [ ] FEAT-008: Relationship-Filtered Search API
 - [ ] FEAT-009: Graph Degree Centrality Query Boosting
 - [ ] FEAT-010: Automated Regulatory Ontology Ingestion Pipeline
@@ -141,6 +141,7 @@
 | FEAT-004 | 38cd36c | PASS | Interactive concept subgraph projection endpoint & React UI |
 | FEAT-005 | c7567a7 | PASS | Regex circular citation extractor, manifest resolver & DB migration |
 | FEAT-006 | 068bf89 | PASS | 9-layer index partitioning, enum validation & SQL prune clauses |
+| FEAT-007 | 49db4bc | PASS | Accessible term annotator, WCAG 2.2 AA tooltips & dictionary endpoint |
 
 ---
 
