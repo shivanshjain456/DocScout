@@ -57,6 +57,9 @@ class SearchRequest(BaseModel):
     relationship_filter: (
         Literal["supersedes", "requires", "enables", "complements", "specializedBy"] | None
     ) = None
+    # Graph degree centrality query boosting (FEAT-009)
+    enable_centrality_boost: bool = True
+    centrality_weight: Annotated[float, Field(ge=0.0, le=0.3)] = 0.15
 
 
 class Passage(BaseModel):
@@ -78,6 +81,7 @@ class Passage(BaseModel):
     title: str | None = None
     published_date: str | None = None
     matching_relationships: list[str] = Field(default_factory=list)
+    centrality_boost: float = 0.0
 
 
 class Provenance(BaseModel):

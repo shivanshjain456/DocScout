@@ -483,6 +483,8 @@ def _config_for(payload: SearchRequest) -> RetrievalConfig:
             expand_query=payload.expand_query,
             expansion_mode=payload.expansion_mode,
             relationship_filter=payload.relationship_filter,
+            enable_centrality_boost=payload.enable_centrality_boost,
+            centrality_weight=payload.centrality_weight,
         )
     # Single-arm modes are the documented ADR-0006 ablation, reachable so the A/B can be
     # reproduced against the running service.
@@ -496,6 +498,8 @@ def _config_for(payload: SearchRequest) -> RetrievalConfig:
         expand_query=payload.expand_query,
         expansion_mode=payload.expansion_mode,
         relationship_filter=payload.relationship_filter,
+        enable_centrality_boost=payload.enable_centrality_boost,
+        centrality_weight=payload.centrality_weight,
     )
 
 
@@ -529,6 +533,8 @@ def search(
         payload.expand_query,
         payload.expansion_mode,
         payload.relationship_filter,
+        payload.enable_centrality_boost,
+        payload.centrality_weight,
     )
 
     if payload.relationship_filter is not None:
@@ -632,6 +638,7 @@ def search(
                 else None
             ),
             matching_relationships=hit.matching_relationships,
+            centrality_boost=round(hit.centrality_boost, 6),
         )
         for hit in hits
     ]

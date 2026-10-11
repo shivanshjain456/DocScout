@@ -193,6 +193,7 @@ class Retrieved:
     title: str | None = None
     published_date: str | None = None
     matching_relationships: list[str] = field(default_factory=list)
+    centrality_boost: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -238,6 +239,9 @@ class RetrievalConfig:
     gar_decay_factor: float = 0.5
     enforce_layer_pruning: bool = True
     relationship_filter: str | None = None
+    enable_centrality_boost: bool = True
+    centrality_weight: float = 0.15
+    broad_query_threshold: float = 0.4
 
     def __post_init__(self) -> None:
         if self.rerank and self.rerank_top_n < self.k_final:
@@ -254,6 +258,14 @@ class RetrievalConfig:
             raise ValueError(f"gar_max_hops must be 1 or 2, got {self.gar_max_hops}")
         if not (0.0 < self.gar_decay_factor <= 1.0):
             raise ValueError(f"gar_decay_factor must be in (0.0, 1.0], got {self.gar_decay_factor}")
+        if not (0.0 <= self.centrality_weight <= 0.3):
+            raise ValueError(
+                f"centrality_weight must be in [0.0, 0.3], got {self.centrality_weight}"
+            )
+        if not (0.0 <= self.broad_query_threshold <= 1.0):
+            raise ValueError(
+                f"broad_query_threshold must be in [0.0, 1.0], got {self.broad_query_threshold}"
+            )
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -278,6 +290,9 @@ class RetrievalConfig:
             "gar_decay_factor": self.gar_decay_factor,
             "enforce_layer_pruning": self.enforce_layer_pruning,
             "relationship_filter": self.relationship_filter,
+            "enable_centrality_boost": self.enable_centrality_boost,
+            "centrality_weight": self.centrality_weight,
+            "broad_query_threshold": self.broad_query_threshold,
         }
 
 

@@ -303,6 +303,68 @@ class Retriever:
         if config.rerank:
             fused = self._rerank(query, fused, arms, config)
 
+        # Graph Degree Centrality Query Boosting (FEAT-009)
+        boost_records: dict[str, float] = {}
+        if config.enable_centrality_boost:
+            try:
+                from app.retrieval.centrality import get_centrality_index, is_broad_thematic_query
+
+                is_broad, spec_score = is_broad_thematic_query(query, config.broad_query_threshold)
+                if is_broad:
+                    centrality_idx = get_centrality_index(self._conn)
+                    cand_ids = [cid for cid, _, _ in fused[: max(config.k_final * 2, 20)]]
+                    cand_meta = self._metadata(
+                        cand_ids,
+                        is_current=filter_spec.is_current if filter_spec is not None else True,
+                        adapter_name=config.vector_store_adapter,
+                    )
+                    boosted_fused: list[tuple[str, float, dict[str, int]]] = []
+                    for cid, score, arm_ranks in fused:
+                        row = cand_meta.get(cid)
+                        c_val = centrality_idx.get_centrality(
+                            chunk_id=cid,
+                            document_id=row.document_id if row else None,
+                            title=row.title if row else None,
+                            text=row.text if row else None,
+                        )
+                        boosted_score, boost_amount = centrality_idx.compute_boost(
+                            score, c_val, config.centrality_weight
+                        )
+                        boost_records[cid] = boost_amount
+                        boosted_fused.append((cid, boosted_score, arm_ranks))
+
+                    # Re-sort candidates by boosted score descending with deterministic tie-breaking
+                    boosted_fused.sort(key=lambda item: (-item[1], item[0]))
+                    fused = boosted_fused
+
+                    mean_boost = (
+                        sum(boost_records.values()) / len(boost_records) if boost_records else 0.0
+                    )
+                    logger.info(
+                        "search_centrality_boost_applied",
+                        query=query,
+                        is_broad=True,
+                        specificity=spec_score,
+                        mean_centrality_boost=round(mean_boost, 6),
+                        candidates_boosted=len(boost_records),
+                    )
+                    try:
+                        from app.api.metrics import CENTRALITY_BOOSTED_QUERIES_TOTAL
+
+                        CENTRALITY_BOOSTED_QUERIES_TOTAL.labels(query_type="broad").inc()
+                    except Exception:
+                        logger.debug("centrality_boost_metric_failed", exc_info=True)
+                else:
+                    logger.debug(
+                        "search_centrality_boost_skipped",
+                        query=query,
+                        is_broad=False,
+                        specificity=spec_score,
+                        reason="narrow_specific_query",
+                    )
+            except Exception as exc:
+                logger.warning("centrality_boost_failed", error=str(exc))
+
         top = fused[: config.k_final]
         if config.anchor_arm_top1 and config.mode in ("hybrid", "graph-hybrid"):
             top = _anchor_arm_leaders(top, arms, fused, config.k_final)
@@ -317,6 +379,7 @@ class Retriever:
         for index, (chunk_id, score, arm_ranks) in enumerate(top):
             row = meta.get(chunk_id)
             matching_rels = [config.relationship_filter] if config.relationship_filter else []
+            boost_val = boost_records.get(chunk_id, 0.0)
             results.append(
                 Retrieved(
                     chunk_id=chunk_id,
@@ -332,6 +395,7 @@ class Retriever:
                     title=row.title if row else None,
                     published_date=row.published_date if row else None,
                     matching_relationships=matching_rels,
+                    centrality_boost=float(boost_val),
                 )
             )
         return results

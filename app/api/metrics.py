@@ -209,6 +209,12 @@ RELATIONSHIP_QUERIES_TOTAL = Counter(
     ("relation",),
 )
 
+CENTRALITY_BOOSTED_QUERIES_TOTAL = Counter(
+    "docscout_centrality_boosted_queries_total",
+    "Count of search queries where graph degree centrality boosting was applied (FEAT-009).",
+    ("query_type",),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.
