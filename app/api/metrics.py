@@ -193,6 +193,16 @@ RETRIEVAL_AUDITS = Counter(
     ("status",),
 )
 
+CITATIONS_EXTRACTED_TOTAL = Counter(
+    "docscout_citations_extracted_total",
+    "Total circular citations extracted from regulatory documents.",
+)
+
+UNRESOLVED_CITATIONS_TOTAL = Gauge(
+    "docscout_unresolved_citations_total",
+    "Current count of extracted citations not resolved to an internal document ID.",
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

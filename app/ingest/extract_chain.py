@@ -15,7 +15,7 @@ import importlib.util
 import io
 import re
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import Any, Protocol
 
 import pypdf
 
@@ -418,3 +418,15 @@ def get_pdf_extractor() -> ExtractionChain:
     if _GLOBAL_CHAIN is None:
         _GLOBAL_CHAIN = ExtractionChain()
     return _GLOBAL_CHAIN
+
+
+def extract_circular_citations(
+    text: str,
+    doc_id: str,
+    config: Any | None = None,
+) -> list[Any]:
+    """Extract formal statutory circular citations as stage 2 of the extraction pipeline (FEAT-005)."""
+    from app.ingest.citation_extractor import CircularCitationExtractor
+
+    extractor = CircularCitationExtractor(config=config)
+    return extractor.extract_citations(text, doc_id)

@@ -512,6 +512,59 @@ def store_graph_elements(
     return len(nodes), len(edges)
 
 
+def store_circular_citations(
+    conn: psycopg.Connection[Any],
+    document_id: UUID | str,
+    text: str,
+    is_synthetic: bool = False,
+) -> int:
+    """Extract and persist formal circular citations (FEAT-005)."""
+    import uuid
+
+    from app.ingest.citation_extractor import CircularCitationExtractor
+    from app.ingest.ids import CHUNK_ID_NAMESPACE
+
+    namespace_citation = uuid.uuid5(CHUNK_ID_NAMESPACE, "circular_citations")
+
+    extractor = CircularCitationExtractor()
+    citations = extractor.extract_citations(text, str(document_id))
+    if not citations:
+        return 0
+
+    with conn.cursor() as cur:
+        rows = [
+            (
+                uuid.uuid5(
+                    namespace_citation,
+                    f"{document_id}:{c.target_circular_no}:{c.char_start}",
+                ),
+                document_id,
+                c.target_circular_no,
+                c.target_doc_id,
+                c.raw_citation_span,
+                c.char_start,
+                c.char_end,
+                is_synthetic,
+            )
+            for c in citations
+        ]
+        cur.executemany(
+            """
+            INSERT INTO circular_citations
+                (citation_id, source_document_id, target_circular_no,
+                 target_document_id, raw_citation_span, char_start, char_end, is_synthetic)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (citation_id) DO UPDATE
+               SET target_circular_no = EXCLUDED.target_circular_no,
+                   target_document_id = EXCLUDED.target_document_id,
+                   raw_citation_span = EXCLUDED.raw_citation_span
+            """,
+            rows,
+        )
+
+    return len(citations)
+
+
 def populate_corpus_knowledge_graph(conn: psycopg.Connection[Any]) -> tuple[int, int]:
     """Populate knowledge graph for all ingested corpus documents and establish cross-document provision links."""
     from app.ingest.graph_extractor import make_edge_id
