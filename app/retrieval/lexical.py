@@ -73,7 +73,16 @@ class BM25Index:
         # because their terms would otherwise distort the corpus statistics BM25 depends
         # on -- document frequency and average length -- and so change the score of every
         # current chunk, not merely add wrong rows to the result.
-        rows = conn.execute(
+        has_tax_layer = False
+        try:
+            col_check = conn.execute(
+                "SELECT 1 FROM information_schema.columns WHERE table_name='chunks' AND column_name='taxonomy_layer'"
+            ).fetchone()
+            has_tax_layer = col_check is not None
+        except Exception:
+            has_tax_layer = False
+
+        query_sql = (
             """
             SELECT c.chunk_id::text,
                    c.document_id::text,
@@ -85,14 +94,36 @@ class BM25Index:
                    d.title,
                    d.is_synthetic,
                    u.lexeme,
-                   COALESCE(array_length(u.positions, 1), 1) AS tf
+                   COALESCE(array_length(u.positions, 1), 1) AS tf,
+                   c.taxonomy_layer
             FROM chunks AS c
             JOIN document_versions AS v ON v.version_id = c.version_id
             JOIN documents AS d ON d.document_id = c.document_id,
                  unnest(c.tsv) AS u(lexeme, positions, weights)
             WHERE v.is_current
             """
-        ).fetchall()
+            if has_tax_layer
+            else """
+            SELECT c.chunk_id::text,
+                   c.document_id::text,
+                   d.source,
+                   d.published_date,
+                   v.fetch_ts,
+                   v.is_current,
+                   d.canonical_url,
+                   d.title,
+                   d.is_synthetic,
+                   u.lexeme,
+                   COALESCE(array_length(u.positions, 1), 1) AS tf,
+                   NULL::text AS taxonomy_layer
+            FROM chunks AS c
+            JOIN document_versions AS v ON v.version_id = c.version_id
+            JOIN documents AS d ON d.document_id = c.document_id,
+                 unnest(c.tsv) AS u(lexeme, positions, weights)
+            WHERE v.is_current
+            """
+        )
+        rows = conn.execute(query_sql).fetchall()
         for (
             chunk_id,
             document_id,
@@ -105,6 +136,7 @@ class BM25Index:
             is_synthetic,
             lexeme,
             tf,
+            tax_layer,
         ) in rows:
             cid = as_str(chunk_id)
             if cid not in self._chunk_meta:
@@ -118,6 +150,7 @@ class BM25Index:
                     canonical_url=as_str(canon_url) if canon_url is not None else None,
                     title=as_str(doc_title) if doc_title is not None else None,
                     is_synthetic=bool(is_synthetic),
+                    taxonomy_layer=as_str(tax_layer) if tax_layer is not None else None,
                 )
 
             count = as_int(tf)

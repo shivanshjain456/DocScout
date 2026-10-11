@@ -89,6 +89,10 @@ def search(
             where_clauses.append("d.canonical_url = %(canonical_url)s")
             params["canonical_url"] = filter.canonical_url
 
+        if filter.taxonomy_layers is not None:
+            where_clauses.append("c.taxonomy_layer = ANY(%(taxonomy_layers)s)")
+            params["taxonomy_layers"] = list(filter.taxonomy_layers)
+
     where_sql = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
 
     query = f"""

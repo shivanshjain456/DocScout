@@ -13,12 +13,25 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.retrieval.rerank import MODEL_ID as RERANK_MODEL_ID
 
 Mode = Literal["dense", "bm25", "hybrid", "graph-hybrid"]
 ExpansionMode = Literal["none", "synonym", "hyde", "combined"]
+
+# 9 canonical taxonomy layers from lexicon.json (FEAT-006)
+VALID_TAXONOMY_LAYERS: tuple[str, ...] = (
+    "architecture-and-data",
+    "delivery-and-platform",
+    "frontiers",
+    "intelligence-and-ai",
+    "physical-and-regulated",
+    "product-and-interface",
+    "quality-and-verification",
+    "reliability-and-operations",
+    "security-and-trust",
+)
 
 # Reciprocal Rank Fusion's smoothing constant. 60 is the value from Cormack et al. (2009),
 # which is also what every mainstream implementation defaults to. It is not tuned here: it
@@ -39,14 +52,15 @@ class ChunkMeta:
     canonical_url: str | None = None
     title: str | None = None
     is_synthetic: bool = False
+    taxonomy_layer: str | None = None
 
 
 class MetadataFilter(BaseModel):
-    """Declarative metadata filter specification for in-query pruning (P1-2).
+    """Declarative metadata filter specification for in-query pruning (P1-2, FEAT-006).
 
     Enables bounding regulatory retrieval by authority (RBI, SEBI), issuance
-    date windows (date_from, date_to), version status (is_current), or specific
-    document UUIDs / canonical URLs.
+    date windows (date_from, date_to), version status (is_current), specific
+    document UUIDs / canonical URLs, or taxonomy layers.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -58,6 +72,18 @@ class MetadataFilter(BaseModel):
     document_ids: list[str] | None = None
     canonical_url: str | None = None
     include_synthetic: bool = False
+    taxonomy_layers: list[str] | None = None
+
+    @field_validator("taxonomy_layers")
+    @classmethod
+    def validate_taxonomy_layers(cls, v: list[str] | None) -> list[str] | None:
+        if v is not None:
+            invalid = [layer for layer in v if layer not in VALID_TAXONOMY_LAYERS]
+            if invalid:
+                raise ValueError(
+                    f"Invalid taxonomy layer(s) {invalid}. Valid layers: {list(VALID_TAXONOMY_LAYERS)}"
+                )
+        return v
 
     def canonical_tuple(self) -> tuple[Any, ...]:
         """Deterministic hashable representation for query caching."""
@@ -71,6 +97,10 @@ class MetadataFilter(BaseModel):
         if self.document_ids:
             doc_ids = tuple(sorted(self.document_ids))
 
+        layers: tuple[str, ...] | None = None
+        if self.taxonomy_layers:
+            layers = tuple(sorted(self.taxonomy_layers))
+
         return (
             src,
             self.date_from.isoformat() if self.date_from else None,
@@ -79,6 +109,7 @@ class MetadataFilter(BaseModel):
             doc_ids,
             self.canonical_url,
             self.include_synthetic,
+            layers,
         )
 
     def as_dict(self) -> dict[str, Any]:
@@ -117,6 +148,10 @@ class MetadataFilter(BaseModel):
 
         if self.canonical_url is not None and meta.canonical_url != self.canonical_url:
             return False
+
+        if self.taxonomy_layers is not None:
+            if meta.taxonomy_layer is None or meta.taxonomy_layer not in self.taxonomy_layers:
+                return False
 
         return True
 
@@ -187,6 +222,7 @@ class RetrievalConfig:
     enable_gar: bool = False
     gar_max_hops: int = 1
     gar_decay_factor: float = 0.5
+    enforce_layer_pruning: bool = True
 
     def __post_init__(self) -> None:
         if self.rerank and self.rerank_top_n < self.k_final:
@@ -225,6 +261,7 @@ class RetrievalConfig:
             "enable_gar": self.enable_gar,
             "gar_max_hops": self.gar_max_hops,
             "gar_decay_factor": self.gar_decay_factor,
+            "enforce_layer_pruning": self.enforce_layer_pruning,
         }
 
 
