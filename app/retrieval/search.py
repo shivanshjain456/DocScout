@@ -20,6 +20,7 @@ from app.ingest.embed import Embedder
 from app.retrieval import confidence as confidence_module
 from app.retrieval import fusion
 from app.retrieval.expansion import DomainQueryExpander, get_default_expander
+from app.retrieval.graph_retriever import GraphRetriever
 from app.retrieval.lexical import BM25Index
 from app.retrieval.port import ChunkRow, VectorStore, get_vector_store
 from app.retrieval.rerank import Candidate, CrossEncoderReranker
@@ -41,6 +42,7 @@ class Retriever:
         reranker: CrossEncoderReranker | None = None,
         expander: DomainQueryExpander | None = None,
         vector_store: VectorStore | None = None,
+        graph_retriever: GraphRetriever | None = None,
     ) -> None:
         if conn is None and vector_store is None:
             raise ValueError(
@@ -57,7 +59,14 @@ class Retriever:
         self._reranker = reranker
         self._expander = expander
         self._vector_store = vector_store
+        self._graph_retriever = graph_retriever
         self._meta: dict[str, ChunkRow] = {}
+
+    @property
+    def graph_retriever(self) -> GraphRetriever:
+        if self._graph_retriever is None:
+            self._graph_retriever = GraphRetriever()
+        return self._graph_retriever
 
     def get_vector_store(self, adapter_name: str = "pgvector") -> VectorStore:
         """Resolve vector store adapter from direct injection or registry."""
@@ -185,14 +194,23 @@ class Retriever:
             for cid, score in hits:
                 raw_scores.setdefault(cid, score)
 
-        if config.mode == "graph-hybrid":
+        if config.mode == "graph-hybrid" or (config.mode == "hybrid" and config.enable_gar):
             seed_ids: list[str] = []
             if "dense" in arms:
                 seed_ids.extend(arms["dense"][:5])
             if "lexical" in arms:
                 seed_ids.extend([cid for cid in arms["lexical"][:5] if cid not in seed_ids])
 
-            if self._conn is not None and seed_ids:
+            if config.enable_gar:
+                gar_candidates = self.graph_retriever.safe_traverse(
+                    query=query,
+                    max_hops=config.gar_max_hops,
+                    decay_factor=config.gar_decay_factor,
+                )
+                if gar_candidates:
+                    arms["graph"] = [cid for cid, _ in gar_candidates]
+
+            if "graph" not in arms and self._conn is not None and seed_ids:
                 from app.retrieval.graph import traverse_graph_neighbors
 
                 graph_res = traverse_graph_neighbors(self._conn, seed_ids)

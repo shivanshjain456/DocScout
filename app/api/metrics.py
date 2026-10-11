@@ -102,6 +102,17 @@ RATE_LIMITED = Counter(
     "Requests rejected by the per-key rate limiter.",
 )
 
+GAR_INVOCATIONS = Counter(
+    "docscout_gar_invocations_total",
+    "Total invocations of Graph-Augmented Retrieval (GAR).",
+)
+
+GAR_TRAVERSAL_DURATION = Histogram(
+    "docscout_gar_traversal_duration_seconds",
+    "Duration of knowledge graph traversals in seconds.",
+    buckets=LATENCY_BUCKETS,
+)
+
 CORPUS_CHUNKS = Gauge(
     "docscout_corpus_chunks",
     "Chunks currently retrievable, i.e. belonging to a current document version.",

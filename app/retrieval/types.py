@@ -184,6 +184,9 @@ class RetrievalConfig:
     expand_query: bool = False
     expansion_mode: ExpansionMode = "none"
     vector_store_adapter: str = "pgvector"
+    enable_gar: bool = False
+    gar_max_hops: int = 1
+    gar_decay_factor: float = 0.5
 
     def __post_init__(self) -> None:
         if self.rerank and self.rerank_top_n < self.k_final:
@@ -196,6 +199,10 @@ class RetrievalConfig:
             object.__setattr__(self, "expansion_mode", "synonym")
         elif self.expansion_mode != "none" and not self.expand_query:
             object.__setattr__(self, "expand_query", True)
+        if self.gar_max_hops not in (1, 2):
+            raise ValueError(f"gar_max_hops must be 1 or 2, got {self.gar_max_hops}")
+        if not (0.0 < self.gar_decay_factor <= 1.0):
+            raise ValueError(f"gar_decay_factor must be in (0.0, 1.0], got {self.gar_decay_factor}")
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -215,6 +222,9 @@ class RetrievalConfig:
             "expand_query": self.expand_query,
             "expansion_mode": self.expansion_mode,
             "vector_store_adapter": self.vector_store_adapter,
+            "enable_gar": self.enable_gar,
+            "gar_max_hops": self.gar_max_hops,
+            "gar_decay_factor": self.gar_decay_factor,
         }
 
 
