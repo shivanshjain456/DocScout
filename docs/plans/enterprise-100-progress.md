@@ -47,7 +47,7 @@
 
 ### Pillar 4: Regulatory Conflict, Deprecation & Antipattern Auditing
 - [x] FEAT-031: Statutory Deprecation & Supersession Engine
-- [ ] FEAT-032: Circular Clause Conflict Detector
+- [x] FEAT-032: Circular Clause Conflict Detector
 - [ ] FEAT-033: Regulatory & Technical Antipattern Scanner
 - [ ] FEAT-034: "Instead-Of" Prescriptive Remediation Engine
 - [ ] FEAT-035: Sunset Clause & Mandatory Cutover Alerting
@@ -166,6 +166,7 @@
 | FEAT-029 | 3488710 | PASS | Formula dependency graph builder (DAG topological Kahn sort, execution tiers, cycle detection, prerequisite checker, POST /v1/compliance/dependency-graphs/evaluate, p95 <= 0.1ms) |
 | FEAT-030 | 28dea98 | PASS | Historical formula evolution and versioning (multi-decade timeline, point-in-time statutory resolver, semantic diff engine, POST /v1/compliance/formulas/compare-versions, p95 <= 0.1ms) |
 | FEAT-031 | 0963dc2 | PASS | Statutory deprecation & supersession engine (circular DAG lineage, sunset deadlines, grandfathering exemptions, 100% flag rate on test corpus, p95 <= 0.5ms) |
+| FEAT-032 | 13c17f1 | PASS | Circular clause conflict detector (pairwise semantic & threshold contradiction detection, normative modality clashes, synthetic benchmark >90% detection rate, p95 <= 0.1ms) |
 
 
 ---
