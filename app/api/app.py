@@ -57,6 +57,7 @@ from app.api.cache import (
     trigger_corpus_invalidation,
     unregister_invalidation_listener,
 )
+from app.api.chat import router as chat_router
 from app.api.models import (
     CacheInvalidateRequest,
     CacheInvalidateResponse,
@@ -229,6 +230,7 @@ app = FastAPI(
 )
 
 app.include_router(admin_ontology_router)
+app.include_router(chat_router)
 
 
 @app.middleware("http")

@@ -273,6 +273,12 @@ TAGS_EXTRACTED_TOTAL = Counter(
     ("tag",),
 )
 
+COREFERENCES_RESOLVED_TOTAL = Counter(
+    "docscout_coreferences_resolved_total",
+    "Count of coreference resolutions in multi-turn chat (FEAT-017).",
+    ("status",),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.
