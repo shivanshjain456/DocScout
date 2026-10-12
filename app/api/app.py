@@ -35,7 +35,7 @@ from threading import Lock
 from typing import Annotated, Any, Literal
 
 import structlog
-from fastapi import Depends, FastAPI, Query, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
 from fastapi import Path as FastApiPath
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse, Response
@@ -66,6 +66,9 @@ from app.api.models import (
     DiscoveryTriggerRequest,
     DiscoveryTriggerResponse,
     DocumentResponse,
+    FormulaCalcRequest,
+    FormulaCalcResult,
+    FormulaListResponse,
     GraphEdge,
     GraphNode,
     IntentClassification,
@@ -861,6 +864,81 @@ def list_personas(
 
     profiles = get_default_persona_profiler().list_profiles()
     return PersonaListResponse(personas=profiles, total=len(profiles))
+
+
+@app.get(
+    "/v1/compliance/formulas",
+    response_model=FormulaListResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def list_compliance_formulas(
+    fingerprint: str = Depends(require_api_key),
+) -> FormulaListResponse:
+    """List 24 canonical taxonomy + statutory compliance formulas (FEAT-021)."""
+    from app.compliance.formula_engine import get_default_formula_engine
+
+    engine = get_default_formula_engine()
+    formulas = engine.list_formulas()
+    return FormulaListResponse(formulas=formulas, total=len(formulas))
+
+
+@app.post(
+    "/v1/compliance/calculate",
+    response_model=FormulaCalcResult,
+    tags=["compliance"],
+    responses={
+        400: {"description": "mathematical domain error or division by zero"},
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "unknown formula or missing input variable"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def calculate_compliance_formula(
+    payload: FormulaCalcRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> FormulaCalcResult:
+    """Safely parse and evaluate compliance mathematical formulas using AST evaluator (FEAT-021)."""
+    from app.compliance.formula_engine import (
+        MathDomainError,
+        MissingVariableError,
+        SecurityViolationError,
+        UnknownFormulaError,
+        get_default_formula_engine,
+    )
+
+    engine = get_default_formula_engine()
+    calc_start = time.perf_counter()
+    try:
+        result = engine.calculate(
+            formula_id=payload.formula_id,
+            inputs=payload.inputs,
+            custom_expression=payload.custom_expression,
+            precision_decimal_places=payload.precision_decimal_places,
+        )
+    except UnknownFormulaError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from exc
+    except MissingVariableError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from exc
+    except (MathDomainError, SecurityViolationError) as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
+    calc_duration = time.perf_counter() - calc_start
+    metrics.FORMULAS_CALCULATED_TOTAL.labels(formula_id=payload.formula_id).inc()
+    metrics.FORMULA_CALC_LATENCY.labels(formula_id=payload.formula_id).observe(calc_duration)
+    return result
 
 
 @app.get(

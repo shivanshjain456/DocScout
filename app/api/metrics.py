@@ -303,6 +303,19 @@ PERSONA_QUERIES_TOTAL = Counter(
     ("persona_id",),
 )
 
+FORMULAS_CALCULATED_TOTAL = Counter(
+    "docscout_formulas_calculated_total",
+    "Count of compliance formulas evaluated (FEAT-021).",
+    ("formula_id",),
+)
+
+FORMULA_CALC_LATENCY = Histogram(
+    "docscout_formula_calc_latency_seconds",
+    "Latency of formula evaluations in seconds (FEAT-021).",
+    ("formula_id",),
+    buckets=LATENCY_BUCKETS,
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

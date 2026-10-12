@@ -185,6 +185,48 @@ class PersonaListResponse(BaseModel):
     total: int
 
 
+# --- Statutory Compliance Formulas & Quantitative Verification (FEAT-021) ---
+
+
+class FormulaDefinition(BaseModel):
+    id: str
+    name: str
+    domain: str
+    expression: str
+    required_variables: list[str]
+    variable_descriptions: dict[str, str] = Field(default_factory=dict)
+    unit: str
+    standard: str | list[str] | None = None
+    note: str | None = None
+    statutory_threshold: str | None = None
+
+
+class FormulaListResponse(BaseModel):
+    formulas: list[FormulaDefinition]
+    total: int
+
+
+class FormulaCalcRequest(BaseModel):
+    formula_id: str
+    inputs: dict[str, float]
+    custom_expression: str | None = None
+    precision_decimal_places: int = 4
+
+
+class FormulaCalcResult(BaseModel):
+    formula_id: str
+    name: str
+    expression: str
+    computed_value: float
+    unit: str
+    standard: str | list[str] | None = None
+    note: str | None = None
+    statutory_threshold: str | None = None
+    is_compliant: bool | None = None
+    steps: list[str] = Field(default_factory=list)
+    duration_ms: float = 0.0
+
+
 class SearchResponse(BaseModel):
     query: str
     mode: str
