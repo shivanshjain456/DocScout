@@ -29,7 +29,7 @@
 - [x] FEAT-015: Audience & Difficulty Banding Filter
 - [x] FEAT-016: Query Tagging & Metadata Constrained Retrieval
 - [x] FEAT-017: Multi-Turn Conversational Coreference Resolver
-- [ ] FEAT-018: Typo-Tolerant Regulatory Token Normalizer
+- [x] FEAT-018: Typo-Tolerant Regulatory Token Normalizer
 - [ ] FEAT-019: Interactive Search Query Suggestions
 - [ ] FEAT-020: Persona-Tailored Query Profiling
 
@@ -152,6 +152,7 @@
 | FEAT-015 | 9eefb03 | PASS | 4-tier taxonomy difficulty banding (foundational <=150w, intermediate, advanced, expert <=512w), p95 <= 0.1ms |
 | FEAT-016 | ba3ea60 | PASS | 45-tag domain taxonomy inverted index, metadata WHERE clause, 100% eval accuracy, p95 <= 0.05ms |
 | FEAT-017 | 08b5a73 | PASS | Multi-turn coreference resolution (anaphora & ellipses), /v1/chat endpoint, LRU <=10KB session store, p95 <= 0.05ms |
+| FEAT-018 | 252f7d4 | PASS | Typo-tolerant regulatory normalizer with SymSpell index (1,434 terms, 60-typo eval 100%, p95 <= 0.25ms) |
 
 ---
 
