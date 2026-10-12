@@ -338,6 +338,19 @@ BOUNDARY_BREACHES_TOTAL = Counter(
     ("ratio_name",),
 )
 
+SIMULATION_REQUESTS_TOTAL = Counter(
+    "docscout_simulation_requests_total",
+    "Count of compliance what-if sensitivity simulations executed (FEAT-024).",
+    ("formula_id",),
+)
+
+SIMULATION_DURATION_SECONDS = Histogram(
+    "docscout_simulation_duration_seconds",
+    "Latency of sensitivity simulations in seconds (FEAT-024).",
+    ("formula_id",),
+    buckets=LATENCY_BUCKETS,
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

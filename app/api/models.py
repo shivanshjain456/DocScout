@@ -294,6 +294,68 @@ class BoundaryCatalogResponse(BaseModel):
     total: int
 
 
+# --- Compliance "What-If" Sensitivity Simulator (FEAT-024) ---
+
+
+class ScenarioPoint(BaseModel):
+    step: int
+    variable: str
+    input_value: float
+    delta_percentage: float
+    computed_value: float
+    status: Literal["COMPLIANT", "WARNING", "BREACH"] | None = None
+    margin: float | None = None
+
+
+class SensitivityResult(BaseModel):
+    variable: str
+    description: str | None = None
+    baseline_input: float
+    partial_derivative: float
+    elasticity: float
+    direction: Literal["positive", "negative", "neutral"]
+    impact_rank: int
+    breach_boundary_value: float | None = None
+
+
+class StressScenarioResult(BaseModel):
+    name: str
+    description: str
+    inputs: dict[str, float]
+    computed_value: float
+    delta_percentage_from_baseline: float
+    status: Literal["COMPLIANT", "WARNING", "BREACH"] | None = None
+
+
+class SimulationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    formula_id: str
+    base_inputs: dict[str, float]
+    deltas: dict[str, list[float]] = Field(default_factory=dict)
+    sweep_variable: str | None = None
+    sweep_percentage_range: float = Field(default=0.20, ge=0.01, le=1.0)
+    sweep_steps: int = Field(default=10, ge=2, le=50)
+    preset_scenario: str | None = None
+    entity_type: str = "commercial_bank"
+
+
+class SimulationResponse(BaseModel):
+    formula_id: str
+    formula_name: str
+    expression: str
+    unit: str
+    baseline_value: float
+    baseline_status: Literal["COMPLIANT", "WARNING", "BREACH"] | None = None
+    statutory_threshold: str | None = None
+    sensitivity_gradients: dict[str, float]
+    elasticities: dict[str, float]
+    sensitivities: list[SensitivityResult]
+    scenario_curves: dict[str, list[ScenarioPoint]]
+    stress_tests: list[StressScenarioResult] = Field(default_factory=list)
+    latency_ms: float
+
+
 class SearchResponse(BaseModel):
     query: str
     mode: str

@@ -707,6 +707,10 @@ class FormulaEngine:
             statutory_threshold=f.statutory_threshold,
         )
 
+    def get_registered_formula(self, formula_id: str) -> RegisteredFormula | None:
+        """Lookup internal RegisteredFormula containing eval_expression for high-performance simulation."""
+        return self._formulas.get(formula_id)
+
     def calculate(
         self,
         formula_id: str,

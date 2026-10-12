@@ -87,6 +87,8 @@ from app.api.models import (
     ResearchResponse,
     SearchRequest,
     SearchResponse,
+    SimulationRequest,
+    SimulationResponse,
     SubgraphResponse,
     SubscriptionCreateRequest,
     SubscriptionResponse,
@@ -1014,6 +1016,51 @@ def validate_statutory_ratios(
     for finding in response.findings:
         if finding.status == "BREACH":
             metrics.BOUNDARY_BREACHES_TOTAL.labels(ratio_name=finding.ratio_name).inc()
+
+    return response
+
+
+@app.post(
+    "/v1/compliance/simulate",
+    response_model=SimulationResponse,
+    tags=["compliance"],
+    responses={
+        400: {"description": "mathematical domain error during simulation"},
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "unknown formula or missing input variables"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def simulate_compliance_sensitivity(
+    payload: SimulationRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> SimulationResponse:
+    """Execute what-if sensitivity simulations, partial derivatives, and stress test curves (FEAT-024)."""
+    from app.compliance.formula_engine import (
+        MathDomainError,
+        MissingVariableError,
+        UnknownFormulaError,
+    )
+    from app.compliance.simulator import get_default_compliance_simulator
+
+    simulator = get_default_compliance_simulator()
+    sim_start = time.perf_counter()
+    try:
+        response = simulator.simulate(payload)
+    except (UnknownFormulaError, MissingVariableError) as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from exc
+    except MathDomainError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
+    duration = time.perf_counter() - sim_start
+    metrics.SIMULATION_REQUESTS_TOTAL.labels(formula_id=payload.formula_id).inc()
+    metrics.SIMULATION_DURATION_SECONDS.labels(formula_id=payload.formula_id).observe(duration)
 
     return response
 
