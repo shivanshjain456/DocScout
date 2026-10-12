@@ -316,6 +316,16 @@ FORMULA_CALC_LATENCY = Histogram(
     buckets=LATENCY_BUCKETS,
 )
 
+FORMULAS_EXTRACTED_TOTAL = Counter(
+    "docscout_formulas_extracted_total",
+    "Count of statutory mathematical formulas extracted from documents (FEAT-022).",
+)
+
+DOCUMENTS_WITH_FORMULAS_TOTAL = Gauge(
+    "docscout_documents_with_formulas_total",
+    "Count of ingested documents containing extracted compliance formulas (FEAT-022).",
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.
