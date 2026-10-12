@@ -70,6 +70,17 @@ class SearchRequest(BaseModel):
     auto_constrain_tags: bool = False
     # Typo-tolerant regulatory token normalization (FEAT-018)
     enable_normalization: bool = True
+    # Persona-tailored query profiling (FEAT-020)
+    persona: (
+        Literal[
+            "general",
+            "fintech_developer",
+            "statutory_auditor",
+            "risk_officer",
+            "compliance_officer",
+        ]
+        | None
+    ) = None
 
 
 class Passage(BaseModel):
@@ -150,6 +161,30 @@ class IntentClassification(BaseModel):
     recommended_terms: list[str]
 
 
+# --- Persona-Tailored Query Profiling (FEAT-020) ---
+
+
+class PersonaProfileResponse(BaseModel):
+    id: str
+    name: str
+    title: str
+    description: str
+    target_audience: str
+    weight_dense: float = 1.0
+    weight_lexical: float = 1.0
+    rrf_k: int = 60
+    default_expansion_mode: str = "none"
+    default_difficulty_band: str | None = None
+    centrality_weight: float = 0.15
+    preferred_layers: list[str] = Field(default_factory=list)
+    auto_constrain_tags: bool = False
+
+
+class PersonaListResponse(BaseModel):
+    personas: list[PersonaProfileResponse]
+    total: int
+
+
 class SearchResponse(BaseModel):
     query: str
     mode: str
@@ -164,6 +199,8 @@ class SearchResponse(BaseModel):
     extracted_tags: list[str] = Field(default_factory=list)
     normalized_query: str | None = None
     corrections_applied: dict[str, str] = Field(default_factory=dict)
+    persona: str | None = None
+    persona_applied: PersonaProfileResponse | None = None
 
 
 class LivenessResponse(BaseModel):

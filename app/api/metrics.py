@@ -297,6 +297,12 @@ SUGGESTION_LATENCY = Histogram(
     buckets=LATENCY_BUCKETS,
 )
 
+PERSONA_QUERIES_TOTAL = Counter(
+    "docscout_persona_queries_total",
+    "Count of search queries evaluated under specific persona profiles (FEAT-020).",
+    ("persona_id",),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

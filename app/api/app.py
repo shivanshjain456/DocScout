@@ -72,6 +72,8 @@ from app.api.models import (
     LivenessResponse,
     OCRInspectionResponse,
     Passage,
+    PersonaListResponse,
+    PersonaProfileResponse,
     Provenance,
     ReadinessResponse,
     ResearchArtifactSummary,
@@ -140,6 +142,8 @@ class CachedResult:
     extracted_tags: list[str] = field(default_factory=list)
     normalized_query: str | None = None
     corrections_applied: dict[str, str] = field(default_factory=dict)
+    persona: str | None = None
+    persona_applied: PersonaProfileResponse | None = None
 
 
 @asynccontextmanager
@@ -475,7 +479,9 @@ def readyz(request: Request, response: Response) -> ReadinessResponse:
     )
 
 
-def _config_for(payload: SearchRequest) -> RetrievalConfig:
+def _config_for(
+    payload: SearchRequest,
+) -> tuple[RetrievalConfig, PersonaProfileResponse | None]:
     """Build the retrieval configuration, keeping the serving default authoritative."""
     filt = payload.filter
     if filt is None and payload.relationship_filter is not None:
@@ -484,7 +490,7 @@ def _config_for(payload: SearchRequest) -> RetrievalConfig:
         filt = filt.model_copy(update={"relationship_filter": payload.relationship_filter})
 
     if payload.mode == "hybrid":
-        return RetrievalConfig(
+        base_cfg = RetrievalConfig(
             name=SERVING_CONFIG.name,
             mode="hybrid",
             k_dense=SERVING_CONFIG.k_dense,
@@ -503,25 +509,40 @@ def _config_for(payload: SearchRequest) -> RetrievalConfig:
             auto_constrain_tags=payload.auto_constrain_tags,
             enable_normalization=payload.enable_normalization,
         )
-    # Single-arm modes are the documented ADR-0006 ablation, reachable so the A/B can be
-    # reproduced against the running service.
-    return RetrievalConfig(
-        name=f"{payload.mode}-only",
-        mode=payload.mode,
-        k_dense=SERVING_CONFIG.k_dense,
-        k_lexical=SERVING_CONFIG.k_lexical,
-        k_final=payload.k,
-        filter=filt,
-        expand_query=payload.expand_query,
-        expansion_mode=payload.expansion_mode,
-        relationship_filter=payload.relationship_filter,
-        enable_centrality_boost=payload.enable_centrality_boost,
-        centrality_weight=payload.centrality_weight,
-        enable_disambiguation=payload.enable_disambiguation,
-        difficulty_band=payload.difficulty_band,
-        auto_constrain_tags=payload.auto_constrain_tags,
-        enable_normalization=payload.enable_normalization,
-    )
+    else:
+        # Single-arm modes are the documented ADR-0006 ablation, reachable so the A/B can be
+        # reproduced against the running service.
+        base_cfg = RetrievalConfig(
+            name=f"{payload.mode}-only",
+            mode=payload.mode,
+            k_dense=SERVING_CONFIG.k_dense,
+            k_lexical=SERVING_CONFIG.k_lexical,
+            k_final=payload.k,
+            filter=filt,
+            expand_query=payload.expand_query,
+            expansion_mode=payload.expansion_mode,
+            relationship_filter=payload.relationship_filter,
+            enable_centrality_boost=payload.enable_centrality_boost,
+            centrality_weight=payload.centrality_weight,
+            enable_disambiguation=payload.enable_disambiguation,
+            difficulty_band=payload.difficulty_band,
+            auto_constrain_tags=payload.auto_constrain_tags,
+            enable_normalization=payload.enable_normalization,
+        )
+
+    if payload.persona:
+        from app.retrieval.persona import get_default_persona_profiler
+
+        profiler = get_default_persona_profiler()
+        return profiler.apply_to_config(
+            persona=payload.persona,
+            base_config=base_cfg,
+            explicit_difficulty=payload.difficulty_band,
+            explicit_expansion=payload.expansion_mode,
+            explicit_auto_tags=payload.auto_constrain_tags if payload.auto_constrain_tags else None,
+        )
+
+    return base_cfg, None
 
 
 @app.post(
@@ -561,6 +582,7 @@ def search(
         payload.difficulty_band,
         payload.auto_constrain_tags,
         payload.enable_normalization,
+        payload.persona,
     )
 
     if payload.relationship_filter is not None:
@@ -601,6 +623,7 @@ def search(
             difficulty_band=payload.difficulty_band,
             extracted_tags=cached.extracted_tags,
             duration_ms=round(total_ms, 2),
+            persona=cached.persona,
         )
         return SearchResponse(
             query=payload.query,
@@ -621,6 +644,8 @@ def search(
             extracted_tags=cached.extracted_tags,
             normalized_query=cached.normalized_query,
             corrections_applied=cached.corrections_applied,
+            persona=cached.persona,
+            persona_applied=cached.persona_applied,
         )
 
     # A bypassed cache is not a miss: counting it as one would make the hit ratio depend
@@ -628,7 +653,10 @@ def search(
     if payload.use_cache:
         metrics.CACHE_EVENTS.labels("miss").inc()
 
-    config = _config_for(payload)
+    config, persona_applied = _config_for(payload)
+    if persona_applied is not None:
+        metrics.PERSONA_QUERIES_TOTAL.labels(persona_id=persona_applied.id).inc()
+
     retrieval_started = time.perf_counter()
     with state.pool.connection() as conn:
         if getattr(state, "bm25_needs_reload", False) is True:
@@ -743,6 +771,8 @@ def search(
         extracted_tags=extracted_tags,
         normalized_query=normalized_query_text,
         corrections_applied=corrections_applied,
+        persona=payload.persona,
+        persona_applied=persona_applied,
     )
     if payload.use_cache:
         # Check that generation hasn't moved while request was in flight
@@ -788,6 +818,7 @@ def search(
         generated_answer=generated_answer is not None,
         intent_id=intent_classification.intent_id if intent_classification else None,
         normalized_query=result.normalized_query,
+        persona=payload.persona,
     )
     return SearchResponse(
         query=payload.query,
@@ -808,7 +839,28 @@ def search(
         extracted_tags=result.extracted_tags,
         normalized_query=result.normalized_query,
         corrections_applied=result.corrections_applied,
+        persona=result.persona,
+        persona_applied=result.persona_applied,
     )
+
+
+@app.get(
+    "/v1/search/personas",
+    response_model=PersonaListResponse,
+    tags=["search"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def list_personas(
+    fingerprint: str = Depends(require_api_key),
+) -> PersonaListResponse:
+    """List available persona search profiles with their retrieval tuning configurations (FEAT-020)."""
+    from app.retrieval.persona import get_default_persona_profiler
+
+    profiles = get_default_persona_profiler().list_profiles()
+    return PersonaListResponse(personas=profiles, total=len(profiles))
 
 
 @app.get(
