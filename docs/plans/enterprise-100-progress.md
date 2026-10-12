@@ -36,7 +36,7 @@
 ### Pillar 3: Regulatory Compliance Formulas & Quantitative Verification
 - [x] FEAT-021: Statutory Formula Computational Engine
 - [x] FEAT-022: Automated Formula Extraction from Circulars
-- [ ] FEAT-023: Statutory Threshold & Boundary Validator
+- [x] FEAT-023: Statutory Threshold & Boundary Validator
 - [ ] FEAT-024: Compliance "What-If" Sensitivity Simulator
 - [ ] FEAT-025: Standard-Linked Formula Annotator
 - [ ] FEAT-026: Numerical Regulatory Evidence Extractor
@@ -157,6 +157,7 @@
 | FEAT-020 | de45bde | PASS | Persona-tailored query profiling (fintech_developer, statutory_auditor, risk_officer, compliance_officer), GET /v1/search/personas endpoint, cache isolation |
 | FEAT-021 | 4d0f354 | PASS | Safe AST mathematical formula computational engine (24 canonical taxonomy + 4 banking ratios), POST /v1/compliance/calculate, GET /v1/compliance/formulas, p95 <= 0.1ms |
 | FEAT-022 | b22d47a | PASS | Circular formula extraction engine (ast parsing, variable definitions, thresholds, migration 0015, throughput >=150 pages/sec) |
+| FEAT-023 | 4a2f548 | PASS | Statutory threshold & boundary validator (38 rules, RBI/Basel/ISO boundaries, AMBER tolerance, POST /v1/compliance/validate-ratios, p95 <= 0.05ms) |
 
 ---
 
