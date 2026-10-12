@@ -961,3 +961,68 @@ class GraphTemplateSummaryModel(BaseModel):
     stages_count: int
     target_variables: list[str]
     description: str
+
+
+# --- Historical Formula Evolution & Versioning (FEAT-030) ---
+
+
+class FormulaVersionModel(BaseModel):
+    id: str
+    formula_id: str
+    version_label: str
+    regulatory_framework: str
+    effective_from: str
+    effective_to: str | None = None
+    expression: str
+    eval_expression: str
+    variables: list[str]
+    thresholds: dict[str, Any] = Field(default_factory=dict)
+    circular_reference: str | None = None
+    change_summary: str
+    is_currently_active: bool = False
+
+
+class FormulaHistoryResponse(BaseModel):
+    formula_id: str
+    total_versions: int
+    history: list[FormulaVersionModel]
+
+
+class ResolveFormulaVersionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    as_of_date: str = Field(..., description="Target point-in-time date in YYYY-MM-DD format.")
+
+
+class CompareFormulaVersionsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    version_a_id: str = Field(..., min_length=1)
+    version_b_id: str = Field(..., min_length=1)
+
+
+class CompareFormulaVersionsResponse(BaseModel):
+    formula_id: str
+    version_a_id: str
+    version_b_id: str
+    version_a_label: str
+    version_b_label: str
+    expression_changed: bool
+    expression_a: str
+    expression_b: str
+    variables_added: list[str]
+    variables_removed: list[str]
+    variables_retained: list[str]
+    threshold_changes: dict[str, dict[str, Any]]
+    change_type: str
+    summary: str
+
+
+class TrackedFormulaSummaryModel(BaseModel):
+    formula_id: str
+    current_label: str
+    regulatory_framework: str
+    version_count: int
+    earliest_effective: str
+    current_expression: str
+    current_thresholds: dict[str, Any]

@@ -28,6 +28,13 @@ from app.compliance.dependency_graph import (
     register_graph,
 )
 from app.compliance.formula_engine import FormulaEngine, get_default_formula_engine
+from app.compliance.formula_evolution import (
+    ChangeClassification,
+    FormulaEvolutionManager,
+    FormulaVersion,
+    FormulaVersionDiff,
+    get_default_formula_evolution_manager,
+)
 from app.compliance.simulator import ComplianceSimulator, get_default_compliance_simulator
 from app.compliance.standards_registry import (
     StandardDefinition,
@@ -55,6 +62,7 @@ __all__ = [
     "AuditSeverity",
     "AuditSubmission",
     "AuditTable",
+    "ChangeClassification",
     "CircularDependencyError",
     "ComplianceSimulator",
     "ConsistencyAnomaly",
@@ -63,6 +71,9 @@ __all__ = [
     "DependencyNode",
     "FormulaDependencyGraph",
     "FormulaEngine",
+    "FormulaEvolutionManager",
+    "FormulaVersion",
+    "FormulaVersionDiff",
     "IndianFinancialUnitNormalizer",
     "MathematicalSanityAuditor",
     "NodeType",
@@ -78,6 +89,7 @@ __all__ = [
     "get_default_compliance_simulator",
     "get_default_consistency_auditor",
     "get_default_formula_engine",
+    "get_default_formula_evolution_manager",
     "get_default_standard_annotator",
     "get_default_standards_registry",
     "get_default_unit_normalizer",

@@ -429,6 +429,24 @@ GRAPH_BUILD_DURATION_SECONDS = Histogram(
     buckets=[0.0001, 0.0005, 0.001, 0.005, 0.01],
 )
 
+FORMULA_VERSIONS_RESOLVED_TOTAL = Counter(
+    "docscout_formula_versions_resolved_total",
+    "Total historical formula resolutions performed (FEAT-030).",
+    ("formula_id", "status"),
+)
+
+FORMULA_VERSION_DIFFS_TOTAL = Counter(
+    "docscout_formula_version_diffs_total",
+    "Total formula version comparison diffs executed (FEAT-030).",
+    ("change_type",),
+)
+
+VERSION_RESOLUTION_DURATION_SECONDS = Histogram(
+    "docscout_version_resolution_duration_seconds",
+    "Latency of historical formula resolution in seconds (FEAT-030).",
+    buckets=[0.00005, 0.0001, 0.0005, 0.001, 0.005],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

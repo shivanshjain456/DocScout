@@ -69,6 +69,8 @@ from app.api.models import (
     BuildGraphRequest,
     CacheInvalidateRequest,
     CacheInvalidateResponse,
+    CompareFormulaVersionsRequest,
+    CompareFormulaVersionsResponse,
     Confidence,
     ConsistencyAnomalyModel,
     DependencyGraphResponse,
@@ -84,7 +86,9 @@ from app.api.models import (
     ExtractParametersResponse,
     FormulaCalcRequest,
     FormulaCalcResult,
+    FormulaHistoryResponse,
     FormulaListResponse,
+    FormulaVersionModel,
     GraphEdge,
     GraphEdgeModel,
     GraphNode,
@@ -110,6 +114,7 @@ from app.api.models import (
     ResearchArtifactSummary,
     ResearchRequest,
     ResearchResponse,
+    ResolveFormulaVersionRequest,
     SearchRequest,
     SearchResponse,
     SimulationRequest,
@@ -122,6 +127,7 @@ from app.api.models import (
     SubscriptionResponse,
     SuggestionResponse,
     Timings,
+    TrackedFormulaSummaryModel,
     UnsubscribeResponse,
     UserInterestCreate,
     UserInterestResponse,
@@ -1941,6 +1947,193 @@ def check_graph_prerequisites_endpoint(
         missing_inputs=check_res["missing_inputs"],
         completion_percentage=check_res["completion_percentage"],
         resolvable_intermediates=check_res["resolvable_intermediates"],
+    )
+
+
+# --- Historical Formula Evolution & Versioning (FEAT-030) ---
+
+
+@app.get(
+    "/v1/compliance/formulas/history/tracked",
+    response_model=list[TrackedFormulaSummaryModel],
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def list_tracked_formula_histories_endpoint(
+    fingerprint: str = Depends(require_api_key),
+) -> list[TrackedFormulaSummaryModel]:
+    """List summary of all formulas with historical regulatory version records (FEAT-030)."""
+    from app.compliance.formula_evolution import get_default_formula_evolution_manager
+
+    manager = get_default_formula_evolution_manager()
+    summaries = manager.list_tracked_formulas()
+    return [
+        TrackedFormulaSummaryModel(
+            formula_id=s["formula_id"],
+            current_label=s["current_label"],
+            regulatory_framework=s["regulatory_framework"],
+            version_count=s["version_count"],
+            earliest_effective=s["earliest_effective"],
+            current_expression=s["current_expression"],
+            current_thresholds=s["current_thresholds"],
+        )
+        for s in summaries
+    ]
+
+
+@app.get(
+    "/v1/compliance/formulas/{formula_id}/history",
+    response_model=FormulaHistoryResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "formula history not found"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def get_formula_history_endpoint(
+    formula_id: str,
+    fingerprint: str = Depends(require_api_key),
+) -> FormulaHistoryResponse:
+    """Retrieve full chronological evolution timeline of a regulatory formula (FEAT-030)."""
+    from app.compliance.formula_evolution import get_default_formula_evolution_manager
+
+    manager = get_default_formula_evolution_manager()
+    try:
+        history = manager.get_history(formula_id)
+    except KeyError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No historical formula records found for '{formula_id}'.",
+        ) from None
+
+    version_models = [
+        FormulaVersionModel(
+            id=v.id,
+            formula_id=v.formula_id,
+            version_label=v.version_label,
+            regulatory_framework=v.regulatory_framework,
+            effective_from=v.effective_from,
+            effective_to=v.effective_to,
+            expression=v.expression,
+            eval_expression=v.eval_expression,
+            variables=v.variables,
+            thresholds=v.thresholds,
+            circular_reference=v.circular_reference,
+            change_summary=v.change_summary,
+            is_currently_active=v.effective_to is None,
+        )
+        for v in history
+    ]
+
+    return FormulaHistoryResponse(
+        formula_id=formula_id,
+        total_versions=len(version_models),
+        history=version_models,
+    )
+
+
+@app.post(
+    "/v1/compliance/formulas/{formula_id}/resolve-version",
+    response_model=FormulaVersionModel,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "formula not found"},
+        422: {"description": "invalid date format"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def resolve_formula_version_endpoint(
+    formula_id: str,
+    payload: ResolveFormulaVersionRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> FormulaVersionModel:
+    """Resolve point-in-time statutory formula definition for a specific effective date (FEAT-030)."""
+    t0 = time.perf_counter()
+    from app.compliance.formula_evolution import get_default_formula_evolution_manager
+
+    manager = get_default_formula_evolution_manager()
+    try:
+        ver = manager.resolve_version(formula_id, payload.as_of_date)
+    except KeyError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Formula '{formula_id}' not found in historical registry.",
+        ) from None
+    except ValueError as val_err:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid date format: {val_err}",
+        ) from val_err
+
+    duration = time.perf_counter() - t0
+    metrics.FORMULA_VERSIONS_RESOLVED_TOTAL.labels(formula_id=formula_id, status="resolved").inc()
+    metrics.VERSION_RESOLUTION_DURATION_SECONDS.observe(duration)
+
+    return FormulaVersionModel(
+        id=ver.id,
+        formula_id=ver.formula_id,
+        version_label=ver.version_label,
+        regulatory_framework=ver.regulatory_framework,
+        effective_from=ver.effective_from,
+        effective_to=ver.effective_to,
+        expression=ver.expression,
+        eval_expression=ver.eval_expression,
+        variables=ver.variables,
+        thresholds=ver.thresholds,
+        circular_reference=ver.circular_reference,
+        change_summary=ver.change_summary,
+        is_currently_active=ver.effective_to is None,
+    )
+
+
+@app.post(
+    "/v1/compliance/formulas/compare-versions",
+    response_model=CompareFormulaVersionsResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "version not found"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def compare_formula_versions_endpoint(
+    payload: CompareFormulaVersionsRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> CompareFormulaVersionsResponse:
+    """Compute structured semantic and mathematical diff between two formula versions (FEAT-030)."""
+    from app.compliance.formula_evolution import get_default_formula_evolution_manager
+
+    manager = get_default_formula_evolution_manager()
+    try:
+        diff = manager.compare_versions(payload.version_a_id, payload.version_b_id)
+    except KeyError as k_err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(k_err),
+        ) from None
+
+    metrics.FORMULA_VERSION_DIFFS_TOTAL.labels(change_type=diff.change_type.value).inc()
+
+    return CompareFormulaVersionsResponse(
+        formula_id=diff.formula_id,
+        version_a_id=diff.version_a_id,
+        version_b_id=diff.version_b_id,
+        version_a_label=diff.version_a_label,
+        version_b_label=diff.version_b_label,
+        expression_changed=diff.expression_changed,
+        expression_a=diff.expression_a,
+        expression_b=diff.expression_b,
+        variables_added=diff.variables_added,
+        variables_removed=diff.variables_removed,
+        variables_retained=diff.variables_retained,
+        threshold_changes=diff.threshold_changes,
+        change_type=diff.change_type.value,
+        summary=diff.summary,
     )
 
 
