@@ -1260,3 +1260,71 @@ class AntipatternBenchmarkResponse(BaseModel):
     precision: float
     overall_score: float
     benchmark_passed: bool
+
+
+# --- "Instead-Of" Prescriptive Remediation Engine (FEAT-034) ---
+
+
+class PracticeRecommendationModel(BaseModel):
+    name: str
+    term_id: str
+    definition: str
+    value_justification: str
+    tier: int
+    domain: str
+    gate_criteria: str | None = None
+    implementation_steps: list[str] = []
+    standard_reference: str | None = None
+
+
+class RemediationPlanModel(BaseModel):
+    flaw_id: str
+    flaw_type: str
+    identified_flaw: str
+    consequence_or_reason: str
+    severity: str
+    recommended_practices: list[PracticeRecommendationModel]
+    guidance: str | None = None
+    lookup_latency_ms: float = 0.0
+
+
+class GenerateRemediationRequest(BaseModel):
+    flaw_id: str | None = Field(
+        default=None,
+        description="Canonical flaw identifier (e.g. ap-line-coverage or DREAD)",
+    )
+    practice_or_subject: str | None = Field(
+        default=None,
+        description="Practice or deprecation title (e.g. Statement Coverage or DREAD)",
+    )
+    include_implementation_steps: bool = Field(
+        default=True,
+        description="Whether to generate actionable implementation checklist steps",
+    )
+
+
+class BatchRemediationRequest(BaseModel):
+    flaw_ids: list[str] = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="List of flaw IDs to generate remediations for",
+    )
+    include_implementation_steps: bool = Field(
+        default=True,
+        description="Whether to include actionable implementation checklist steps",
+    )
+
+
+class BatchRemediationResponse(BaseModel):
+    total_findings: int
+    remediated_findings: int
+    plans: list[RemediationPlanModel]
+    unique_recommended_practices: list[str]
+    latency_ms: float
+
+
+class RemediationCatalogResponse(BaseModel):
+    total_plans: int
+    total_practices_mapped: int
+    plans: list[RemediationPlanModel]

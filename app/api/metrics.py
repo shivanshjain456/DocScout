@@ -507,6 +507,18 @@ ANTIPATTERN_SCAN_DURATION_SECONDS = Histogram(
     buckets=[0.0001, 0.0005, 0.001, 0.005, 0.02],
 )
 
+REMEDIATIONS_GENERATED_TOTAL = Counter(
+    "docscout_remediations_generated_total",
+    "Total prescriptive remediations generated (FEAT-034).",
+    ("flaw_type", "has_remediation"),
+)
+
+REMEDIATION_LOOKUP_DURATION_SECONDS = Histogram(
+    "docscout_remediation_lookup_duration_seconds",
+    "Latency of prescriptive remediation lookups in seconds (FEAT-034).",
+    buckets=[0.0001, 0.0003, 0.0005, 0.001, 0.005],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

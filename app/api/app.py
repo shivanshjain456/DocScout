@@ -69,6 +69,8 @@ from app.api.models import (
     AuditRulesCatalogResponse,
     AuditSanityRequest,
     AuditSanityResponse,
+    BatchRemediationRequest,
+    BatchRemediationResponse,
     BoundaryCatalogResponse,
     BuildGraphRequest,
     CacheInvalidateRequest,
@@ -104,6 +106,7 @@ from app.api.models import (
     FormulaHistoryResponse,
     FormulaListResponse,
     FormulaVersionModel,
+    GenerateRemediationRequest,
     GraphEdge,
     GraphEdgeModel,
     GraphNode,
@@ -118,6 +121,7 @@ from app.api.models import (
     Passage,
     PersonaListResponse,
     PersonaProfileResponse,
+    PracticeRecommendationModel,
     PrerequisiteCheckRequest,
     PrerequisiteCheckResponse,
     Provenance,
@@ -126,6 +130,8 @@ from app.api.models import (
     RatioValidationRequest,
     RatioValidationResponse,
     ReadinessResponse,
+    RemediationCatalogResponse,
+    RemediationPlanModel,
     ResearchArtifactSummary,
     ResearchRequest,
     ResearchResponse,
@@ -2615,6 +2621,172 @@ def evaluate_antipatterns_benchmark_endpoint(
         precision=bench["precision"],
         overall_score=bench["overall_score"],
         benchmark_passed=bench["benchmark_passed"],
+    )
+
+
+# --- "Instead-Of" Prescriptive Remediation Engine (FEAT-034) ---
+
+
+@app.post(
+    "/v1/compliance/remediation/plan",
+    response_model=RemediationPlanModel,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "invalid request input"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def generate_remediation_plan_endpoint(
+    payload: GenerateRemediationRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> RemediationPlanModel:
+    """Generate prescriptive alternative practices ('Instead-Of') for a flaw (FEAT-034)."""
+    t0 = time.perf_counter()
+    from app.compliance.remediation_engine import get_default_remediation_engine
+
+    engine = get_default_remediation_engine()
+    flaw_key = payload.flaw_id or payload.practice_or_subject
+    if not flaw_key:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Either flaw_id or practice_or_subject must be provided.",
+        )
+
+    plan = engine.get_remediation_by_flaw_id(
+        flaw_key, include_steps=payload.include_implementation_steps
+    )
+    if not plan and payload.practice_or_subject:
+        plan = engine.get_remediation_for_antipattern(
+            payload.practice_or_subject, include_steps=payload.include_implementation_steps
+        ) or engine.get_remediation_for_deprecation(
+            payload.practice_or_subject, include_steps=payload.include_implementation_steps
+        )
+
+    if not plan:
+        plan = engine.generate_remediation_for_finding(
+            {"rule_id": flaw_key, "practice": flaw_key},
+            include_steps=payload.include_implementation_steps,
+        )
+
+    latency_ms = (time.perf_counter() - t0) * 1000.0
+    metrics.REMEDIATION_LOOKUP_DURATION_SECONDS.observe(latency_ms / 1000.0)
+    metrics.REMEDIATIONS_GENERATED_TOTAL.labels(
+        flaw_type=plan.flaw_type,
+        has_remediation="yes" if len(plan.recommended_practices) > 0 else "no",
+    ).inc()
+
+    recs = [PracticeRecommendationModel(**r.to_dict()) for r in plan.recommended_practices]
+    return RemediationPlanModel(
+        flaw_id=plan.flaw_id,
+        flaw_type=plan.flaw_type,
+        identified_flaw=plan.identified_flaw,
+        consequence_or_reason=plan.consequence_or_reason,
+        severity=plan.severity,
+        recommended_practices=recs,
+        guidance=plan.guidance,
+        lookup_latency_ms=round(latency_ms, 3),
+    )
+
+
+@app.post(
+    "/v1/compliance/remediation/batch",
+    response_model=BatchRemediationResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "invalid request input"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def batch_remediation_endpoint(
+    payload: BatchRemediationRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> BatchRemediationResponse:
+    """Generate prescriptive remediation plans for a batch of flaw IDs (FEAT-034)."""
+    t0 = time.perf_counter()
+    from app.compliance.remediation_engine import get_default_remediation_engine
+
+    engine = get_default_remediation_engine()
+    raw_findings = [{"rule_id": fid} for fid in payload.flaw_ids]
+    report = engine.generate_remediation_report(
+        raw_findings, include_steps=payload.include_implementation_steps
+    )
+
+    latency_ms = (time.perf_counter() - t0) * 1000.0
+    metrics.REMEDIATION_LOOKUP_DURATION_SECONDS.observe(latency_ms / 1000.0)
+    for p in report.plans:
+        metrics.REMEDIATIONS_GENERATED_TOTAL.labels(
+            flaw_type=p.flaw_type,
+            has_remediation="yes" if len(p.recommended_practices) > 0 else "no",
+        ).inc()
+
+    plan_models = []
+    for p in report.plans:
+        recs = [PracticeRecommendationModel(**r.to_dict()) for r in p.recommended_practices]
+        plan_models.append(
+            RemediationPlanModel(
+                flaw_id=p.flaw_id,
+                flaw_type=p.flaw_type,
+                identified_flaw=p.identified_flaw,
+                consequence_or_reason=p.consequence_or_reason,
+                severity=p.severity,
+                recommended_practices=recs,
+                guidance=p.guidance,
+                lookup_latency_ms=round(p.lookup_latency_ms, 3),
+            )
+        )
+
+    return BatchRemediationResponse(
+        total_findings=report.total_findings,
+        remediated_findings=report.remediated_findings,
+        plans=plan_models,
+        unique_recommended_practices=report.unique_recommended_practices,
+        latency_ms=round(latency_ms, 3),
+    )
+
+
+@app.get(
+    "/v1/compliance/remediation/catalog",
+    response_model=RemediationCatalogResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def remediation_catalog_endpoint(
+    flaw_type: str | None = None,
+    tier: int | None = None,
+    fingerprint: str = Depends(require_api_key),
+) -> RemediationCatalogResponse:
+    """Retrieve full catalog of prescriptive alternative practices (FEAT-034)."""
+    from app.compliance.remediation_engine import get_default_remediation_engine
+
+    engine = get_default_remediation_engine()
+    plans = engine.list_catalog(flaw_type=flaw_type, tier=tier)
+    plan_models = []
+    total_recs = 0
+    for p in plans:
+        recs = [PracticeRecommendationModel(**r.to_dict()) for r in p.recommended_practices]
+        total_recs += len(recs)
+        plan_models.append(
+            RemediationPlanModel(
+                flaw_id=p.flaw_id,
+                flaw_type=p.flaw_type,
+                identified_flaw=p.identified_flaw,
+                consequence_or_reason=p.consequence_or_reason,
+                severity=p.severity,
+                recommended_practices=recs,
+                guidance=p.guidance,
+                lookup_latency_ms=round(p.lookup_latency_ms, 3),
+            )
+        )
+
+    return RemediationCatalogResponse(
+        total_plans=len(plan_models),
+        total_practices_mapped=total_recs,
+        plans=plan_models,
     )
 
 

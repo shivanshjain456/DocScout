@@ -62,6 +62,13 @@ from app.compliance.formula_evolution import (
     FormulaVersionDiff,
     get_default_formula_evolution_manager,
 )
+from app.compliance.remediation_engine import (
+    PracticeRecommendation,
+    PrescriptiveRemediationEngine,
+    RemediationPlan,
+    RemediationReport,
+    get_default_remediation_engine,
+)
 from app.compliance.simulator import ComplianceSimulator, get_default_compliance_simulator
 from app.compliance.standards_registry import (
     StandardDefinition,
@@ -117,7 +124,11 @@ __all__ = [
     "MathematicalSanityAuditor",
     "NodeType",
     "NormalizedFinancialValue",
+    "PracticeRecommendation",
+    "PrescriptiveRemediationEngine",
     "RegulatorCode",
+    "RemediationPlan",
+    "RemediationReport",
     "StandardDefinition",
     "StandardFormulaAnnotator",
     "StandardLinkerConfig",
@@ -138,6 +149,7 @@ __all__ = [
     "get_default_deprecation_engine",
     "get_default_formula_engine",
     "get_default_formula_evolution_manager",
+    "get_default_remediation_engine",
     "get_default_standard_annotator",
     "get_default_standards_registry",
     "get_default_unit_normalizer",
