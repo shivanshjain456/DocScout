@@ -68,7 +68,10 @@ from app.api.models import (
     DigestDispatchResponse,
     DiscoveryTriggerRequest,
     DiscoveryTriggerResponse,
+    DocumentParametersResponse,
     DocumentResponse,
+    ExtractParametersRequest,
+    ExtractParametersResponse,
     FormulaCalcRequest,
     FormulaCalcResult,
     FormulaListResponse,
@@ -93,6 +96,7 @@ from app.api.models import (
     SimulationResponse,
     StandardListResponse,
     StandardResponse,
+    StatutoryParameterModel,
     SubgraphResponse,
     SubscriptionCreateRequest,
     SubscriptionResponse,
@@ -1243,6 +1247,136 @@ def annotate_formula_endpoint(
         confidence=annotated.confidence,
         status=annotated.status,
         linked_clauses=annotated.linked_clauses,
+    )
+
+
+@app.post(
+    "/v1/compliance/extract-parameters",
+    response_model=ExtractParametersResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "invalid request input"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def extract_statutory_parameters_endpoint(
+    payload: ExtractParametersRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> ExtractParametersResponse:
+    """Extract quantitative statutory parameters (penalties, filing windows, thresholds) from circular text (FEAT-026)."""
+    t0 = time.perf_counter()
+    from app.ingest.numeric_extractor import NumericalRegulatoryEvidenceExtractor
+
+    extractor = NumericalRegulatoryEvidenceExtractor()
+    extracted = extractor.extract_from_text(
+        text=payload.text,
+        document_id=payload.document_id,
+        version_id=payload.version_id,
+    )
+    latency_ms = (time.perf_counter() - t0) * 1000.0
+
+    metrics.STATUTORY_EXTRACTION_DURATION_SECONDS.observe(latency_ms / 1000.0)
+    for p in extracted:
+        metrics.STATUTORY_PARAMETERS_EXTRACTED_TOTAL.labels(
+            parameter_type=p.parameter_type,
+            normalized_unit=p.normalized_unit,
+        ).inc()
+
+    param_models = [
+        StatutoryParameterModel(
+            id=p.id,
+            document_id=p.document_id,
+            parameter_name=p.parameter_name,
+            parameter_type=p.parameter_type,
+            numeric_value=p.numeric_value,
+            unit=p.unit,
+            normalized_value=p.normalized_value,
+            normalized_unit=p.normalized_unit,
+            comparison_operator=p.comparison_operator,
+            statutory_context=p.statutory_context,
+            threshold_ceiling=p.threshold_ceiling,
+            section_reference=p.section_reference,
+            char_start=p.char_start,
+            char_end=p.char_end,
+            confidence_score=p.confidence_score,
+        )
+        for p in extracted
+    ]
+
+    types = sorted({p.parameter_type for p in extracted})
+
+    return ExtractParametersResponse(
+        document_id=payload.document_id,
+        parameters=param_models,
+        total_count=len(param_models),
+        parameter_types=types,
+        latency_ms=round(latency_ms, 3),
+    )
+
+
+@app.get(
+    "/v1/compliance/documents/{document_id}/parameters",
+    response_model=DocumentParametersResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "document not found"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def get_document_statutory_parameters(
+    document_id: str,
+    request: Request,
+    fingerprint: str = Depends(require_api_key),
+) -> DocumentParametersResponse:
+    """Retrieve extracted statutory quantitative parameters for a document (FEAT-026)."""
+    state = request.app.state
+    params: list[StatutoryParameterModel] = []
+    has_db = getattr(state, "pool", None) is not None
+
+    if has_db:
+        try:
+            with state.pool.connection() as conn:
+                rows = conn.execute(
+                    """
+                    SELECT id, document_id, parameter_name, parameter_type,
+                           numeric_value, unit, normalized_value, normalized_unit,
+                           comparison_operator, threshold_ceiling, statutory_context,
+                           section_reference, char_start, char_end, confidence_score
+                      FROM statutory_parameters
+                     WHERE document_id = %s
+                     ORDER BY char_start NULLS LAST
+                    """,
+                    (document_id,),
+                ).fetchall()
+                for r in rows:
+                    params.append(
+                        StatutoryParameterModel(
+                            id=str(r[0]),
+                            document_id=str(r[1]),
+                            parameter_name=str(r[2]),
+                            parameter_type=str(r[3]),
+                            numeric_value=float(r[4]),
+                            unit=str(r[5]),
+                            normalized_value=float(r[6]),
+                            normalized_unit=str(r[7]),
+                            comparison_operator=str(r[8]),
+                            threshold_ceiling=float(r[9]) if r[9] is not None else None,
+                            statutory_context=str(r[10]),
+                            section_reference=str(r[11]) if r[11] is not None else None,
+                            char_start=int(r[12]) if r[12] is not None else None,
+                            char_end=int(r[13]) if r[13] is not None else None,
+                            confidence_score=float(r[14]),
+                        )
+                    )
+        except Exception as exc:
+            logger.warning("Database lookup for statutory parameters failed: %s", exc)
+
+    return DocumentParametersResponse(
+        document_id=document_id,
+        parameters=params,
+        total_count=len(params),
     )
 
 

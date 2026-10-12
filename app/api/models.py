@@ -696,3 +696,46 @@ class AnnotateFormulaRequest(BaseModel):
     standard_hint: str | None = None
     text_snippet: str | None = None
     strict_matching: bool = True
+
+
+# --- Numerical Regulatory Evidence Extractor (FEAT-026) ---
+
+
+class StatutoryParameterModel(BaseModel):
+    id: str
+    document_id: str
+    parameter_name: str
+    parameter_type: str
+    numeric_value: float
+    unit: str
+    normalized_value: float
+    normalized_unit: str
+    comparison_operator: str
+    statutory_context: str
+    threshold_ceiling: float | None = None
+    section_reference: str | None = None
+    char_start: int | None = None
+    char_end: int | None = None
+    confidence_score: float = 1.0
+
+
+class ExtractParametersRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    text: str = Field(..., min_length=1, max_length=100_000)
+    document_id: str = "doc-generic"
+    version_id: str | None = None
+
+
+class ExtractParametersResponse(BaseModel):
+    document_id: str
+    parameters: list[StatutoryParameterModel]
+    total_count: int
+    parameter_types: list[str]
+    latency_ms: float
+
+
+class DocumentParametersResponse(BaseModel):
+    document_id: str
+    parameters: list[StatutoryParameterModel]
+    total_count: int

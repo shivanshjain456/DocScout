@@ -363,6 +363,18 @@ STANDARD_LINKING_DURATION_SECONDS = Histogram(
     buckets=[0.0001, 0.0005, 0.001, 0.005, 0.01],
 )
 
+STATUTORY_PARAMETERS_EXTRACTED_TOTAL = Counter(
+    "docscout_statutory_parameters_extracted_total",
+    "Total statutory quantitative parameters extracted from circulars (FEAT-026).",
+    ("parameter_type", "normalized_unit"),
+)
+
+STATUTORY_EXTRACTION_DURATION_SECONDS = Histogram(
+    "docscout_statutory_extraction_duration_seconds",
+    "Latency of quantitative regulatory parameter extraction in seconds (FEAT-026).",
+    buckets=[0.0005, 0.001, 0.005, 0.01, 0.05, 0.1],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.
