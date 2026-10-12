@@ -30,7 +30,7 @@
 - [x] FEAT-016: Query Tagging & Metadata Constrained Retrieval
 - [x] FEAT-017: Multi-Turn Conversational Coreference Resolver
 - [x] FEAT-018: Typo-Tolerant Regulatory Token Normalizer
-- [ ] FEAT-019: Interactive Search Query Suggestions
+- [x] FEAT-019: Interactive Search Query Suggestions
 - [ ] FEAT-020: Persona-Tailored Query Profiling
 
 ### Pillar 3: Regulatory Compliance Formulas & Quantitative Verification
@@ -153,6 +153,7 @@
 | FEAT-016 | ba3ea60 | PASS | 45-tag domain taxonomy inverted index, metadata WHERE clause, 100% eval accuracy, p95 <= 0.05ms |
 | FEAT-017 | 08b5a73 | PASS | Multi-turn coreference resolution (anaphora & ellipses), /v1/chat endpoint, LRU <=10KB session store, p95 <= 0.05ms |
 | FEAT-018 | 252f7d4 | PASS | Typo-tolerant regulatory normalizer with SymSpell index (1,434 terms, 60-typo eval 100%, p95 <= 0.25ms) |
+| FEAT-019 | c2ebb22 | PASS | Interactive search query suggestions with prefix & acronym index, related queries from graph edges, GET /v1/search/suggestions, p95 <= 0.1ms (<15ms target) |
 
 ---
 
