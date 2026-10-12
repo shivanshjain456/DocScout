@@ -36,15 +36,15 @@ CIRCULAR_ID_REGEX = re.compile(
 # Section and rule citations that must never be altered
 SECTION_CITATION_REGEX = re.compile(
     r"\b(?:"
-    r"(?:section|sec|rule|clause|sub-clause|article|regulation|reg|para|paragraph)\s+[0-9]+[a-z0-9\(\)\/\-\.]*|"
+    r"(?:master\s+direction|master\s+circular|section|sec|rule|clause|sub-clause|article|regulation|reg|para|paragraph)\s+[0-9]+[a-z0-9\(\)\/\-\.]*|"
     r"(?:schedule|order|part|chapter)\s+[ivxlcdm0-9]+[a-z0-9\(\)\/\-\.]*"
     r")\b",
     re.IGNORECASE,
 )
 
-# Specific alphanumeric statutory sub-clause notations (e.g. 45-IA, 144(xi), 3(a))
+# Specific alphanumeric statutory sub-clause notations (e.g. 45-IA, 144(xi), DOR-STR-REC-55)
 ALPHANUM_CODE_REGEX = re.compile(
-    r"\b\d+[a-z0-9\(\)\/\-\.]+\b",
+    r"^(?:[a-z0-9]+[\-\/\.][a-z0-9\-\/\.]*|\d+[a-z0-9\(\)\/\-\.]*)$",
     re.IGNORECASE,
 )
 

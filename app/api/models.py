@@ -422,3 +422,25 @@ class SubgraphResponse(BaseModel):
     nodes: list[GraphNode]
     edges: list[GraphEdge]
     root_id: str
+
+
+# --- Interactive Search Query Suggestions (FEAT-019) ---
+
+
+class QuerySuggestion(BaseModel):
+    id: str
+    text: str
+    category: Literal["term", "statutory", "acronym", "related"]
+    domain: str | None = None
+    domain_name: str | None = None
+    score: float = 1.0
+    highlight: str | None = None
+    related_queries: list[str] = Field(default_factory=list)
+
+
+class SuggestionResponse(BaseModel):
+    query: str
+    normalized_query: str | None = None
+    suggestions: list[QuerySuggestion]
+    latency_ms: float
+    total: int

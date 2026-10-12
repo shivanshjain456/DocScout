@@ -82,6 +82,7 @@ from app.api.models import (
     SubgraphResponse,
     SubscriptionCreateRequest,
     SubscriptionResponse,
+    SuggestionResponse,
     Timings,
     UnsubscribeResponse,
     UserInterestCreate,
@@ -807,6 +808,65 @@ def search(
         extracted_tags=result.extracted_tags,
         normalized_query=result.normalized_query,
         corrections_applied=result.corrections_applied,
+    )
+
+
+@app.get(
+    "/v1/search/suggestions",
+    response_model=SuggestionResponse,
+    tags=["search"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "invalid request"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def search_suggestions(
+    request: Request,
+    q: Annotated[
+        str,
+        Query(
+            min_length=1,
+            max_length=128,
+            description="Query prefix or fragment to suggest completions for",
+        ),
+    ],
+    limit: Annotated[
+        int,
+        Query(
+            ge=1,
+            le=50,
+            description="Maximum suggestions to return",
+        ),
+    ] = 10,
+    include_related: Annotated[
+        bool,
+        Query(
+            description="Include related search queries synthesized from graph edges",
+        ),
+    ] = True,
+    enable_normalization: Annotated[
+        bool,
+        Query(
+            description="Apply typo-tolerant regulatory token normalization",
+        ),
+    ] = True,
+    fingerprint: str = Depends(require_api_key),
+) -> SuggestionResponse:
+    """Provide real-time interactive search suggestions and deeper statutory inquiries (FEAT-019)."""
+    state = request.app.state
+    suggester = getattr(state, "suggester", None)
+    if suggester is None or not hasattr(suggester, "suggest"):
+        from app.retrieval.suggester import get_default_suggester
+
+        suggester = get_default_suggester()
+        state.suggester = suggester
+
+    return suggester.suggest(
+        query=q,
+        limit=limit,
+        include_related=include_related,
+        enable_normalization=enable_normalization,
     )
 
 

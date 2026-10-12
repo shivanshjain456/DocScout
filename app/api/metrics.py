@@ -285,6 +285,18 @@ TYPOS_CORRECTED_TOTAL = Counter(
     ("term",),
 )
 
+SUGGESTIONS_TOTAL = Counter(
+    "docscout_suggestions_total",
+    "Count of search query suggestion requests (FEAT-019).",
+    ("has_suggestions",),
+)
+
+SUGGESTION_LATENCY = Histogram(
+    "docscout_suggestion_latency_seconds",
+    "Latency of search query suggestion generation in seconds (FEAT-019).",
+    buckets=LATENCY_BUCKETS,
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.
