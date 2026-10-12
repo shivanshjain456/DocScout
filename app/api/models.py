@@ -1113,3 +1113,77 @@ class DeprecationCatalogResponse(BaseModel):
     deprecations: list[StatutoryDeprecationModel]
     total_count: int
     regulators: list[str]
+
+
+# --- Circular Clause Conflict Detector (FEAT-032) ---
+
+
+class CircularClauseModel(BaseModel):
+    id: str
+    circular_id: str
+    circular_title: str
+    regulator: str
+    section_reference: str
+    clause_text: str
+    domain_category: str
+    modality: str
+    parameter_name: str | None = None
+    parameter_value: float | None = None
+    parameter_unit: str | None = None
+    comparison_operator: str | None = None
+    effective_date: str
+    is_active: bool = True
+
+
+class DetectedConflictModel(BaseModel):
+    conflict_id: str
+    clause_a: CircularClauseModel
+    clause_b: CircularClauseModel
+    conflict_type: str
+    severity: str
+    parameter_name: str | None = None
+    explanation: str
+    prescriptive_action: str
+
+
+class DetectConflictsRequest(BaseModel):
+    clauses: list[CircularClauseModel] | None = Field(
+        default=None,
+        description="Optional list of custom clauses to analyze; if omitted, checks active registry.",
+    )
+    domain_category: str | None = Field(
+        default=None,
+        description="Optional domain filter e.g. fldg, incident_reporting, capital_adequacy",
+    )
+
+
+class DetectConflictsResponse(BaseModel):
+    conflicts: list[DetectedConflictModel]
+    total_conflicts: int
+    critical_count: int
+    high_count: int
+    medium_count: int
+    has_conflicts: bool
+    domains_affected: list[str]
+    latency_ms: float
+
+
+class CompareClausePairRequest(BaseModel):
+    clause_a: CircularClauseModel
+    clause_b: CircularClauseModel
+
+
+class CompareClausePairResponse(BaseModel):
+    conflict_detected: bool
+    conflict: DetectedConflictModel | None = None
+    latency_ms: float
+
+
+class ConflictBenchmarkResponse(BaseModel):
+    total_conflicting_pairs: int
+    detected_conflicts: int
+    detection_rate: float
+    total_non_conflicting_pairs: int
+    false_positives: int
+    precision: float
+    benchmark_passed: bool

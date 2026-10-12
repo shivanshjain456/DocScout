@@ -71,13 +71,20 @@ from app.api.models import (
     CacheInvalidateResponse,
     CheckSupersessionRequest,
     CheckSupersessionResponse,
+    CircularClauseModel,
+    CompareClausePairRequest,
+    CompareClausePairResponse,
     CompareFormulaVersionsRequest,
     CompareFormulaVersionsResponse,
     Confidence,
+    ConflictBenchmarkResponse,
     ConsistencyAnomalyModel,
     DependencyGraphResponse,
     DeprecationCatalogResponse,
     DeprecationDetectionModel,
+    DetectConflictsRequest,
+    DetectConflictsResponse,
+    DetectedConflictModel,
     DigestDispatchResponse,
     DiscoveryTriggerRequest,
     DiscoveryTriggerResponse,
@@ -2283,6 +2290,208 @@ def get_supersession_chain_endpoint(
         depth=chain.depth,
         has_cycle=chain.has_cycle,
         chain=node_models,
+    )
+
+
+# --- Circular Clause Conflict Detector (FEAT-032) ---
+
+
+@app.get(
+    "/v1/compliance/conflicts/clauses",
+    response_model=list[CircularClauseModel],
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def list_regulatory_clauses_endpoint(
+    domain_category: str | None = None,
+    fingerprint: str = Depends(require_api_key),
+) -> list[CircularClauseModel]:
+    """List registered circular clauses for conflict and contradiction inspection (FEAT-032)."""
+    from app.compliance.clause_conflict import get_default_clause_conflict_detector
+
+    detector = get_default_clause_conflict_detector()
+    clauses = detector.list_clauses(domain_category=domain_category)
+    return [CircularClauseModel(**c.to_dict()) for c in clauses]
+
+
+@app.post(
+    "/v1/compliance/detect-conflicts",
+    response_model=DetectConflictsResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "invalid request input"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def detect_circular_conflicts_endpoint(
+    payload: DetectConflictsRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> DetectConflictsResponse:
+    """Analyze regulatory clauses to identify inter-circular contradictions and ambiguities (FEAT-032)."""
+    t0 = time.perf_counter()
+    from app.compliance.clause_conflict import (
+        CircularClause,
+        ClauseModality,
+        get_default_clause_conflict_detector,
+    )
+
+    detector = get_default_clause_conflict_detector()
+
+    custom_clauses: list[CircularClause] | None = None
+    if payload.clauses is not None:
+        custom_clauses = []
+        for c in payload.clauses:
+            modality_val = ClauseModality.MANDATORY
+            if c.modality.lower() in {"prohibited", "forbidden"}:
+                modality_val = ClauseModality.PROHIBITED
+            elif c.modality.lower() in {"permitted", "optional", "discretionary"}:
+                modality_val = ClauseModality.PERMITTED
+
+            custom_clauses.append(
+                CircularClause(
+                    id=c.id,
+                    circular_id=c.circular_id,
+                    circular_title=c.circular_title,
+                    regulator=c.regulator,
+                    section_reference=c.section_reference,
+                    clause_text=c.clause_text,
+                    domain_category=c.domain_category,
+                    modality=modality_val,
+                    parameter_name=c.parameter_name,
+                    parameter_value=c.parameter_value,
+                    parameter_unit=c.parameter_unit,
+                    comparison_operator=c.comparison_operator,
+                    effective_date=c.effective_date,
+                    is_active=c.is_active,
+                )
+            )
+
+    conflicts = detector.detect_conflicts(clauses=custom_clauses)
+    if payload.domain_category:
+        conflicts = [
+            conf
+            for conf in conflicts
+            if conf.clause_a.domain_category.lower() == payload.domain_category.lower()
+        ]
+
+    latency_ms = (time.perf_counter() - t0) * 1000.0
+    metrics.CONFLICT_SCAN_DURATION_SECONDS.observe(latency_ms / 1000.0)
+    metrics.CIRCULAR_CONFLICTS_CHECKED_TOTAL.labels(
+        has_conflicts="yes" if conflicts else "no"
+    ).inc()
+
+    for conf in conflicts:
+        metrics.CIRCULAR_CONFLICTS_DETECTED_TOTAL.labels(
+            conflict_type=conf.conflict_type.value,
+            severity=conf.severity.value,
+        ).inc()
+
+    crit_cnt = sum(1 for c in conflicts if c.severity.value == "CRITICAL")
+    high_cnt = sum(1 for c in conflicts if c.severity.value == "HIGH")
+    med_cnt = sum(1 for c in conflicts if c.severity.value == "MEDIUM")
+    affected_domains = sorted(list({c.clause_a.domain_category for c in conflicts}))
+
+    conflict_models = [
+        DetectedConflictModel(
+            conflict_id=c.conflict_id,
+            clause_a=CircularClauseModel(**c.clause_a.to_dict()),
+            clause_b=CircularClauseModel(**c.clause_b.to_dict()),
+            conflict_type=c.conflict_type.value,
+            severity=c.severity.value,
+            parameter_name=c.parameter_name,
+            explanation=c.explanation,
+            prescriptive_action=c.prescriptive_action,
+        )
+        for c in conflicts
+    ]
+
+    return DetectConflictsResponse(
+        conflicts=conflict_models,
+        total_conflicts=len(conflict_models),
+        critical_count=crit_cnt,
+        high_count=high_cnt,
+        medium_count=med_cnt,
+        has_conflicts=len(conflict_models) > 0,
+        domains_affected=affected_domains,
+        latency_ms=round(latency_ms, 3),
+    )
+
+
+@app.post(
+    "/v1/compliance/compare-clause-pair",
+    response_model=CompareClausePairResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "invalid request input"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def compare_clause_pair_endpoint(
+    payload: CompareClausePairRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> CompareClausePairResponse:
+    """Perform pairwise conflict check between two specific regulatory clauses (FEAT-032)."""
+    t0 = time.perf_counter()
+    from app.compliance.clause_conflict import get_default_clause_conflict_detector
+
+    detector = get_default_clause_conflict_detector()
+    conflict = detector.scan_clause_pair(
+        payload.clause_a.model_dump(),
+        payload.clause_b.model_dump(),
+    )
+    latency_ms = (time.perf_counter() - t0) * 1000.0
+
+    conflict_model: DetectedConflictModel | None = None
+    if conflict is not None:
+        conflict_model = DetectedConflictModel(
+            conflict_id=conflict.conflict_id,
+            clause_a=CircularClauseModel(**conflict.clause_a.to_dict()),
+            clause_b=CircularClauseModel(**conflict.clause_b.to_dict()),
+            conflict_type=conflict.conflict_type.value,
+            severity=conflict.severity.value,
+            parameter_name=conflict.parameter_name,
+            explanation=conflict.explanation,
+            prescriptive_action=conflict.prescriptive_action,
+        )
+
+    return CompareClausePairResponse(
+        conflict_detected=conflict is not None,
+        conflict=conflict_model,
+        latency_ms=round(latency_ms, 3),
+    )
+
+
+@app.get(
+    "/v1/compliance/conflicts/benchmark",
+    response_model=ConflictBenchmarkResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def evaluate_conflicts_benchmark_endpoint(
+    fingerprint: str = Depends(require_api_key),
+) -> ConflictBenchmarkResponse:
+    """Execute synthetic contradiction test set benchmark evaluation (FEAT-032)."""
+    from app.compliance.clause_conflict import get_default_clause_conflict_detector
+
+    detector = get_default_clause_conflict_detector()
+    bench = detector.evaluate_synthetic_benchmark()
+
+    return ConflictBenchmarkResponse(
+        total_conflicting_pairs=bench["total_conflicting_pairs"],
+        detected_conflicts=bench["detected_conflicts"],
+        detection_rate=bench["detection_rate"],
+        total_non_conflicting_pairs=bench["total_non_conflicting_pairs"],
+        false_positives=bench["false_positives"],
+        precision=bench["precision"],
+        benchmark_passed=bench["benchmark_passed"],
     )
 
 

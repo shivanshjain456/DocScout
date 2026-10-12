@@ -471,6 +471,24 @@ SUPERSESSION_CHAINS_RESOLVED_TOTAL = Counter(
     ("root_instrument",),
 )
 
+CIRCULAR_CONFLICTS_CHECKED_TOTAL = Counter(
+    "docscout_circular_conflicts_checked_total",
+    "Total clause conflict scans executed (FEAT-032).",
+    ("has_conflicts",),
+)
+
+CIRCULAR_CONFLICTS_DETECTED_TOTAL = Counter(
+    "docscout_circular_conflicts_detected_total",
+    "Total inter-circular conflicts detected by type and severity (FEAT-032).",
+    ("conflict_type", "severity"),
+)
+
+CONFLICT_SCAN_DURATION_SECONDS = Histogram(
+    "docscout_conflict_scan_duration_seconds",
+    "Latency of pairwise clause conflict scanning in seconds (FEAT-032).",
+    buckets=[0.0001, 0.0005, 0.001, 0.005, 0.02],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.
