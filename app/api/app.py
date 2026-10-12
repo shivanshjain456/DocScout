@@ -61,6 +61,10 @@ from app.api.chat import router as chat_router
 from app.api.models import (
     AnnotatedFormulaResponse,
     AnnotateFormulaRequest,
+    AntipatternBenchmarkResponse,
+    AntipatternCatalogResponse,
+    AntipatternFindingModel,
+    AntipatternRuleModel,
     AuditRuleDefinitionModel,
     AuditRulesCatalogResponse,
     AuditSanityRequest,
@@ -126,6 +130,8 @@ from app.api.models import (
     ResearchRequest,
     ResearchResponse,
     ResolveFormulaVersionRequest,
+    ScanAntipatternsRequest,
+    ScanAntipatternsResponse,
     SearchRequest,
     SearchResponse,
     SimulationRequest,
@@ -2491,6 +2497,123 @@ def evaluate_conflicts_benchmark_endpoint(
         total_non_conflicting_pairs=bench["total_non_conflicting_pairs"],
         false_positives=bench["false_positives"],
         precision=bench["precision"],
+        benchmark_passed=bench["benchmark_passed"],
+    )
+
+
+# --- Regulatory & Technical Antipattern Scanner (FEAT-033) ---
+
+
+@app.get(
+    "/v1/compliance/antipatterns/catalog",
+    response_model=AntipatternCatalogResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def list_antipatterns_catalog_endpoint(
+    domain_category: str | None = None,
+    severity: str | None = None,
+    fingerprint: str = Depends(require_api_key),
+) -> AntipatternCatalogResponse:
+    """Retrieve catalog of all 30 canonical taxonomy antipatterns and replacements (FEAT-033)."""
+    from app.compliance.antipattern_scanner import get_default_antipattern_scanner
+
+    scanner = get_default_antipattern_scanner()
+    rules = scanner.list_rules(domain_category=domain_category, severity=severity)
+    models = [AntipatternRuleModel(**r.to_dict()) for r in rules]
+    domains = sorted(list({r.domain_category for r in models}))
+
+    return AntipatternCatalogResponse(
+        rules=models,
+        total_count=len(models),
+        domains=domains,
+    )
+
+
+@app.post(
+    "/v1/compliance/antipatterns/scan",
+    response_model=ScanAntipatternsResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "invalid request input"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def scan_antipatterns_endpoint(
+    payload: ScanAntipatternsRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> ScanAntipatternsResponse:
+    """Scan policy manuals or architecture documents against the 30 taxonomy antipatterns (FEAT-033)."""
+    t0 = time.perf_counter()
+    from app.compliance.antipattern_scanner import get_default_antipattern_scanner
+
+    scanner = get_default_antipattern_scanner()
+    scan_res = scanner.scan_document(
+        text=payload.text,
+        document_name=payload.document_name,
+        severity_filter=payload.severity_filter,
+    )
+
+    latency_ms = (time.perf_counter() - t0) * 1000.0
+    metrics.ANTIPATTERN_SCAN_DURATION_SECONDS.observe(latency_ms / 1000.0)
+    metrics.ANTIPATTERN_SCANS_TOTAL.labels(
+        has_findings="yes" if scan_res["total_findings"] > 0 else "no"
+    ).inc()
+
+    for finding in scan_res["findings"]:
+        metrics.ANTIPATTERNS_DETECTED_TOTAL.labels(
+            domain=finding["domain_category"],
+            severity=finding["severity"],
+        ).inc()
+
+    finding_models = [AntipatternFindingModel(**f) for f in scan_res["findings"]]
+
+    return ScanAntipatternsResponse(
+        document_name=scan_res["document_name"],
+        findings=finding_models,
+        total_findings=scan_res["total_findings"],
+        critical_count=scan_res["critical_count"],
+        high_count=scan_res["high_count"],
+        medium_count=scan_res["medium_count"],
+        overall_score=scan_res["overall_score"],
+        affected_domains=scan_res["affected_domains"],
+        is_healthy=scan_res["overall_score"] >= 90.0
+        and scan_res["critical_count"] == 0
+        and scan_res["high_count"] == 0,
+        latency_ms=round(latency_ms, 3),
+    )
+
+
+@app.get(
+    "/v1/compliance/antipatterns/benchmark",
+    response_model=AntipatternBenchmarkResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def evaluate_antipatterns_benchmark_endpoint(
+    fingerprint: str = Depends(require_api_key),
+) -> AntipatternBenchmarkResponse:
+    """Execute synthetic compliance manual antipattern detection benchmark (FEAT-033)."""
+    from app.compliance.antipattern_scanner import get_default_antipattern_scanner
+
+    scanner = get_default_antipattern_scanner()
+    bench = scanner.evaluate_synthetic_benchmark()
+
+    return AntipatternBenchmarkResponse(
+        total_seeded_antipatterns=bench["total_seeded_antipatterns"],
+        detected_antipatterns=bench["detected_antipatterns"],
+        false_positives=bench["false_positives"],
+        false_negatives=bench["false_negatives"],
+        recall=bench["recall"],
+        precision=bench["precision"],
+        overall_score=bench["overall_score"],
         benchmark_passed=bench["benchmark_passed"],
     )
 

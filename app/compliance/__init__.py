@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from app.compliance.antipattern_scanner import (
+    AntipatternFinding,
+    AntipatternRule,
+    AntipatternScanner,
+    get_default_antipattern_scanner,
+)
 from app.compliance.boundary_validator import (
     StatutoryBoundaryValidator,
     get_default_boundary_validator,
@@ -79,6 +85,9 @@ from app.ingest.standard_linker import (
 __all__ = [
     "AnnotatedFormula",
     "AnomalyType",
+    "AntipatternFinding",
+    "AntipatternRule",
+    "AntipatternScanner",
     "AuditResult",
     "AuditSeverity",
     "AuditSubmission",
@@ -121,6 +130,7 @@ __all__ = [
     "SupersessionNode",
     "format_indian_number",
     "format_international_number",
+    "get_default_antipattern_scanner",
     "get_default_boundary_validator",
     "get_default_clause_conflict_detector",
     "get_default_compliance_simulator",

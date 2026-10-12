@@ -489,6 +489,24 @@ CONFLICT_SCAN_DURATION_SECONDS = Histogram(
     buckets=[0.0001, 0.0005, 0.001, 0.005, 0.02],
 )
 
+ANTIPATTERN_SCANS_TOTAL = Counter(
+    "docscout_antipattern_scans_total",
+    "Total antipattern document scans executed (FEAT-033).",
+    ("has_findings",),
+)
+
+ANTIPATTERNS_DETECTED_TOTAL = Counter(
+    "docscout_antipatterns_detected_total",
+    "Total technical and regulatory antipatterns detected by domain and severity (FEAT-033).",
+    ("domain", "severity"),
+)
+
+ANTIPATTERN_SCAN_DURATION_SECONDS = Histogram(
+    "docscout_antipattern_scan_duration_seconds",
+    "Latency of antipattern document scanning in seconds (FEAT-033).",
+    buckets=[0.0001, 0.0005, 0.001, 0.005, 0.02],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

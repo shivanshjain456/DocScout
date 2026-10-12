@@ -1187,3 +1187,76 @@ class ConflictBenchmarkResponse(BaseModel):
     false_positives: int
     precision: float
     benchmark_passed: bool
+
+
+# --- Regulatory & Technical Antipattern Scanner (FEAT-033) ---
+
+
+class AntipatternRuleModel(BaseModel):
+    id: str
+    practice: str
+    antipattern: str
+    consequence: str
+    instead: list[str]
+    domain_category: str
+    severity: str
+    regex_patterns: list[str] = []
+    keywords: list[str] = []
+
+
+class AntipatternFindingModel(BaseModel):
+    rule_id: str
+    practice: str
+    antipattern: str
+    consequence: str
+    instead: list[str]
+    severity: str
+    domain_category: str
+    matched_snippet: str
+    line_number: int | None = None
+    confidence: float
+
+
+class ScanAntipatternsRequest(BaseModel):
+    text: str = Field(
+        ...,
+        min_length=1,
+        max_length=150000,
+        description="Compliance manual, policy, or architecture document text",
+    )
+    document_name: str = Field(
+        default="manual.md", description="Identifier or filename for audit tracking"
+    )
+    severity_filter: str | None = Field(
+        default=None, description="Optional severity filter: CRITICAL, HIGH, MEDIUM"
+    )
+
+
+class ScanAntipatternsResponse(BaseModel):
+    document_name: str
+    findings: list[AntipatternFindingModel]
+    total_findings: int
+    critical_count: int
+    high_count: int
+    medium_count: int
+    overall_score: float
+    affected_domains: list[str]
+    is_healthy: bool
+    latency_ms: float
+
+
+class AntipatternCatalogResponse(BaseModel):
+    rules: list[AntipatternRuleModel]
+    total_count: int
+    domains: list[str]
+
+
+class AntipatternBenchmarkResponse(BaseModel):
+    total_seeded_antipatterns: int
+    detected_antipatterns: int
+    false_positives: int
+    false_negatives: int
+    recall: float
+    precision: float
+    overall_score: float
+    benchmark_passed: bool
