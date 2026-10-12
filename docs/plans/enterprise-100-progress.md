@@ -40,7 +40,7 @@
 - [x] FEAT-024: Compliance "What-If" Sensitivity Simulator
 - [x] FEAT-025: Standard-Linked Formula Annotator
 - [x] FEAT-026: Numerical Regulatory Evidence Extractor
-- [ ] FEAT-027: Mathematical Sanity & Consistency Auditor
+- [x] FEAT-027: Mathematical Sanity & Consistency Auditor
 - [ ] FEAT-028: Indian Financial Unit Normalizer
 - [ ] FEAT-029: Formula Dependency Graph Builder
 - [ ] FEAT-030: Historical Formula Evolution & Versioning
@@ -161,6 +161,7 @@
 | FEAT-024 | ecb4efd | PASS | Compliance "What-If" sensitivity simulator (partial derivatives, elasticity, parameter sweeps, stress presets, POST /v1/compliance/simulate, p95 <= 0.8ms) |
 | FEAT-025 | 5e186e5 | PASS | Standard-linked formula annotator (53 standards registry, ISO/Basel/DO-178C cross-linking, GET /v1/compliance/standards, POST /v1/compliance/annotate-formula, p95 <= 0.05ms) |
 | FEAT-026 | 259aed8 | PASS | Numerical regulatory evidence extractor (penalty/threshold/filing window parser, Indian currency scaling, POST /v1/compliance/extract-parameters, p95 <= 0.4ms) |
+| FEAT-027 | facfae1 | PASS | Mathematical sanity and consistency auditor (table cross-footing, row/column sum invariance, 100% synthetic error detection rate, POST /v1/compliance/audit-sanity, p95 <= 0.3ms) |
 
 
 ---
