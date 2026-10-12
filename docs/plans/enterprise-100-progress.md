@@ -42,7 +42,7 @@
 - [x] FEAT-026: Numerical Regulatory Evidence Extractor
 - [x] FEAT-027: Mathematical Sanity & Consistency Auditor
 - [x] FEAT-028: Indian Financial Unit Normalizer
-- [ ] FEAT-029: Formula Dependency Graph Builder
+- [x] FEAT-029: Formula Dependency Graph Builder
 - [ ] FEAT-030: Historical Formula Evolution & Versioning
 
 ### Pillar 4: Regulatory Conflict, Deprecation & Antipattern Auditing
@@ -163,6 +163,7 @@
 | FEAT-026 | 259aed8 | PASS | Numerical regulatory evidence extractor (penalty/threshold/filing window parser, Indian currency scaling, POST /v1/compliance/extract-parameters, p95 <= 0.4ms) |
 | FEAT-027 | facfae1 | PASS | Mathematical sanity and consistency auditor (table cross-footing, row/column sum invariance, 100% synthetic error detection rate, POST /v1/compliance/audit-sanity, p95 <= 0.3ms) |
 | FEAT-028 | 8b7bda2 | PASS | Indian financial unit normalizer (bidirectional Lakh/Crore/Mn/Bn/bps/pct conversion over 55 representations, comma formatting, POST /v1/compliance/normalize-units, p95 <= 0.2ms) |
+| FEAT-029 | 3488710 | PASS | Formula dependency graph builder (DAG topological Kahn sort, execution tiers, cycle detection, prerequisite checker, POST /v1/compliance/dependency-graphs/evaluate, p95 <= 0.1ms) |
 
 
 ---
