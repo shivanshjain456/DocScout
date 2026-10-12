@@ -227,6 +227,73 @@ class FormulaCalcResult(BaseModel):
     duration_ms: float = 0.0
 
 
+# --- Statutory Boundary Validation (FEAT-023) ---
+
+
+class RatioFinding(BaseModel):
+    ratio_name: str
+    reported_value: float
+    statutory_threshold: str
+    status: Literal["COMPLIANT", "WARNING", "BREACH"]
+    circular_citation: str
+    margin: float
+    margin_percentage: float
+    operator: Literal[">=", "<=", ">", "<"]
+    threshold_value: float
+    unit: str
+    guidance: str
+    regulator: str
+    category: str
+
+
+class RatioValidationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    entity_type: str = Field(
+        default="commercial_bank",
+        description="Regulated entity class (e.g. commercial_bank, nbfc_si, small_finance_bank, payment_bank, ucb, general)",
+    )
+    ratios: dict[str, float] = Field(
+        ...,
+        description="Key-value mapping of ratio or metric names to reported numeric values",
+    )
+    tolerance_percentage: float = Field(
+        default=0.05,
+        ge=0.0,
+        le=0.5,
+        description="Tolerance buffer (default 0.05 = 5%) within which a ratio is flagged as AMBER WARNING",
+    )
+
+
+class RatioValidationResponse(BaseModel):
+    overall_status: Literal["COMPLIANT", "WARNING", "BREACH"]
+    entity_type: str
+    tolerance_percentage: float
+    summary: dict[str, int]
+    findings: list[RatioFinding]
+    latency_ms: float
+
+
+class StatutoryBoundaryDefinition(BaseModel):
+    rule_id: str
+    ratio_name: str
+    description: str
+    regulator: str
+    statutory_citation: str
+    operator: Literal[">=", "<=", ">", "<"]
+    threshold_value: float
+    unit: str
+    default_tolerance_pct: float
+    category: str
+    applicable_entities: list[str]
+    guidance_on_breach: str
+
+
+class BoundaryCatalogResponse(BaseModel):
+    boundaries: list[StatutoryBoundaryDefinition]
+    total: int
+
+
 class SearchResponse(BaseModel):
     query: str
     mode: str

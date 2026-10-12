@@ -326,6 +326,18 @@ DOCUMENTS_WITH_FORMULAS_TOTAL = Gauge(
     "Count of ingested documents containing extracted compliance formulas (FEAT-022).",
 )
 
+VALIDATIONS_PERFORMED_TOTAL = Counter(
+    "docscout_validations_performed_total",
+    "Count of statutory boundary validations performed (FEAT-023).",
+    ("status",),
+)
+
+BOUNDARY_BREACHES_TOTAL = Counter(
+    "docscout_boundary_breaches_total",
+    "Count of statutory boundary breaches detected (FEAT-023).",
+    ("ratio_name",),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

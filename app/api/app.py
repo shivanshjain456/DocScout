@@ -59,6 +59,7 @@ from app.api.cache import (
 )
 from app.api.chat import router as chat_router
 from app.api.models import (
+    BoundaryCatalogResponse,
     CacheInvalidateRequest,
     CacheInvalidateResponse,
     Confidence,
@@ -78,6 +79,8 @@ from app.api.models import (
     PersonaListResponse,
     PersonaProfileResponse,
     Provenance,
+    RatioValidationRequest,
+    RatioValidationResponse,
     ReadinessResponse,
     ResearchArtifactSummary,
     ResearchRequest,
@@ -939,6 +942,80 @@ def calculate_compliance_formula(
     metrics.FORMULAS_CALCULATED_TOTAL.labels(formula_id=payload.formula_id).inc()
     metrics.FORMULA_CALC_LATENCY.labels(formula_id=payload.formula_id).observe(calc_duration)
     return result
+
+
+@app.get(
+    "/v1/compliance/boundaries",
+    response_model=BoundaryCatalogResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def list_statutory_boundaries(
+    regulator: str | None = None,
+    category: str | None = None,
+    entity_type: str | None = None,
+    fingerprint: str = Depends(require_api_key),
+) -> BoundaryCatalogResponse:
+    """List 38 statutory boundary definitions and regulatory thresholds (FEAT-023)."""
+    from app.compliance.boundary_validator import get_default_boundary_validator
+
+    validator = get_default_boundary_validator()
+    boundaries = validator.list_boundaries(
+        regulator=regulator,
+        category=category,
+        entity_type=entity_type,
+    )
+    return BoundaryCatalogResponse(boundaries=boundaries, total=len(boundaries))
+
+
+@app.post(
+    "/v1/compliance/validate-ratios",
+    response_model=RatioValidationResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "unknown ratio or invalid payload"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+@app.post(
+    "/v1/compliance/validate",
+    response_model=RatioValidationResponse,
+    tags=["compliance"],
+    include_in_schema=False,
+)
+def validate_statutory_ratios(
+    payload: RatioValidationRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> RatioValidationResponse:
+    """Validate reported financial and operational ratios against statutory boundaries (FEAT-023)."""
+    from app.compliance.boundary_validator import (
+        UnknownRatioError,
+        get_default_boundary_validator,
+    )
+
+    validator = get_default_boundary_validator()
+    try:
+        response = validator.validate_ratios(
+            ratios=payload.ratios,
+            entity_type=payload.entity_type,
+            tolerance_percentage=payload.tolerance_percentage,
+        )
+    except UnknownRatioError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from exc
+
+    metrics.VALIDATIONS_PERFORMED_TOTAL.labels(status=response.overall_status).inc()
+    for finding in response.findings:
+        if finding.status == "BREACH":
+            metrics.BOUNDARY_BREACHES_TOTAL.labels(ratio_name=finding.ratio_name).inc()
+
+    return response
 
 
 @app.get(
