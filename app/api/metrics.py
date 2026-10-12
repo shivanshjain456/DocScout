@@ -447,6 +447,30 @@ VERSION_RESOLUTION_DURATION_SECONDS = Histogram(
     buckets=[0.00005, 0.0001, 0.0005, 0.001, 0.005],
 )
 
+STATUTORY_DEPRECATIONS_CHECKED_TOTAL = Counter(
+    "docscout_statutory_deprecations_checked_total",
+    "Total statutory text deprecation checks executed (FEAT-031).",
+    ("has_findings",),
+)
+
+STATUTORY_DEPRECATIONS_DETECTED_TOTAL = Counter(
+    "docscout_statutory_deprecations_detected_total",
+    "Total deprecated items detected in documents by severity (FEAT-031).",
+    ("regulator", "severity"),
+)
+
+DEPRECATION_SCAN_DURATION_SECONDS = Histogram(
+    "docscout_deprecation_scan_duration_seconds",
+    "Latency of deprecation and supersession text scanning in seconds (FEAT-031).",
+    buckets=[0.0001, 0.0005, 0.001, 0.005, 0.02],
+)
+
+SUPERSESSION_CHAINS_RESOLVED_TOTAL = Counter(
+    "docscout_supersession_chains_resolved_total",
+    "Total circular supersession chains resolved (FEAT-031).",
+    ("root_instrument",),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

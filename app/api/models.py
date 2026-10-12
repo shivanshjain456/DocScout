@@ -1026,3 +1026,90 @@ class TrackedFormulaSummaryModel(BaseModel):
     earliest_effective: str
     current_expression: str
     current_thresholds: dict[str, Any]
+
+
+# --- Statutory Deprecation & Supersession Engine (FEAT-031) ---
+
+
+class StatutoryDeprecationModel(BaseModel):
+    id: str
+    subject: str
+    subject_type: str
+    regulator: str
+    status: str
+    reason: str
+    superseded_by: str | None = None
+    effective_date: str
+    sunset_date: str | None = None
+    grandfathering_clause: str | None = None
+    replacement: list[str]
+    guidance: str
+    severity: str
+    citation_patterns: list[str] = []
+    aliases: list[str] = []
+    is_sunset_passed: bool = False
+
+
+class SupersessionNodeModel(BaseModel):
+    instrument_id: str
+    title: str
+    regulator: str
+    status: str
+    effective_date: str
+    is_currently_active: bool
+
+
+class SupersessionChainModel(BaseModel):
+    root_instrument: str
+    active_authority: str
+    depth: int
+    has_cycle: bool
+    chain: list[SupersessionNodeModel]
+
+
+class DeprecationDetectionModel(BaseModel):
+    deprecation_id: str
+    matched_text: str
+    subject: str
+    subject_type: str
+    regulator: str
+    status: str
+    severity: str
+    superseded_by: str | None = None
+    active_authority: str | None = None
+    supersession_chain: list[str] = []
+    reason: str
+    replacement: list[str]
+    guidance: str
+    effective_date: str
+    sunset_date: str | None = None
+    is_sunset_passed: bool = False
+    grandfathering_clause: str | None = None
+
+
+class CheckSupersessionRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=100000)
+    as_of_date: str | None = Field(
+        default=None, description="Optional ISO date YYYY-MM-DD for point-in-time check"
+    )
+    regulator: str | None = Field(
+        default=None, description="Optional regulator filter e.g. RBI, SEBI, PMLA"
+    )
+
+
+class CheckSupersessionResponse(BaseModel):
+    detections: list[DeprecationDetectionModel]
+    total_flagged: int
+    critical_count: int
+    high_count: int
+    medium_count: int
+    low_count: int
+    is_compliant: bool
+    recommended_actions: list[str]
+    latency_ms: float
+
+
+class DeprecationCatalogResponse(BaseModel):
+    deprecations: list[StatutoryDeprecationModel]
+    total_count: int
+    regulators: list[str]

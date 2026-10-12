@@ -69,11 +69,15 @@ from app.api.models import (
     BuildGraphRequest,
     CacheInvalidateRequest,
     CacheInvalidateResponse,
+    CheckSupersessionRequest,
+    CheckSupersessionResponse,
     CompareFormulaVersionsRequest,
     CompareFormulaVersionsResponse,
     Confidence,
     ConsistencyAnomalyModel,
     DependencyGraphResponse,
+    DeprecationCatalogResponse,
+    DeprecationDetectionModel,
     DigestDispatchResponse,
     DiscoveryTriggerRequest,
     DiscoveryTriggerResponse,
@@ -121,11 +125,14 @@ from app.api.models import (
     SimulationResponse,
     StandardListResponse,
     StandardResponse,
+    StatutoryDeprecationModel,
     StatutoryParameterModel,
     SubgraphResponse,
     SubscriptionCreateRequest,
     SubscriptionResponse,
     SuggestionResponse,
+    SupersessionChainModel,
+    SupersessionNodeModel,
     Timings,
     TrackedFormulaSummaryModel,
     UnsubscribeResponse,
@@ -2134,6 +2141,148 @@ def compare_formula_versions_endpoint(
         threshold_changes=diff.threshold_changes,
         change_type=diff.change_type.value,
         summary=diff.summary,
+    )
+
+
+# --- Statutory Deprecation & Supersession Engine (FEAT-031) ---
+
+
+@app.get(
+    "/v1/compliance/deprecations",
+    response_model=DeprecationCatalogResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def list_statutory_deprecations_endpoint(
+    regulator: str | None = None,
+    status: str | None = None,
+    subject_type: str | None = None,
+    fingerprint: str = Depends(require_api_key),
+) -> DeprecationCatalogResponse:
+    """Retrieve catalog of superseded circulars, repealed guidelines, and deprecated practices (FEAT-031)."""
+    from app.compliance.deprecation_engine import get_default_deprecation_engine
+
+    engine = get_default_deprecation_engine()
+    deprecations = engine.list_deprecations(
+        regulator=regulator,
+        status=status,
+        subject_type=subject_type,
+    )
+    models = [StatutoryDeprecationModel(**d.to_dict()) for d in deprecations]
+    unique_regulators = sorted(list({d.regulator for d in models}))
+
+    return DeprecationCatalogResponse(
+        deprecations=models,
+        total_count=len(models),
+        regulators=unique_regulators,
+    )
+
+
+@app.post(
+    "/v1/compliance/check-supersession",
+    response_model=CheckSupersessionResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "invalid request input"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def check_supersession_endpoint(
+    payload: CheckSupersessionRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> CheckSupersessionResponse:
+    """Scan policy documents or audit texts for superseded circulars and outdated practices (FEAT-031)."""
+    t0 = time.perf_counter()
+    from app.compliance.deprecation_engine import get_default_deprecation_engine
+
+    engine = get_default_deprecation_engine()
+    detections = engine.scan_text(
+        text=payload.text,
+        as_of_date=payload.as_of_date,
+        regulator_filter=payload.regulator,
+    )
+
+    latency_ms = (time.perf_counter() - t0) * 1000.0
+    metrics.DEPRECATION_SCAN_DURATION_SECONDS.observe(latency_ms / 1000.0)
+    metrics.STATUTORY_DEPRECATIONS_CHECKED_TOTAL.labels(
+        has_findings="yes" if detections else "no"
+    ).inc()
+
+    for det in detections:
+        metrics.STATUTORY_DEPRECATIONS_DETECTED_TOTAL.labels(
+            regulator=det.regulator,
+            severity=det.severity,
+        ).inc()
+
+    crit_cnt = sum(1 for d in detections if d.severity == "CRITICAL")
+    high_cnt = sum(1 for d in detections if d.severity == "HIGH")
+    med_cnt = sum(1 for d in detections if d.severity == "MEDIUM")
+    low_cnt = sum(1 for d in detections if d.severity == "LOW")
+
+    recommended_actions: list[str] = []
+    for d in detections:
+        if d.replacement:
+            reps = ", ".join(d.replacement)
+            recommended_actions.append(f"Replace '{d.subject}' with: {reps}")
+
+    detection_models = [DeprecationDetectionModel(**d.to_dict()) for d in detections]
+
+    return CheckSupersessionResponse(
+        detections=detection_models,
+        total_flagged=len(detection_models),
+        critical_count=crit_cnt,
+        high_count=high_cnt,
+        medium_count=med_cnt,
+        low_count=low_cnt,
+        is_compliant=len(detection_models) == 0,
+        recommended_actions=recommended_actions,
+        latency_ms=round(latency_ms, 3),
+    )
+
+
+@app.get(
+    "/v1/compliance/supersession-chain/{instrument_id}",
+    response_model=SupersessionChainModel,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "instrument not found"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def get_supersession_chain_endpoint(
+    instrument_id: str,
+    fingerprint: str = Depends(require_api_key),
+) -> SupersessionChainModel:
+    """Trace complete historical lineage from legacy circular to active authority (FEAT-031)."""
+    from app.compliance.deprecation_engine import get_default_deprecation_engine
+
+    engine = get_default_deprecation_engine()
+    chain = engine.get_supersession_chain(instrument_id)
+    metrics.SUPERSESSION_CHAINS_RESOLVED_TOTAL.labels(root_instrument=instrument_id[:32]).inc()
+
+    node_models = [
+        SupersessionNodeModel(
+            instrument_id=n.instrument_id,
+            title=n.title,
+            regulator=n.regulator,
+            status=n.status,
+            effective_date=n.effective_date,
+            is_currently_active=n.is_currently_active,
+        )
+        for n in chain.chain
+    ]
+
+    return SupersessionChainModel(
+        root_instrument=chain.root_instrument,
+        active_authority=chain.active_authority,
+        depth=chain.depth,
+        has_cycle=chain.has_cycle,
+        chain=node_models,
     )
 
 
