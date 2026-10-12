@@ -231,24 +231,37 @@ class Retriever:
         arms: dict[str, list[str]] = {}
         raw_scores: dict[str, float] = {}
         filter_spec = config.filter
-        if getattr(config, "auto_constrain_tags", False) and len(query.strip()) >= 3:
+
+        working_query = query
+        if getattr(config, "enable_normalization", True):
             try:
-                extracted = self.query_tagger.extract_tags(query)
+                from app.retrieval.normalizer import get_default_normalizer
+
+                normalized_res = get_default_normalizer().normalize(query)
+                working_query = normalized_res.normalized_query
+            except Exception as exc:
+                logger.warning("normalizer_failed", error=str(exc))
+
+        if getattr(config, "auto_constrain_tags", False) and len(working_query.strip()) >= 3:
+            try:
+                extracted = self.query_tagger.extract_tags(working_query)
                 if extracted:
                     self.query_tagger.record_metrics(extracted)
                     filter_spec = self.query_tagger.translate_to_filter(extracted, filter_spec)
-                    logger.debug("search.auto_constrained_by_tags", query=query, tags=extracted)
+                    logger.debug(
+                        "search.auto_constrained_by_tags", query=working_query, tags=extracted
+                    )
             except Exception as exc:
                 logger.warning("query_tagger_failed", error=str(exc))
 
-        dense_query = query
-        lexical_query = query
-        effective_query = query
+        dense_query = working_query
+        lexical_query = working_query
+        effective_query = working_query
         if getattr(config, "enable_disambiguation", True):
             from app.retrieval.disambiguation import get_token_disambiguator
 
             disambiguator = get_token_disambiguator()
-            effective_query, _ = disambiguator.disambiguate_query(query)
+            effective_query, _ = disambiguator.disambiguate_query(working_query)
             dense_query = effective_query
             lexical_query = effective_query
 

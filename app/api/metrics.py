@@ -279,6 +279,12 @@ COREFERENCES_RESOLVED_TOTAL = Counter(
     ("status",),
 )
 
+TYPOS_CORRECTED_TOTAL = Counter(
+    "docscout_typos_corrected_total",
+    "Count of typos corrected in search queries (FEAT-018).",
+    ("term",),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

@@ -68,6 +68,8 @@ class SearchRequest(BaseModel):
     difficulty_band: Literal["foundational", "intermediate", "advanced", "expert"] | None = None
     # Automatic query tagging & metadata constraining (FEAT-016)
     auto_constrain_tags: bool = False
+    # Typo-tolerant regulatory token normalization (FEAT-018)
+    enable_normalization: bool = True
 
 
 class Passage(BaseModel):
@@ -160,6 +162,8 @@ class SearchResponse(BaseModel):
     filter: MetadataFilter | None = None
     intent: IntentClassification | None = None
     extracted_tags: list[str] = Field(default_factory=list)
+    normalized_query: str | None = None
+    corrections_applied: dict[str, str] = Field(default_factory=dict)
 
 
 class LivenessResponse(BaseModel):

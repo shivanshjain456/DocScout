@@ -259,6 +259,7 @@ class RetrievalConfig:
     disambiguation_min_confidence: float = 0.70
     difficulty_band: str | None = None
     auto_constrain_tags: bool = False
+    enable_normalization: bool = True
 
     def __post_init__(self) -> None:
         if self.rerank and self.rerank_top_n < self.k_final:

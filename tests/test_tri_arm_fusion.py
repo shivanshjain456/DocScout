@@ -128,7 +128,8 @@ def test_performance_under_0_4ms() -> None:
     }
 
     # Warmup
-    tri_arm_fusion(arms)
+    for _ in range(10):
+        tri_arm_fusion(arms)
 
     timings: list[float] = []
     for _ in range(50):

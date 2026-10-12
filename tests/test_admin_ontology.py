@@ -313,7 +313,9 @@ def test_admin_api_endpoints_without_pool(test_client: TestClient) -> None:
     assert extracted_records[0]["status"] == "candidate"
 
 
-def test_admin_status_transitions_with_mock_pool(test_client: TestClient) -> None:
+def test_admin_status_transitions_with_mock_pool(
+    test_client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Test approval and rejection status transitions and metrics."""
     mock_pool = MagicMock()
     mock_conn = MagicMock()
@@ -340,7 +342,7 @@ def test_admin_status_transitions_with_mock_pool(test_client: TestClient) -> Non
         "Verified against Chapter 1",
     )
 
-    app.state.pool = mock_pool
+    monkeypatch.setattr(app.state, "pool", mock_pool, raising=False)
     headers = auth(PRIMARY_KEY)
 
     before_approved = ONTOLOGY_CANDIDATES_REVIEWED.labels(action="approved")._value.get()

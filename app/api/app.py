@@ -137,6 +137,8 @@ class CachedResult:
     answer: GeneratedAnswer | None = None
     intent: IntentClassification | None = None
     extracted_tags: list[str] = field(default_factory=list)
+    normalized_query: str | None = None
+    corrections_applied: dict[str, str] = field(default_factory=dict)
 
 
 @asynccontextmanager
@@ -498,6 +500,7 @@ def _config_for(payload: SearchRequest) -> RetrievalConfig:
             enable_disambiguation=payload.enable_disambiguation,
             difficulty_band=payload.difficulty_band,
             auto_constrain_tags=payload.auto_constrain_tags,
+            enable_normalization=payload.enable_normalization,
         )
     # Single-arm modes are the documented ADR-0006 ablation, reachable so the A/B can be
     # reproduced against the running service.
@@ -516,6 +519,7 @@ def _config_for(payload: SearchRequest) -> RetrievalConfig:
         enable_disambiguation=payload.enable_disambiguation,
         difficulty_band=payload.difficulty_band,
         auto_constrain_tags=payload.auto_constrain_tags,
+        enable_normalization=payload.enable_normalization,
     )
 
 
@@ -555,6 +559,7 @@ def search(
         payload.enable_intent_routing,
         payload.difficulty_band,
         payload.auto_constrain_tags,
+        payload.enable_normalization,
     )
 
     if payload.relationship_filter is not None:
@@ -613,6 +618,8 @@ def search(
             filter=payload.filter,
             intent=cached.intent,
             extracted_tags=cached.extracted_tags,
+            normalized_query=cached.normalized_query,
+            corrections_applied=cached.corrections_applied,
         )
 
     # A bypassed cache is not a miss: counting it as one would make the hit ratio depend
@@ -713,6 +720,19 @@ def search(
         except Exception as exc:
             logger.warning("query_tagger_failed", error=str(exc))
 
+    normalized_query_text: str | None = None
+    corrections_applied: dict[str, str] = {}
+    if payload.enable_normalization:
+        try:
+            from app.retrieval.normalizer import get_default_normalizer
+
+            norm_res = get_default_normalizer().normalize(payload.query)
+            if norm_res.corrections_applied:
+                normalized_query_text = norm_res.normalized_query
+                corrections_applied = norm_res.corrections_applied
+        except Exception as exc:
+            logger.warning("normalizer_failed", error=str(exc))
+
     result = CachedResult(
         passages=passages,
         confidence=confidence,
@@ -720,6 +740,8 @@ def search(
         answer=generated_answer,
         intent=intent_classification,
         extracted_tags=extracted_tags,
+        normalized_query=normalized_query_text,
+        corrections_applied=corrections_applied,
     )
     if payload.use_cache:
         # Check that generation hasn't moved while request was in flight
@@ -764,6 +786,7 @@ def search(
         passages=len(result.passages),
         generated_answer=generated_answer is not None,
         intent_id=intent_classification.intent_id if intent_classification else None,
+        normalized_query=result.normalized_query,
     )
     return SearchResponse(
         query=payload.query,
@@ -782,6 +805,8 @@ def search(
         filter=payload.filter,
         intent=result.intent,
         extracted_tags=result.extracted_tags,
+        normalized_query=result.normalized_query,
+        corrections_applied=result.corrections_applied,
     )
 
 
