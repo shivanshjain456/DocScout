@@ -61,10 +61,15 @@ from app.api.chat import router as chat_router
 from app.api.models import (
     AnnotatedFormulaResponse,
     AnnotateFormulaRequest,
+    AuditRuleDefinitionModel,
+    AuditRulesCatalogResponse,
+    AuditSanityRequest,
+    AuditSanityResponse,
     BoundaryCatalogResponse,
     CacheInvalidateRequest,
     CacheInvalidateResponse,
     Confidence,
+    ConsistencyAnomalyModel,
     DigestDispatchResponse,
     DiscoveryTriggerRequest,
     DiscoveryTriggerResponse,
@@ -1377,6 +1382,115 @@ def get_document_statutory_parameters(
         document_id=document_id,
         parameters=params,
         total_count=len(params),
+    )
+
+
+@app.post(
+    "/v1/compliance/audit-sanity",
+    response_model=AuditSanityResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "invalid audit request input"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def audit_mathematical_sanity_endpoint(
+    payload: AuditSanityRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> AuditSanityResponse:
+    """Execute mathematical sanity and cross-footing consistency audit (FEAT-027)."""
+    t0 = time.perf_counter()
+    from app.compliance.consistency_auditor import (
+        AuditSubmission,
+        AuditTable,
+        get_default_consistency_auditor,
+    )
+
+    auditor = get_default_consistency_auditor()
+    tables = [
+        AuditTable(
+            title=t.title,
+            headers=t.headers,
+            rows=t.rows,
+            row_labels=t.row_labels,
+            has_row_totals=t.has_row_totals,
+            has_col_totals=t.has_col_totals,
+            tolerance=t.tolerance,
+        )
+        for t in payload.tables
+    ]
+
+    submission = AuditSubmission(
+        document_id=payload.document_id,
+        return_code=payload.return_code,
+        declared_values=payload.declared_values,
+        tables=tables,
+        tolerance=payload.tolerance,
+    )
+
+    result = auditor.audit_submission(submission)
+    latency_ms = (time.perf_counter() - t0) * 1000.0
+
+    metrics.CONSISTENCY_AUDIT_DURATION_SECONDS.observe(latency_ms / 1000.0)
+    metrics.CONSISTENCY_AUDITS_TOTAL.labels(
+        return_code=payload.return_code,
+        status="valid" if result.is_valid else "invalid",
+    ).inc()
+    for a in result.anomalies:
+        metrics.CONSISTENCY_ANOMALIES_DETECTED_TOTAL.labels(
+            anomaly_type=a.anomaly_type.value,
+            severity=a.severity.value,
+        ).inc()
+
+    anomaly_models = [
+        ConsistencyAnomalyModel(
+            anomaly_type=a.anomaly_type.value,
+            severity=a.severity.value,
+            rule_name=a.rule_name,
+            message=a.message,
+            location=a.location,
+            reported_value=a.reported_value,
+            expected_value=a.expected_value,
+            discrepancy=a.discrepancy,
+            tolerance=a.tolerance,
+            remediation_hint=a.remediation_hint,
+        )
+        for a in result.anomalies
+    ]
+
+    return AuditSanityResponse(
+        is_valid=result.is_valid,
+        total_rules_checked=result.total_rules_checked,
+        anomalies_count=result.anomalies_count,
+        anomalies=anomaly_models,
+        passed_checks=result.passed_checks,
+        summary=result.summary,
+        latency_ms=round(latency_ms, 3),
+    )
+
+
+@app.get(
+    "/v1/compliance/audit-rules",
+    response_model=AuditRulesCatalogResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def get_audit_rules_catalog_endpoint(
+    fingerprint: str = Depends(require_api_key),
+) -> AuditRulesCatalogResponse:
+    """Catalog of standard mathematical sanity and cross-footing consistency rules (FEAT-027)."""
+    from app.compliance.consistency_auditor import get_default_consistency_auditor
+
+    auditor = get_default_consistency_auditor()
+    raw_rules = auditor.get_rule_catalog()
+    rule_models = [AuditRuleDefinitionModel(**r) for r in raw_rules]
+    return AuditRulesCatalogResponse(
+        rules=rule_models,
+        total_count=len(rule_models),
     )
 
 

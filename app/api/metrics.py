@@ -375,6 +375,24 @@ STATUTORY_EXTRACTION_DURATION_SECONDS = Histogram(
     buckets=[0.0005, 0.001, 0.005, 0.01, 0.05, 0.1],
 )
 
+CONSISTENCY_AUDITS_TOTAL = Counter(
+    "docscout_consistency_audits_total",
+    "Total mathematical sanity and consistency audits performed (FEAT-027).",
+    ("return_code", "status"),
+)
+
+CONSISTENCY_ANOMALIES_DETECTED_TOTAL = Counter(
+    "docscout_consistency_anomalies_detected_total",
+    "Total mathematical and consistency anomalies flagged (FEAT-027).",
+    ("anomaly_type", "severity"),
+)
+
+CONSISTENCY_AUDIT_DURATION_SECONDS = Histogram(
+    "docscout_consistency_audit_duration_seconds",
+    "Latency of mathematical sanity auditing in seconds (FEAT-027).",
+    buckets=[0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

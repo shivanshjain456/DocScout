@@ -739,3 +739,63 @@ class DocumentParametersResponse(BaseModel):
     document_id: str
     parameters: list[StatutoryParameterModel]
     total_count: int
+
+
+# --- Mathematical Sanity & Consistency Auditor (FEAT-027) ---
+
+
+class ConsistencyAnomalyModel(BaseModel):
+    anomaly_type: str
+    severity: str
+    rule_name: str
+    message: str
+    location: str
+    reported_value: float | None = None
+    expected_value: float | None = None
+    discrepancy: float | None = None
+    tolerance: float = 0.01
+    remediation_hint: str = ""
+
+
+class AuditTableModel(BaseModel):
+    title: str | None = None
+    headers: list[str] = Field(default_factory=list)
+    rows: list[list[Any]] = Field(default_factory=list)
+    row_labels: list[str] = Field(default_factory=list)
+    has_row_totals: bool | None = None
+    has_col_totals: bool | None = None
+    tolerance: float = 0.01
+
+
+class AuditSanityRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    document_id: str | None = None
+    return_code: str = "GENERIC"
+    declared_values: dict[str, float] = Field(default_factory=dict)
+    tables: list[AuditTableModel] = Field(default_factory=list)
+    tolerance: float = 0.01
+
+
+class AuditSanityResponse(BaseModel):
+    is_valid: bool
+    total_rules_checked: int
+    anomalies_count: int
+    anomalies: list[ConsistencyAnomalyModel]
+    passed_checks: list[str]
+    summary: str
+    latency_ms: float
+
+
+class AuditRuleDefinitionModel(BaseModel):
+    rule_id: str
+    name: str
+    category: str
+    severity: str
+    statutory_ref: str
+    description: str
+
+
+class AuditRulesCatalogResponse(BaseModel):
+    rules: list[AuditRuleDefinitionModel]
+    total_count: int

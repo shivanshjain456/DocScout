@@ -6,6 +6,16 @@ from app.compliance.boundary_validator import (
     StatutoryBoundaryValidator,
     get_default_boundary_validator,
 )
+from app.compliance.consistency_auditor import (
+    AnomalyType,
+    AuditResult,
+    AuditSeverity,
+    AuditSubmission,
+    AuditTable,
+    ConsistencyAnomaly,
+    MathematicalSanityAuditor,
+    get_default_consistency_auditor,
+)
 from app.compliance.formula_engine import FormulaEngine, get_default_formula_engine
 from app.compliance.simulator import ComplianceSimulator, get_default_compliance_simulator
 from app.compliance.standards_registry import (
@@ -22,8 +32,15 @@ from app.ingest.standard_linker import (
 
 __all__ = [
     "AnnotatedFormula",
+    "AnomalyType",
+    "AuditResult",
+    "AuditSeverity",
+    "AuditSubmission",
+    "AuditTable",
     "ComplianceSimulator",
+    "ConsistencyAnomaly",
     "FormulaEngine",
+    "MathematicalSanityAuditor",
     "StandardDefinition",
     "StandardFormulaAnnotator",
     "StandardLinkerConfig",
@@ -31,6 +48,7 @@ __all__ = [
     "StatutoryBoundaryValidator",
     "get_default_boundary_validator",
     "get_default_compliance_simulator",
+    "get_default_consistency_auditor",
     "get_default_formula_engine",
     "get_default_standard_annotator",
     "get_default_standards_registry",
