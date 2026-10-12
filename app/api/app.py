@@ -59,6 +59,8 @@ from app.api.cache import (
 )
 from app.api.chat import router as chat_router
 from app.api.models import (
+    AnnotatedFormulaResponse,
+    AnnotateFormulaRequest,
     BoundaryCatalogResponse,
     CacheInvalidateRequest,
     CacheInvalidateResponse,
@@ -89,6 +91,8 @@ from app.api.models import (
     SearchResponse,
     SimulationRequest,
     SimulationResponse,
+    StandardListResponse,
+    StandardResponse,
     SubgraphResponse,
     SubscriptionCreateRequest,
     SubscriptionResponse,
@@ -1063,6 +1067,183 @@ def simulate_compliance_sensitivity(
     metrics.SIMULATION_DURATION_SECONDS.labels(formula_id=payload.formula_id).observe(duration)
 
     return response
+
+
+# ---------------------------------------------------------------------------
+# Standard-Linked Formula Annotator Endpoints (FEAT-025)
+# ---------------------------------------------------------------------------
+
+
+@app.get(
+    "/v1/compliance/standards",
+    response_model=StandardListResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def list_regulatory_standards(
+    domain: str | None = None,
+    governing_body: str | None = None,
+    query: str | None = None,
+    fingerprint: str = Depends(require_api_key),
+) -> StandardListResponse:
+    """List 53+ international and statutory governance standards (FEAT-025)."""
+    from app.compliance.standards_registry import get_default_standards_registry
+
+    registry = get_default_standards_registry()
+    if query:
+        standards = registry.search_standards(query)
+    else:
+        standards = registry.list_standards(domain=domain, governing_body=governing_body)
+
+    resp_items = [
+        StandardResponse(
+            id=s.id,
+            name=s.name,
+            governing_body=s.governing_body,
+            domain=s.domain,
+            jurisdiction=s.jurisdiction,
+            category=s.category,
+            description=s.description,
+            official_reference_url=s.official_reference_url,
+            note=s.note,
+            aliases=s.aliases,
+        )
+        for s in standards
+    ]
+    return StandardListResponse(standards=resp_items, total=len(resp_items))
+
+
+@app.get(
+    "/v1/compliance/standards/{standard_id}",
+    response_model=StandardResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "standard not found"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def get_regulatory_standard(
+    standard_id: str,
+    fingerprint: str = Depends(require_api_key),
+) -> StandardResponse:
+    """Retrieve specifications for a single regulatory standard (FEAT-025)."""
+    from app.compliance.standards_registry import get_default_standards_registry
+
+    registry = get_default_standards_registry()
+    std = registry.get_standard(standard_id)
+    if std is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Standard '{standard_id}' not found in registry.",
+        )
+
+    return StandardResponse(
+        id=std.id,
+        name=std.name,
+        governing_body=std.governing_body,
+        domain=std.domain,
+        jurisdiction=std.jurisdiction,
+        category=std.category,
+        description=std.description,
+        official_reference_url=std.official_reference_url,
+        note=std.note,
+        aliases=std.aliases,
+    )
+
+
+@app.get(
+    "/v1/compliance/formulas/{formula_id}/standards",
+    response_model=AnnotatedFormulaResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "formula not found"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def get_formula_standards(
+    formula_id: str,
+    fingerprint: str = Depends(require_api_key),
+) -> AnnotatedFormulaResponse:
+    """Retrieve standard lineage and governing body cross-link for a formula (FEAT-025)."""
+    from app.compliance.formula_engine import get_default_formula_engine
+    from app.ingest.standard_linker import get_default_standard_annotator
+
+    engine = get_default_formula_engine()
+    formula = engine.get_registered_formula(formula_id)
+    if formula is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Formula '{formula_id}' not found.",
+        )
+
+    annotator = get_default_standard_annotator()
+    annotated = annotator.annotate_formula(formula)
+
+    return AnnotatedFormulaResponse(
+        formula_id=annotated.formula_id,
+        formula_name=annotated.formula_name,
+        expression=annotated.expression,
+        standard_id=annotated.standard_id,
+        standard_name=annotated.standard_name,
+        governing_body=annotated.governing_body,
+        domain=annotated.domain,
+        standard_citation=annotated.standard_citation,
+        confidence=annotated.confidence,
+        status=annotated.status,
+        linked_clauses=annotated.linked_clauses,
+    )
+
+
+@app.post(
+    "/v1/compliance/annotate-formula",
+    response_model=AnnotatedFormulaResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "invalid formula input"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def annotate_formula_endpoint(
+    payload: AnnotateFormulaRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> AnnotatedFormulaResponse:
+    """Cross-link arbitrary or extracted mathematical formulas to standards (FEAT-025)."""
+    from app.ingest.standard_linker import (
+        StandardFormulaAnnotator,
+        StandardLinkerConfig,
+    )
+
+    annotator = StandardFormulaAnnotator(
+        config=StandardLinkerConfig(strict_matching=payload.strict_matching)
+    )
+
+    formula_input = {
+        "id": payload.formula_id or "",
+        "name": payload.formula_name or "",
+        "expression": payload.expression or "",
+        "standard": payload.standard_hint,
+    }
+    annotated = annotator.annotate_formula(formula_input, standard_hint=payload.standard_hint)
+
+    return AnnotatedFormulaResponse(
+        formula_id=annotated.formula_id,
+        formula_name=annotated.formula_name,
+        expression=annotated.expression,
+        standard_id=annotated.standard_id,
+        standard_name=annotated.standard_name,
+        governing_body=annotated.governing_body,
+        domain=annotated.domain,
+        standard_citation=annotated.standard_citation,
+        confidence=annotated.confidence,
+        status=annotated.status,
+        linked_clauses=annotated.linked_clauses,
+    )
 
 
 @app.get(

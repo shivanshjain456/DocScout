@@ -351,6 +351,18 @@ SIMULATION_DURATION_SECONDS = Histogram(
     buckets=LATENCY_BUCKETS,
 )
 
+STANDARD_FORMULA_LINKS_TOTAL = Counter(
+    "docscout_standard_formula_links_total",
+    "Total formulas linked to regulatory standards (FEAT-025).",
+    ("standard_id", "status"),
+)
+
+STANDARD_LINKING_DURATION_SECONDS = Histogram(
+    "docscout_standard_linking_duration_seconds",
+    "Latency of standard formula linking in seconds (FEAT-025).",
+    buckets=[0.0001, 0.0005, 0.001, 0.005, 0.01],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

@@ -652,3 +652,47 @@ class SuggestionResponse(BaseModel):
     suggestions: list[QuerySuggestion]
     latency_ms: float
     total: int
+
+
+# --- Standard-Linked Formula Annotator (FEAT-025) ---
+
+
+class StandardResponse(BaseModel):
+    id: str
+    name: str
+    governing_body: str
+    domain: str
+    jurisdiction: str = "global"
+    category: str = "technical"
+    description: str | None = None
+    official_reference_url: str | None = None
+    note: str | None = None
+    aliases: list[str] = Field(default_factory=list)
+
+
+class StandardListResponse(BaseModel):
+    total: int
+    standards: list[StandardResponse]
+
+
+class AnnotatedFormulaResponse(BaseModel):
+    formula_id: str
+    formula_name: str
+    expression: str
+    standard_id: str | None = None
+    standard_name: str | None = None
+    governing_body: str | None = None
+    domain: str | None = None
+    standard_citation: str | None = None
+    confidence: float = 1.0
+    status: Literal["LINKED", "UNLINKED", "AMBIGUOUS"] = "LINKED"
+    linked_clauses: list[str] = Field(default_factory=list)
+
+
+class AnnotateFormulaRequest(BaseModel):
+    formula_id: str | None = None
+    formula_name: str | None = None
+    expression: str | None = None
+    standard_hint: str | None = None
+    text_snippet: str | None = None
+    strict_matching: bool = True
