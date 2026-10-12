@@ -8,6 +8,13 @@
 </p>
 
 <p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/svg/docscout-primary-dark.svg">
+    <img src="docs/brand/svg/docscout-primary.svg" alt="DocScout - citation-grounded regulatory retrieval over RBI/SEBI circulars" width="420">
+  </picture>
+</p>
+
+<p align="center">
   <strong>Clone to queryable in 90 seconds:</strong> <code>cp .env.example .env && make deploy && curl -s localhost:8000/healthz</code> · <a href="https://github.com/shivanshjain456/DocScout/actions/runs/38037523415">5/5 green at 38037523415</a><br>
   Without clone: <code>docker run -p 8000:8000 ghcr.io/shivanshjain456/docscout:1.0.1</code>
 </p>
