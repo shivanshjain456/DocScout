@@ -28,7 +28,7 @@
 - [x] FEAT-014: Regulatory HyDE (Hypothetical Document Embeddings)
 - [x] FEAT-015: Audience & Difficulty Banding Filter
 - [x] FEAT-016: Query Tagging & Metadata Constrained Retrieval
-- [ ] FEAT-017: Multi-Turn Conversational Coreference Resolver
+- [x] FEAT-017: Multi-Turn Conversational Coreference Resolver
 - [ ] FEAT-018: Typo-Tolerant Regulatory Token Normalizer
 - [ ] FEAT-019: Interactive Search Query Suggestions
 - [ ] FEAT-020: Persona-Tailored Query Profiling
@@ -151,6 +151,7 @@
 | FEAT-014 | da9df4a | PASS | Structured statutory clause synthesis, RBI/SEBI circular formatting, capped at 120 tokens, p95 <= 1.0ms |
 | FEAT-015 | 9eefb03 | PASS | 4-tier taxonomy difficulty banding (foundational <=150w, intermediate, advanced, expert <=512w), p95 <= 0.1ms |
 | FEAT-016 | ba3ea60 | PASS | 45-tag domain taxonomy inverted index, metadata WHERE clause, 100% eval accuracy, p95 <= 0.05ms |
+| FEAT-017 | 08b5a73 | PASS | Multi-turn coreference resolution (anaphora & ellipses), /v1/chat endpoint, LRU <=10KB session store, p95 <= 0.05ms |
 
 ---
 
