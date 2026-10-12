@@ -1,13 +1,13 @@
-# DocScout — identity usage
+# DocScout - identity usage
 
 > Citation-grounded regulatory retrieval over RBI/SEBI circulars. Every answer cites its source or refuses to answer.
 > Audience: Analysts, auditors and fintech compliance teams
 
 ## Concept
-A bookmark ribbon (the document under review) pierced by a compass-needle negative space — the scout that always points at the cited source.
+A bookmark ribbon (the document under review) pierced by a compass-needle negative space - the scout that always points at the cited source.
 
 The compact mark carries the identity alone; the primary lockup pairs it with the
-'DocScout' wordmark (Space Grotesk SemiBold, converted to outlines — no font
+'DocScout' wordmark (Space Grotesk SemiBold, converted to outlines - no font
 required to render the production files).
 
 ## Colour
@@ -18,7 +18,7 @@ required to render the production files).
 
 Single-colour reproduction: use `*-mono.svg` (all geometry set to
 `currentColor`); set any colour ≥ 4.5:1 contrast against the background.
-Negative space (needle, slashes, core, route) must always show the background —
+Negative space (needle, slashes, core, route) must always show the background -
 never fill it with a second colour.
 
 ## Typography
