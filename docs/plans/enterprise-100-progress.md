@@ -39,7 +39,7 @@
 - [x] FEAT-023: Statutory Threshold & Boundary Validator
 - [x] FEAT-024: Compliance "What-If" Sensitivity Simulator
 - [x] FEAT-025: Standard-Linked Formula Annotator
-- [ ] FEAT-026: Numerical Regulatory Evidence Extractor
+- [x] FEAT-026: Numerical Regulatory Evidence Extractor
 - [ ] FEAT-027: Mathematical Sanity & Consistency Auditor
 - [ ] FEAT-028: Indian Financial Unit Normalizer
 - [ ] FEAT-029: Formula Dependency Graph Builder
@@ -160,6 +160,7 @@
 | FEAT-023 | 4a2f548 | PASS | Statutory threshold & boundary validator (38 rules, RBI/Basel/ISO boundaries, AMBER tolerance, POST /v1/compliance/validate-ratios, p95 <= 0.05ms) |
 | FEAT-024 | ecb4efd | PASS | Compliance "What-If" sensitivity simulator (partial derivatives, elasticity, parameter sweeps, stress presets, POST /v1/compliance/simulate, p95 <= 0.8ms) |
 | FEAT-025 | 5e186e5 | PASS | Standard-linked formula annotator (53 standards registry, ISO/Basel/DO-178C cross-linking, GET /v1/compliance/standards, POST /v1/compliance/annotate-formula, p95 <= 0.05ms) |
+| FEAT-026 | 259aed8 | PASS | Numerical regulatory evidence extractor (penalty/threshold/filing window parser, Indian currency scaling, POST /v1/compliance/extract-parameters, p95 <= 0.4ms) |
 
 
 ---
