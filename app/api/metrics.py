@@ -393,6 +393,24 @@ CONSISTENCY_AUDIT_DURATION_SECONDS = Histogram(
     buckets=[0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05],
 )
 
+UNIT_NORMALIZATIONS_TOTAL = Counter(
+    "docscout_unit_normalizations_total",
+    "Total financial unit normalizations executed (FEAT-028).",
+    ("currency", "scale"),
+)
+
+UNIT_EQUIVALENCE_CHECKS_TOTAL = Counter(
+    "docscout_unit_equivalence_checks_total",
+    "Total unit equivalence comparisons performed (FEAT-028).",
+    ("result",),
+)
+
+UNIT_NORMALIZATION_DURATION_SECONDS = Histogram(
+    "docscout_unit_normalization_duration_seconds",
+    "Latency of unit normalization in seconds (FEAT-028).",
+    buckets=[0.00005, 0.0001, 0.0005, 0.001, 0.005],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

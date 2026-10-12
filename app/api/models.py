@@ -799,3 +799,53 @@ class AuditRuleDefinitionModel(BaseModel):
 class AuditRulesCatalogResponse(BaseModel):
     rules: list[AuditRuleDefinitionModel]
     total_count: int
+
+
+# --- Indian Financial Unit Normalizer (FEAT-028) ---
+
+
+class NormalizedQuantityModel(BaseModel):
+    raw_expression: str
+    canonical_value: float
+    canonical_unit: str
+    currency_symbol: str | None = None
+    scale_label: str
+    scale_multiplier: float
+    indian_words: str
+    indian_numeric_formatted: str
+    international_words: str
+    international_numeric_formatted: str
+    bps_equivalent: float | None = None
+    percent_equivalent: float | None = None
+    synonym_representations: list[str] = Field(default_factory=list)
+    is_valid: bool = True
+
+
+class NormalizeUnitsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    expressions: list[str] = Field(..., min_length=1, max_length=100)
+
+
+class NormalizeUnitsResponse(BaseModel):
+    results: list[NormalizedQuantityModel]
+    total_count: int
+    latency_ms: float
+
+
+class QuantityComparisonRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    expression_a: str = Field(..., min_length=1, max_length=200)
+    expression_b: str = Field(..., min_length=1, max_length=200)
+    tolerance: float = 0.001
+
+
+class QuantityComparisonResponse(BaseModel):
+    are_equivalent: bool
+    quantity_a: NormalizedQuantityModel
+    quantity_b: NormalizedQuantityModel
+    absolute_difference: float
+    relative_difference: float
+    tolerance: float
+    latency_ms: float

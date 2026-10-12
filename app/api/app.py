@@ -84,11 +84,16 @@ from app.api.models import (
     GraphNode,
     IntentClassification,
     LivenessResponse,
+    NormalizedQuantityModel,
+    NormalizeUnitsRequest,
+    NormalizeUnitsResponse,
     OCRInspectionResponse,
     Passage,
     PersonaListResponse,
     PersonaProfileResponse,
     Provenance,
+    QuantityComparisonRequest,
+    QuantityComparisonResponse,
     RatioValidationRequest,
     RatioValidationResponse,
     ReadinessResponse,
@@ -1491,6 +1496,143 @@ def get_audit_rules_catalog_endpoint(
     return AuditRulesCatalogResponse(
         rules=rule_models,
         total_count=len(rule_models),
+    )
+
+
+@app.post(
+    "/v1/compliance/normalize-units",
+    response_model=NormalizeUnitsResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "invalid request input"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def normalize_financial_units_endpoint(
+    payload: NormalizeUnitsRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> NormalizeUnitsResponse:
+    """Normalize financial expressions across Indian and International scales (FEAT-028)."""
+    t0 = time.perf_counter()
+    from app.compliance.unit_normalizer import get_default_unit_normalizer
+
+    normalizer = get_default_unit_normalizer()
+    results: list[NormalizedQuantityModel] = []
+
+    for expr in payload.expressions:
+        norm = normalizer.parse(expr)
+        metrics.UNIT_NORMALIZATIONS_TOTAL.labels(
+            currency=norm.canonical_unit,
+            scale=norm.scale_label,
+        ).inc()
+        results.append(
+            NormalizedQuantityModel(
+                raw_expression=norm.raw_expression,
+                canonical_value=norm.canonical_value,
+                canonical_unit=norm.canonical_unit,
+                currency_symbol=norm.currency_symbol,
+                scale_label=norm.scale_label,
+                scale_multiplier=norm.scale_multiplier,
+                indian_words=norm.indian_words,
+                indian_numeric_formatted=norm.indian_numeric_formatted,
+                international_words=norm.international_words,
+                international_numeric_formatted=norm.international_numeric_formatted,
+                bps_equivalent=norm.bps_equivalent,
+                percent_equivalent=norm.percent_equivalent,
+                synonym_representations=norm.synonym_representations,
+                is_valid=norm.is_valid,
+            )
+        )
+
+    latency_ms = (time.perf_counter() - t0) * 1000.0
+    metrics.UNIT_NORMALIZATION_DURATION_SECONDS.observe(latency_ms / 1000.0)
+
+    return NormalizeUnitsResponse(
+        results=results,
+        total_count=len(results),
+        latency_ms=round(latency_ms, 3),
+    )
+
+
+@app.post(
+    "/v1/compliance/compare-quantities",
+    response_model=QuantityComparisonResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "invalid request input"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def compare_financial_quantities_endpoint(
+    payload: QuantityComparisonRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> QuantityComparisonResponse:
+    """Compare equivalence between two statutory or financial expressions (FEAT-028)."""
+    t0 = time.perf_counter()
+    from app.compliance.unit_normalizer import get_default_unit_normalizer
+
+    normalizer = get_default_unit_normalizer()
+    norm_a = normalizer.parse(payload.expression_a)
+    norm_b = normalizer.parse(payload.expression_b)
+
+    are_equiv = normalizer.are_equivalent(
+        payload.expression_a,
+        payload.expression_b,
+        tolerance=payload.tolerance,
+    )
+
+    diff = abs(norm_a.canonical_value - norm_b.canonical_value)
+    max_val = max(abs(norm_a.canonical_value), abs(norm_b.canonical_value))
+    rel_diff = diff / max_val if max_val > 0 else 0.0
+
+    latency_ms = (time.perf_counter() - t0) * 1000.0
+    metrics.UNIT_EQUIVALENCE_CHECKS_TOTAL.labels(
+        result="equivalent" if are_equiv else "mismatch"
+    ).inc()
+
+    model_a = NormalizedQuantityModel(
+        raw_expression=norm_a.raw_expression,
+        canonical_value=norm_a.canonical_value,
+        canonical_unit=norm_a.canonical_unit,
+        currency_symbol=norm_a.currency_symbol,
+        scale_label=norm_a.scale_label,
+        scale_multiplier=norm_a.scale_multiplier,
+        indian_words=norm_a.indian_words,
+        indian_numeric_formatted=norm_a.indian_numeric_formatted,
+        international_words=norm_a.international_words,
+        international_numeric_formatted=norm_a.international_numeric_formatted,
+        bps_equivalent=norm_a.bps_equivalent,
+        percent_equivalent=norm_a.percent_equivalent,
+        synonym_representations=norm_a.synonym_representations,
+        is_valid=norm_a.is_valid,
+    )
+    model_b = NormalizedQuantityModel(
+        raw_expression=norm_b.raw_expression,
+        canonical_value=norm_b.canonical_value,
+        canonical_unit=norm_b.canonical_unit,
+        currency_symbol=norm_b.currency_symbol,
+        scale_label=norm_b.scale_label,
+        scale_multiplier=norm_b.scale_multiplier,
+        indian_words=norm_b.indian_words,
+        indian_numeric_formatted=norm_b.indian_numeric_formatted,
+        international_words=norm_b.international_words,
+        international_numeric_formatted=norm_b.international_numeric_formatted,
+        bps_equivalent=norm_b.bps_equivalent,
+        percent_equivalent=norm_b.percent_equivalent,
+        synonym_representations=norm_b.synonym_representations,
+        is_valid=norm_b.is_valid,
+    )
+
+    return QuantityComparisonResponse(
+        are_equivalent=are_equiv,
+        quantity_a=model_a,
+        quantity_b=model_b,
+        absolute_difference=round(diff, 6),
+        relative_difference=round(rel_diff, 6),
+        tolerance=payload.tolerance,
+        latency_ms=round(latency_ms, 3),
     )
 
 

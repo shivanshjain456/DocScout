@@ -23,6 +23,13 @@ from app.compliance.standards_registry import (
     StandardsRegistry,
     get_default_standards_registry,
 )
+from app.compliance.unit_normalizer import (
+    IndianFinancialUnitNormalizer,
+    NormalizedFinancialValue,
+    format_indian_number,
+    format_international_number,
+    get_default_unit_normalizer,
+)
 from app.ingest.standard_linker import (
     AnnotatedFormula,
     StandardFormulaAnnotator,
@@ -40,16 +47,21 @@ __all__ = [
     "ComplianceSimulator",
     "ConsistencyAnomaly",
     "FormulaEngine",
+    "IndianFinancialUnitNormalizer",
     "MathematicalSanityAuditor",
+    "NormalizedFinancialValue",
     "StandardDefinition",
     "StandardFormulaAnnotator",
     "StandardLinkerConfig",
     "StandardsRegistry",
     "StatutoryBoundaryValidator",
+    "format_indian_number",
+    "format_international_number",
     "get_default_boundary_validator",
     "get_default_compliance_simulator",
     "get_default_consistency_auditor",
     "get_default_formula_engine",
     "get_default_standard_annotator",
     "get_default_standards_registry",
+    "get_default_unit_normalizer",
 ]
