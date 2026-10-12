@@ -46,7 +46,7 @@
 - [x] FEAT-030: Historical Formula Evolution & Versioning
 
 ### Pillar 4: Regulatory Conflict, Deprecation & Antipattern Auditing
-- [ ] FEAT-031: Statutory Deprecation & Supersession Engine
+- [x] FEAT-031: Statutory Deprecation & Supersession Engine
 - [ ] FEAT-032: Circular Clause Conflict Detector
 - [ ] FEAT-033: Regulatory & Technical Antipattern Scanner
 - [ ] FEAT-034: "Instead-Of" Prescriptive Remediation Engine
@@ -165,6 +165,7 @@
 | FEAT-028 | 8b7bda2 | PASS | Indian financial unit normalizer (bidirectional Lakh/Crore/Mn/Bn/bps/pct conversion over 55 representations, comma formatting, POST /v1/compliance/normalize-units, p95 <= 0.2ms) |
 | FEAT-029 | 3488710 | PASS | Formula dependency graph builder (DAG topological Kahn sort, execution tiers, cycle detection, prerequisite checker, POST /v1/compliance/dependency-graphs/evaluate, p95 <= 0.1ms) |
 | FEAT-030 | 28dea98 | PASS | Historical formula evolution and versioning (multi-decade timeline, point-in-time statutory resolver, semantic diff engine, POST /v1/compliance/formulas/compare-versions, p95 <= 0.1ms) |
+| FEAT-031 | 0963dc2 | PASS | Statutory deprecation & supersession engine (circular DAG lineage, sunset deadlines, grandfathering exemptions, 100% flag rate on test corpus, p95 <= 0.5ms) |
 
 
 ---
