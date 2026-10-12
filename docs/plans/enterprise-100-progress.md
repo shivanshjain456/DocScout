@@ -43,7 +43,7 @@
 - [x] FEAT-027: Mathematical Sanity & Consistency Auditor
 - [x] FEAT-028: Indian Financial Unit Normalizer
 - [x] FEAT-029: Formula Dependency Graph Builder
-- [ ] FEAT-030: Historical Formula Evolution & Versioning
+- [x] FEAT-030: Historical Formula Evolution & Versioning
 
 ### Pillar 4: Regulatory Conflict, Deprecation & Antipattern Auditing
 - [ ] FEAT-031: Statutory Deprecation & Supersession Engine
@@ -164,6 +164,7 @@
 | FEAT-027 | facfae1 | PASS | Mathematical sanity and consistency auditor (table cross-footing, row/column sum invariance, 100% synthetic error detection rate, POST /v1/compliance/audit-sanity, p95 <= 0.3ms) |
 | FEAT-028 | 8b7bda2 | PASS | Indian financial unit normalizer (bidirectional Lakh/Crore/Mn/Bn/bps/pct conversion over 55 representations, comma formatting, POST /v1/compliance/normalize-units, p95 <= 0.2ms) |
 | FEAT-029 | 3488710 | PASS | Formula dependency graph builder (DAG topological Kahn sort, execution tiers, cycle detection, prerequisite checker, POST /v1/compliance/dependency-graphs/evaluate, p95 <= 0.1ms) |
+| FEAT-030 | 28dea98 | PASS | Historical formula evolution and versioning (multi-decade timeline, point-in-time statutory resolver, semantic diff engine, POST /v1/compliance/formulas/compare-versions, p95 <= 0.1ms) |
 
 
 ---
