@@ -66,22 +66,30 @@ from app.api.models import (
     AuditSanityRequest,
     AuditSanityResponse,
     BoundaryCatalogResponse,
+    BuildGraphRequest,
     CacheInvalidateRequest,
     CacheInvalidateResponse,
     Confidence,
     ConsistencyAnomalyModel,
+    DependencyGraphResponse,
     DigestDispatchResponse,
     DiscoveryTriggerRequest,
     DiscoveryTriggerResponse,
     DocumentParametersResponse,
     DocumentResponse,
+    EvaluateGraphRequest,
+    EvaluateGraphResponse,
+    EvaluationTraceStep,
     ExtractParametersRequest,
     ExtractParametersResponse,
     FormulaCalcRequest,
     FormulaCalcResult,
     FormulaListResponse,
     GraphEdge,
+    GraphEdgeModel,
     GraphNode,
+    GraphNodeModel,
+    GraphTemplateSummaryModel,
     IntentClassification,
     LivenessResponse,
     NormalizedQuantityModel,
@@ -91,6 +99,8 @@ from app.api.models import (
     Passage,
     PersonaListResponse,
     PersonaProfileResponse,
+    PrerequisiteCheckRequest,
+    PrerequisiteCheckResponse,
     Provenance,
     QuantityComparisonRequest,
     QuantityComparisonResponse,
@@ -1633,6 +1643,304 @@ def compare_financial_quantities_endpoint(
         relative_difference=round(rel_diff, 6),
         tolerance=payload.tolerance,
         latency_ms=round(latency_ms, 3),
+    )
+
+
+# --- Formula Dependency Graph Builder (FEAT-029) ---
+
+
+@app.get(
+    "/v1/compliance/dependency-graphs/templates",
+    response_model=list[GraphTemplateSummaryModel],
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def list_dependency_graph_templates_endpoint(
+    fingerprint: str = Depends(require_api_key),
+) -> list[GraphTemplateSummaryModel]:
+    """List pre-configured statutory calculation DAG templates (FEAT-029)."""
+    from app.compliance.dependency_graph import DependencyGraphBuilder
+
+    templates = DependencyGraphBuilder.list_templates()
+    return [
+        GraphTemplateSummaryModel(
+            template_id=t["template_id"],
+            name=t["name"],
+            domain=t["domain"],
+            stages_count=t["stages_count"],
+            target_variables=t["target_variables"],
+            description=t["description"],
+        )
+        for t in templates
+    ]
+
+
+@app.get(
+    "/v1/compliance/dependency-graphs/{graph_id}",
+    response_model=DependencyGraphResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "graph not found"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def get_dependency_graph_endpoint(
+    graph_id: str,
+    fingerprint: str = Depends(require_api_key),
+) -> DependencyGraphResponse:
+    """Retrieve full structural DAG, topological ordering, and execution tiers (FEAT-029)."""
+    from app.compliance.dependency_graph import get_graph
+
+    try:
+        graph = get_graph(graph_id)
+    except KeyError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Formula dependency graph '{graph_id}' not found.",
+        ) from None
+
+    nodes = {
+        nid: GraphNodeModel(
+            node_id=n.node_id,
+            name=n.name,
+            node_type=n.node_type.value,
+            expression=n.expression,
+            description=n.description,
+            category=n.category,
+            unit=n.unit,
+            tier=n.tier,
+            dependencies=n.dependencies,
+        )
+        for nid, n in graph.nodes.items()
+    }
+    edges = [
+        GraphEdgeModel(
+            source=e.source,
+            target=e.target,
+            parameter_name=e.parameter_name or e.source,
+        )
+        for e in graph.edges
+    ]
+
+    return DependencyGraphResponse(
+        graph_id=graph.graph_id,
+        name=graph.name,
+        domain=graph.domain,
+        description=graph.description,
+        nodes=nodes,
+        edges=edges,
+        topological_order=graph.topological_order,
+        execution_tiers=graph.execution_tiers,
+        target_variables=graph.target_variables,
+    )
+
+
+@app.post(
+    "/v1/compliance/dependency-graphs/build",
+    response_model=DependencyGraphResponse,
+    tags=["compliance"],
+    responses={
+        400: {"description": "circular dependency detected"},
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "invalid formula structure"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def build_dependency_graph_endpoint(
+    payload: BuildGraphRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> DependencyGraphResponse:
+    """Construct directed acyclic graph from custom formula definitions (FEAT-029)."""
+    t0 = time.perf_counter()
+    from app.compliance.dependency_graph import (
+        CircularDependencyError,
+        DependencyGraphBuilder,
+        register_graph,
+    )
+
+    formulas_data = [
+        {
+            "id": f.id,
+            "name": f.name or f.id,
+            "expression": f.expression,
+            "description": f.description,
+            "category": f.category,
+            "unit": f.unit,
+            "dependencies": f.dependencies,
+        }
+        for f in payload.formulas
+    ]
+
+    try:
+        graph = DependencyGraphBuilder.build_from_formulas(
+            formulas=formulas_data,
+            graph_id=payload.graph_id,
+            name=payload.name,
+            domain=payload.domain,
+            description=payload.description,
+            target_variables=payload.target_variables,
+        )
+    except CircularDependencyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    register_graph(graph)
+    latency = time.perf_counter() - t0
+    metrics.DEPENDENCY_GRAPHS_BUILT_TOTAL.labels(domain=payload.domain).inc()
+    metrics.GRAPH_BUILD_DURATION_SECONDS.observe(latency)
+
+    nodes = {
+        nid: GraphNodeModel(
+            node_id=n.node_id,
+            name=n.name,
+            node_type=n.node_type.value,
+            expression=n.expression,
+            description=n.description,
+            category=n.category,
+            unit=n.unit,
+            tier=n.tier,
+            dependencies=n.dependencies,
+        )
+        for nid, n in graph.nodes.items()
+    }
+    edges = [
+        GraphEdgeModel(
+            source=e.source,
+            target=e.target,
+            parameter_name=e.parameter_name or e.source,
+        )
+        for e in graph.edges
+    ]
+
+    return DependencyGraphResponse(
+        graph_id=graph.graph_id,
+        name=graph.name,
+        domain=graph.domain,
+        description=graph.description,
+        nodes=nodes,
+        edges=edges,
+        topological_order=graph.topological_order,
+        execution_tiers=graph.execution_tiers,
+        target_variables=graph.target_variables,
+    )
+
+
+@app.post(
+    "/v1/compliance/dependency-graphs/evaluate",
+    response_model=EvaluateGraphResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "graph not found"},
+        422: {"description": "invalid calculation inputs"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def evaluate_dependency_graph_endpoint(
+    payload: EvaluateGraphRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> EvaluateGraphResponse:
+    """Execute cascade calculation in strict topological order (FEAT-029)."""
+    t0 = time.perf_counter()
+    from app.compliance.dependency_graph import get_graph
+
+    graph_key = payload.graph_id or payload.template_id
+    if not graph_key:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Must provide either 'graph_id' or 'template_id'.",
+        )
+
+    try:
+        graph = get_graph(graph_key)
+    except KeyError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Formula dependency graph '{graph_key}' not found.",
+        ) from None
+
+    eval_result = graph.evaluate_cascade(provided_inputs=payload.provided_inputs)
+    latency_ms = (time.perf_counter() - t0) * 1000.0
+
+    stat = "success" if eval_result["is_complete"] else "incomplete"
+    metrics.GRAPH_EVALUATIONS_TOTAL.labels(graph_id=graph_key, status=stat).inc()
+
+    trace_steps = [
+        EvaluationTraceStep(
+            node_id=step["node_id"],
+            node_type=step["node_type"],
+            value=step.get("value"),
+            status=step["status"],
+            expression=step.get("expression"),
+            tier=step.get("tier"),
+            missing_prerequisites=step.get("missing_prerequisites"),
+            error=step.get("error"),
+        )
+        for step in eval_result["trace"]
+    ]
+
+    return EvaluateGraphResponse(
+        is_complete=eval_result["is_complete"],
+        target_outputs=eval_result["target_outputs"],
+        computed_values=eval_result["computed_values"],
+        trace=trace_steps,
+        missing_variables=eval_result["missing_variables"],
+        latency_ms=round(latency_ms, 3),
+    )
+
+
+@app.post(
+    "/v1/compliance/dependency-graphs/prerequisites",
+    response_model=PrerequisiteCheckResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "graph not found"},
+        422: {"description": "invalid request format"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def check_graph_prerequisites_endpoint(
+    payload: PrerequisiteCheckRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> PrerequisiteCheckResponse:
+    """Analyze prerequisite availability and calculation readiness for target metrics (FEAT-029)."""
+    from app.compliance.dependency_graph import get_graph
+
+    graph_key = payload.graph_id or payload.template_id
+    if not graph_key:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Must provide either 'graph_id' or 'template_id'.",
+        )
+
+    try:
+        graph = get_graph(graph_key)
+    except KeyError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Formula dependency graph '{graph_key}' not found.",
+        ) from None
+
+    check_res = graph.check_prerequisites(
+        target_variables=payload.target_variables or graph.target_variables,
+        provided_inputs=payload.provided_inputs,
+    )
+
+    return PrerequisiteCheckResponse(
+        is_ready=check_res["is_ready"],
+        target_variables=check_res["target_variables"],
+        required_inputs_count=check_res["required_inputs_count"],
+        provided_inputs=check_res["provided_inputs"],
+        missing_inputs=check_res["missing_inputs"],
+        completion_percentage=check_res["completion_percentage"],
+        resolvable_intermediates=check_res["resolvable_intermediates"],
     )
 
 

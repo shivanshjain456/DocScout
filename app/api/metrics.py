@@ -411,6 +411,24 @@ UNIT_NORMALIZATION_DURATION_SECONDS = Histogram(
     buckets=[0.00005, 0.0001, 0.0005, 0.001, 0.005],
 )
 
+DEPENDENCY_GRAPHS_BUILT_TOTAL = Counter(
+    "docscout_dependency_graphs_built_total",
+    "Total formula dependency graphs constructed (FEAT-029).",
+    ("domain",),
+)
+
+GRAPH_EVALUATIONS_TOTAL = Counter(
+    "docscout_graph_evaluations_total",
+    "Total multi-stage formula graph cascade evaluations executed (FEAT-029).",
+    ("graph_id", "status"),
+)
+
+GRAPH_BUILD_DURATION_SECONDS = Histogram(
+    "docscout_graph_build_duration_seconds",
+    "Latency of dependency graph construction in seconds (FEAT-029).",
+    buckets=[0.0001, 0.0005, 0.001, 0.005, 0.01],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

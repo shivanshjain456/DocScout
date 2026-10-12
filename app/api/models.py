@@ -849,3 +849,115 @@ class QuantityComparisonResponse(BaseModel):
     relative_difference: float
     tolerance: float
     latency_ms: float
+
+
+# --- Formula Dependency Graph Builder (FEAT-029) ---
+
+
+class GraphNodeModel(BaseModel):
+    node_id: str
+    name: str
+    node_type: str
+    expression: str | None = None
+    description: str = ""
+    category: str = "general"
+    unit: str = "ratio"
+    tier: int = 0
+    dependencies: list[str] = Field(default_factory=list)
+
+
+class GraphEdgeModel(BaseModel):
+    source: str
+    target: str
+    parameter_name: str
+
+
+class DependencyGraphResponse(BaseModel):
+    graph_id: str
+    name: str
+    domain: str
+    description: str
+    nodes: dict[str, GraphNodeModel]
+    edges: list[GraphEdgeModel]
+    topological_order: list[str]
+    execution_tiers: list[list[str]]
+    target_variables: list[str]
+
+
+class BuildGraphFormulaInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(..., min_length=1, max_length=100)
+    name: str | None = None
+    expression: str = Field(..., min_length=1)
+    description: str = ""
+    category: str = "custom"
+    unit: str = "ratio"
+    dependencies: list[str] | None = None
+
+
+class BuildGraphRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    graph_id: str = Field(..., min_length=1, max_length=100)
+    name: str = Field(..., min_length=1, max_length=200)
+    domain: str = "custom"
+    description: str = ""
+    formulas: list[BuildGraphFormulaInput] = Field(..., min_length=1)
+    target_variables: list[str] | None = None
+
+
+class EvaluateGraphRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    graph_id: str | None = None
+    template_id: str | None = None
+    provided_inputs: dict[str, float] = Field(..., min_length=1)
+
+
+class EvaluationTraceStep(BaseModel):
+    node_id: str
+    node_type: str
+    value: float | None = None
+    status: str
+    expression: str | None = None
+    tier: int | None = None
+    missing_prerequisites: list[str] | None = None
+    error: str | None = None
+
+
+class EvaluateGraphResponse(BaseModel):
+    is_complete: bool
+    target_outputs: dict[str, float | None]
+    computed_values: dict[str, float]
+    trace: list[EvaluationTraceStep]
+    missing_variables: list[str]
+    latency_ms: float
+
+
+class PrerequisiteCheckRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    graph_id: str | None = None
+    template_id: str | None = None
+    target_variables: list[str] | None = None
+    provided_inputs: dict[str, float] = Field(default_factory=dict)
+
+
+class PrerequisiteCheckResponse(BaseModel):
+    is_ready: bool
+    target_variables: list[str]
+    required_inputs_count: int
+    provided_inputs: list[str]
+    missing_inputs: list[str]
+    completion_percentage: float
+    resolvable_intermediates: list[str]
+
+
+class GraphTemplateSummaryModel(BaseModel):
+    template_id: str
+    name: str
+    domain: str
+    stages_count: int
+    target_variables: list[str]
+    description: str
