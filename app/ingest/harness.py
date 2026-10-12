@@ -1,4 +1,4 @@
-"""Ingestion-scale harness — ADR-0023.
+"""Ingestion-scale harness - ADR-0023.
 
 Production-grade ingestion scaling primitives for regulatory document corpora:
 1. TokenBucketLimiter & DomainRateGovernor: Leaky/token bucket rate limiting with domain isolation

@@ -1,4 +1,4 @@
-"""Brevo Transactional Email REST client (formerly Sendinblue) — ARCHITECTURE §3.1.
+"""Brevo Transactional Email REST client (formerly Sendinblue) - ARCHITECTURE §3.1.
 
 Implements email transmission adhering to Brevo v3 API standards:
 1. Calls `POST https://api.brevo.com/v3/smtp/email` with header `api-key`.

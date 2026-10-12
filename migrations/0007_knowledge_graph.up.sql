@@ -1,4 +1,4 @@
--- 0007: knowledge_graph — lightweight entity graph over regulatory provisions (P2-2).
+-- 0007: knowledge_graph - lightweight entity graph over regulatory provisions (P2-2).
 --
 -- Why: Multi-hop compliance queries (e.g. cross-circular provision joins) fail under
 -- single-pass lexical/vector retrieval because grouped citation scoring cannot join

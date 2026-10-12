@@ -3,7 +3,7 @@
 All notable changes to DocScout are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
-## [1.0.1] — 2026-10-10 — Full-Stack Console & Production Hardening
+## [1.0.1] - 2026-10-10 - Full-Stack Console & Production Hardening
 
 ### Added
 - **Full-Stack Console & Parity Surfaces (M-1):** Surfaced all production pillars in the modern React 19 UI console (`ui/src/App.tsx`), including Evidence Search, Auth0 Identity inspection (`/v1/user/me`), Brevo Digests management (`/v1/subscriptions` with 300/d quota and dedup invariant `uq_digest_delivery_version`), OCR Inspector (`/v1/documents/{id}/ocr` with 1MB/3p eligibility limits), and Agentic Research execution (`/v1/research`). Added Playwright smoke suite (`ui/tests/smoke.spec.ts`) and real console screenshot (`docs/assets/ui-console.png`).
@@ -13,7 +13,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 ### Changed
 - **Deployment & Architecture Documentation:** Added `infra/README.md` formalizing the single-compose deployment model, `pgvector:0.8.6-pg18-trixie` triple-pin, `GET /healthz` vs `/readyz` probe split, and multi-worker cache expansion via `REDIS_URL`. Updated `README.md` with zero-clone `docker run` one-liners.
 
-## [1.0.0] — 2026-10-10
+## [1.0.0] - 2026-10-10
 
 ### Added
 - **P2 Non-Regression & Operational Close-Out (P2-GUARD).** Comprehensive verification of all 12

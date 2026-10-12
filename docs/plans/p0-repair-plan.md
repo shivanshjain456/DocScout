@@ -1,4 +1,4 @@
-# P0-REPAIR — Evidence & Gate Coherence Implementation Plan
+# P0-REPAIR - Evidence & Gate Coherence Implementation Plan
 
 > **Task ID:** P0-REPAIR
 > **Status:** IN_PROGRESS

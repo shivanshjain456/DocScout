@@ -1,4 +1,4 @@
--- 0008: research_workspace — workspaces and synthesized research artifacts (P2-3).
+-- 0008: research_workspace - workspaces and synthesized research artifacts (P2-3).
 --
 -- Why: Complex analyst compliance queries require multi-aspect comparative synthesis
 -- across regulatory provisions, generating structured markdown reports with condition

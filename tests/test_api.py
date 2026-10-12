@@ -5,7 +5,7 @@ security behaviour as heavily as functionality: what happens without a key, with
 key, with a hostile payload, and past the rate limit.
 
 Keys are injected through the environment rather than read from `.env`. `config.load_dotenv`
-uses `setdefault`, so a real environment variable always wins — which makes the suite
+uses `setdefault`, so a real environment variable always wins - which makes the suite
 hermetic and means it never depends on, or reveals, the operator's actual key.
 """
 

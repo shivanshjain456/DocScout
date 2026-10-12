@@ -1,4 +1,4 @@
--- 0013: relationship_filtering — taxonomy edges and relationship indexes (FEAT-008).
+-- 0013: relationship_filtering - taxonomy edges and relationship indexes (FEAT-008).
 --
 -- Why: Support filtering search retrieval by formal ontological relationships
 -- (supersedes, requires, enables, complements, specializedBy) between regulatory

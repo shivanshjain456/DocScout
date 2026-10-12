@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# PostToolUse(Edit|Write) hook — format and autofix Python files, quietly.
+# PostToolUse(Edit|Write) hook - format and autofix Python files, quietly.
 # Never blocks the agent: failures are reported on stderr and exit 0.
 set -uo pipefail
 

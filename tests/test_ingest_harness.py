@@ -1,4 +1,4 @@
-"""Tests for Ingestion-Scale Harness — ADR-0023.
+"""Tests for Ingestion-Scale Harness - ADR-0023.
 
 Verifies:
 1. TokenBucketLimiter & DomainRateGovernor: burst, steady replenishment, domain isolation.

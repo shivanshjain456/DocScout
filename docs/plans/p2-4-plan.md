@@ -1,4 +1,4 @@
-# P2-4 Implementation Plan — Pluggable Extraction Chain with Deep Fallback
+# P2-4 Implementation Plan - Pluggable Extraction Chain with Deep Fallback
 
 ## 1. Task Definition & Failing Query Class
 

@@ -285,7 +285,7 @@ INTENT_DEFINITIONS: tuple[IntentDefinition, ...] = (
             "Data Reconciliation and Checksum Validation",
             "Data Lineage Verification",
         ),
-        first_move="Put not-null on every key, accepted-values on every status column and a freshness check on every scheduled table — blocking, in the pipeline.",
+        first_move="Put not-null on every key, accepted-values on every status column and a freshness check on every scheduled table - blocking, in the pipeline.",
     ),
     IntentDefinition(
         id="intent.zero-downtime-migration",

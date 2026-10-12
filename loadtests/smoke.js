@@ -1,14 +1,14 @@
 import http from "k6/http";
 import { check } from "k6";
 
-// DocScout load smoke test — Phase 0 pipeline verification.
+// DocScout load smoke test - Phase 0 pipeline verification.
 //
-// WORKLOAD (skill: load-test-protocol — generator must be seeded and documented):
+// WORKLOAD (skill: load-test-protocol - generator must be seeded and documented):
 //   arrival   : constant-arrival-rate, 10 iters/s for 30s (open model: queues when the
 //               system slows, instead of hiding latency behind closed-loop backpressure)
 //   VUs       : 10 preallocated
 //   mix       : 70% POST /query (question lookup), 30% GET /healthz
-//   seed      : SEED env var (default 42) — the question sequence is deterministic
+//   seed      : SEED env var (default 42) - the question sequence is deterministic
 //   corpus    : n/a in Phase 0 (dummy target)
 //   depth     : n/a in Phase 0 (dummy target)
 //

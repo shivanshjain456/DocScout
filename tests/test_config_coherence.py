@@ -6,7 +6,7 @@ Every published number was measured on one specific pairing, so if the three dis
 reviewer following the documented path gets a database the baselines were not measured on.
 
 They did disagree. Until 2026-10-02 compose pinned `pgvector/pgvector:0.8.2-pg18` while the
-native script and CI both installed 0.8.6 — the exact reproducibility failure this project
+native script and CI both installed 0.8.6 - the exact reproducibility failure this project
 otherwise defends carefully. A comment cannot prevent that from happening again; a failing
 build can.
 """
@@ -66,7 +66,7 @@ def test_images_pin_the_measured_pairing(image_of: object) -> None:
 
 
 def test_compose_and_ci_pin_the_same_image() -> None:
-    """Not merely both valid — identical, so neither can drift alone."""
+    """Not merely both valid - identical, so neither can drift alone."""
     assert compose_db_image() == ci_db_image()
 
 

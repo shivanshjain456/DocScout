@@ -1,6 +1,6 @@
 # Statutory Entity Hierarchy & Classification Ontology
 
-*DocScout Enterprise Regulatory Intelligence Engine — Architecture Specification*
+*DocScout Enterprise Regulatory Intelligence Engine - Architecture Specification*
 
 ---
 

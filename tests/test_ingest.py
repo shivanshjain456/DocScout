@@ -1,4 +1,4 @@
-"""Ingestion tests — each one named for the requirement it proves.
+"""Ingestion tests - each one named for the requirement it proves.
 
 These cover M2's exit criterion 2 (off-allowlist rejection, stub-page rejection,
 hash de-duplication, new-version creation with stable old chunk IDs, idempotent re-run)
@@ -123,7 +123,7 @@ def real_embedder() -> Embedder:
 
 
 # --------------------------------------------------------------------------------------
-# FR-1 / C-1 — the host allowlist, enforced before any socket is opened
+# FR-1 / C-1 - the host allowlist, enforced before any socket is opened
 # --------------------------------------------------------------------------------------
 def test_fr1_off_allowlist_host_is_rejected_before_any_network_call() -> None:
     client = httpx.Client(transport=_ExplodingTransport())
@@ -181,7 +181,7 @@ def test_the_injection_canary_can_never_be_fetched_over_the_network() -> None:
 
 
 # --------------------------------------------------------------------------------------
-# FR-6 / SECURITY S-4 — stage credential isolation
+# FR-6 / SECURITY S-4 - stage credential isolation
 # --------------------------------------------------------------------------------------
 def test_fr6_ingestion_refuses_to_start_with_deploy_credentials() -> None:
     with pytest.raises(CredentialBleedError, match="AWS_SECRET_ACCESS_KEY"):
@@ -206,7 +206,7 @@ def test_fr6_region_and_profile_selectors_are_not_treated_as_credentials() -> No
 
 
 # --------------------------------------------------------------------------------------
-# FR-3 / C-11 — the short-extraction guard, the pipeline's most dangerous failure mode
+# FR-3 / C-11 - the short-extraction guard, the pipeline's most dangerous failure mode
 # --------------------------------------------------------------------------------------
 def test_fr3_a_stub_page_is_rejected_rather_than_stored() -> None:
     """CORPUS_SPEC K-17: the SEBI detail page extracts ~227 characters and looks fine."""
@@ -235,7 +235,7 @@ def test_fr3_a_real_document_clears_the_floor() -> None:
 
 
 # --------------------------------------------------------------------------------------
-# ADR-0003 — cleaning preserves offsets; chunking preserves coverage and FR-7
+# ADR-0003 - cleaning preserves offsets; chunking preserves coverage and FR-7
 # --------------------------------------------------------------------------------------
 def test_adr0003_cleaning_never_moves_a_character() -> None:
     text = "RBI \u0915\u0916\u0917 circular \ufffd Page 3 of 9 end"
@@ -295,7 +295,7 @@ def test_chunking_rejects_an_overlap_that_cannot_make_progress() -> None:
 
 
 # --------------------------------------------------------------------------------------
-# ADR-0002 — the embedding contract
+# ADR-0002 - the embedding contract
 # --------------------------------------------------------------------------------------
 def test_adr0002_embeddings_are_384_dimensional_unit_vectors(real_embedder: Embedder) -> None:
     vectors = real_embedder.encode_passages(["a regulatory paragraph", "another one"])
@@ -383,7 +383,7 @@ def test_every_manifest_url_is_on_the_allowlist_or_synthetic() -> None:
 
 
 # --------------------------------------------------------------------------------------
-# FR-5 — de-duplicate by content hash first, then canonical URL
+# FR-5 - de-duplicate by content hash first, then canonical URL
 # --------------------------------------------------------------------------------------
 def test_fr5_one_payload_under_two_urls_stores_one_document(
     ingest_db: psycopg.Connection[Any],
@@ -407,7 +407,7 @@ def test_fr5_one_payload_under_two_urls_stores_one_document(
 
 
 # --------------------------------------------------------------------------------------
-# FR-4 — a changed hash at a known URL is a new version, and old chunk IDs survive
+# FR-4 - a changed hash at a known URL is a new version, and old chunk IDs survive
 # --------------------------------------------------------------------------------------
 def test_fr4_changed_payload_creates_a_version_and_old_chunk_ids_still_resolve(
     ingest_db: psycopg.Connection[Any],
@@ -448,7 +448,7 @@ def test_fr4_changed_payload_creates_a_version_and_old_chunk_ids_still_resolve(
 
 
 # --------------------------------------------------------------------------------------
-# NFR-8 — restartable and idempotent
+# NFR-8 - restartable and idempotent
 # --------------------------------------------------------------------------------------
 def test_nfr8_re_running_over_unchanged_input_writes_nothing(
     ingest_db: psycopg.Connection[Any],
@@ -549,7 +549,7 @@ def test_ingestion_works_with_no_delete_and_no_ddl_privilege(
 
 
 # --------------------------------------------------------------------------------------
-# regression — a crash after the data was already written is still a crash
+# regression - a crash after the data was already written is still a crash
 # --------------------------------------------------------------------------------------
 def test_report_path_display_survives_a_relative_report_dir(tmp_path: Path) -> None:
     """`--report-dir docs/x` once crashed the CLI *after* a successful 170-chunk ingest.

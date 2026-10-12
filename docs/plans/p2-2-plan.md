@@ -1,4 +1,4 @@
-# P2-2 Implementation Plan — Lightweight Knowledge-Graph over Regulatory Provisions
+# P2-2 Implementation Plan - Lightweight Knowledge-Graph over Regulatory Provisions
 
 ## 1. Task Definition & Failing Query Class
 

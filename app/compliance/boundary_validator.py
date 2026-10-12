@@ -585,7 +585,7 @@ _CANONICAL_RULES: list[StatutoryBoundaryRule] = [
         ratio_name="Software Carbon Intensity (SCI) Regulatory Cap",
         description="Maximum carbon intensity rate per functional unit under green software standards",
         regulator="GSF",
-        statutory_citation="ISO/IEC 21031:2024 Information technology — Software Carbon Intensity (SCI) specification",
+        statutory_citation="ISO/IEC 21031:2024 Information technology  -  Software Carbon Intensity (SCI) specification",
         operator="<=",
         threshold_value=50.0,
         unit="gCO2eq/functional unit",

@@ -1,4 +1,4 @@
-"""Digest generation and dispatch engine — ARCHITECTURE §3.1.
+"""Digest generation and dispatch engine - ARCHITECTURE §3.1.
 
 Coordinates subscription management, topic matching, grounded provision extraction,
 and restart-safe deduplicated delivery logging through Brevo:

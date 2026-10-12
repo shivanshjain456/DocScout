@@ -1,4 +1,4 @@
--- 0003: corpus_sync_state — durable regulatory freshness tracking (P0-2).
+-- 0003: corpus_sync_state - durable regulatory freshness tracking (P0-2).
 --
 -- Why: RBI and SEBI amend and withdraw circulars continuously. Stale retrieval is the
 -- primary catastrophic failure for regulatory RAG. Before this migration, the service had

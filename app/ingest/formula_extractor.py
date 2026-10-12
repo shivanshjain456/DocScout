@@ -161,7 +161,7 @@ def _clean_math_symbols(expr: str) -> str:
         expr.replace("×", "*")
         .replace("÷", "/")
         .replace("–", "-")
-        .replace("—", "-")
+        .replace("\u2014", "-")
         .replace("^", "**")
         .strip()
     )

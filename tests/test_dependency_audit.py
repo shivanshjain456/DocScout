@@ -1,7 +1,7 @@
 """Tests for the dependency audit and its artifacts.
 
 Split deliberately. The scan itself needs the network to reach the advisory database, so
-it is not run here — a test suite that fails when PyPI is slow trains people to ignore it.
+it is not run here - a test suite that fails when PyPI is slow trains people to ignore it.
 What *is* tested is everything that can be wrong without the network: the normalisation
 that decides which packages get audited at all, the rule that separates a real finding
 from a phantom one, the suppression policy, and whether the committed artifacts still

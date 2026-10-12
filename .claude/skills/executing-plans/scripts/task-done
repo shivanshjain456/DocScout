@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Close one task of an inline plan execution in a single call: run the task's
-# test command, keep its full output in the workspace, print the tail, and —
-# only if the command succeeded — append the completion line to the ledger.
+# test command, keep its full output in the workspace, print the tail, and -
+# only if the command succeeded - append the completion line to the ledger.
 # A failing command records nothing: the task is not complete.
 #
 # Usage: task-done PLAN_FILE TASK_NUMBER BASE -- TEST_COMMAND [ARGS...]
@@ -46,7 +46,7 @@ if [ "$rc" -ne 0 ]; then
 fi
 
 last=$(grep -v '^[[:space:]]*$' "$log" | tail -n 1)
-[ -f "$ledger" ] || printf '# SDD ledger — plan: %s\n' "$plan" > "$ledger"
+[ -f "$ledger" ] || printf '# SDD ledger - plan: %s\n' "$plan" > "$ledger"
 line="Task $n: complete (commits $(git rev-parse --short=7 "$base")..$(git rev-parse --short=7 HEAD), tests: $cmd → $last)"
 printf '%s\n' "$line" >> "$ledger"
 echo "ledger: $line"

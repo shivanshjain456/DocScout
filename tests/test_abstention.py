@@ -2,7 +2,7 @@
 
 The arithmetic is tested against hand-computed values, because these numbers decide
 whether a user is warned that the corpus may not answer their question. The signal itself
-is weak by measurement — AUC 0.730 — and the tests pin that honestly rather than asserting
+is weak by measurement - AUC 0.730 - and the tests pin that honestly rather than asserting
 it works better than it does.
 """
 
@@ -139,7 +139,7 @@ def test_an_answerable_question_is_well_covered(retriever: Retriever) -> None:
 def test_a_question_the_corpus_cannot_answer_is_flagged(retriever: Retriever) -> None:
     """g-131 from the gold set: the circular says a threshold will be set, never what it is.
 
-    The topic retrieves perfectly — this is the hard case the gold set was built around,
+    The topic retrieves perfectly - this is the hard case the gold set was built around,
     not a question about an absent subject.
     """
     question = "What is the minimum acceptable ITRI score an MII must maintain?"

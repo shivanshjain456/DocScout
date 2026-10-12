@@ -1,4 +1,4 @@
-# P2-3 Implementation Plan — Tight Agentic Research Loop + Minimal Workspace
+# P2-3 Implementation Plan - Tight Agentic Research Loop + Minimal Workspace
 
 ## 1. Task Definition & Failing Query Class
 

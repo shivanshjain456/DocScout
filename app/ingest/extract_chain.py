@@ -1,4 +1,4 @@
-"""Pluggable extraction chain with fast path and deep structured fallback — ARCHITECTURE §3.1, FR-3 / C-11 (P2-4).
+"""Pluggable extraction chain with fast path and deep structured fallback - ARCHITECTURE §3.1, FR-3 / C-11 (P2-4).
 
 Implements a two-tier extraction pipeline:
 1. Fast path: `pypdf` for clean native documents (zero overhead, sub-second execution).

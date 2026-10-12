@@ -2,7 +2,7 @@
 
 Two things are worth testing here and one thing is not. Worth testing: that the counters
 actually move when requests happen, and that the labels stay bounded. Not worth testing:
-that `prometheus_client` serialises correctly — that is its job, not this repository's.
+that `prometheus_client` serialises correctly - that is its job, not this repository's.
 
 The label assertions are the substance. Cardinality is the failure mode that takes a
 Prometheus deployment down, and it arrives through a label that looked bounded when it was

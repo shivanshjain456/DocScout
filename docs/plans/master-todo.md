@@ -1,10 +1,10 @@
-# DocScout — Master TODO (transformation to production-grade operational RAG service)
+# DocScout - Master TODO (transformation to production-grade operational RAG service)
 
 - **Baseline:** `69021ef2a6cee2041e9f39690162fc9b5de9c0b6` (master, 2026-10-09T18:24:51Z), 423 tracked files, 56 commits (+10 commits above `32b4271`), 6 migrations, 9 new ADRs (0010–0018).
 - **Benchmark revisions (2026-10-08 SHAs):** RAGFlow `ef150bc2`, Onyx `f858083d`, Dify `2b65f0e8`, FastGPT `2ae3c721`, Khoj `ae229ca8`.
 - **Corpus / gold at baseline:** 35 RBI/SEBI documents (34 live + 1 synthetic canary) → 230 chunks → 399 citations → 425 gold items v2.0.0 (365 answerable + 60 unanswerable, 14.1% unanswerable share, 12 multi-hop, 3 canaries). Serving: `POST /v1/search` + `POST /v1/answer` + `POST /v1/chat` (deterministic local generator behind passages), `GET /v1/documents/{id}`, `GET /healthz` (liveness), `GET /readyz` (readiness + freshness), `GET /metrics` (Prometheus), `GET /` demo, `GET /docs`.
-- **Remote CI Health at baseline:** Actions run `37933392448` on `69021ef` is **RED** — `quality: failure (pytest on CRLF/LF metadata digest)`, `eval-gate: failure (regression gate on CRLF/LF baseline digest mismatch)`, `deploy-smoke: failure (KeyError: 'corpus_chunks' and 170-era assertion on /healthz)`, `secrets: success`, `supply-chain: success` (audit source: `docscout_gapanalysis_20261009.md` / GitHub Actions run `37933392448`). Because `VERIFIED = gates green + evidence artifact committed`, all previous P0/P1 verification claims are unverified at HEAD until P0-REPAIR achieves green CI.
-- **Method for this file:** every item restated from `docscout_gapanalysis_20261009.md` and `do not commit!/docscout_assessment.md` §5 (citing file:line evidence at the pinned baseline). No implementation approach is prescribed here — only WHAT / QUALITY BAR / SUCCESS.
+- **Remote CI Health at baseline:** Actions run `37933392448` on `69021ef` is **RED** - `quality: failure (pytest on CRLF/LF metadata digest)`, `eval-gate: failure (regression gate on CRLF/LF baseline digest mismatch)`, `deploy-smoke: failure (KeyError: 'corpus_chunks' and 170-era assertion on /healthz)`, `secrets: success`, `supply-chain: success` (audit source: `docscout_gapanalysis_20261009.md` / GitHub Actions run `37933392448`). Because `VERIFIED = gates green + evidence artifact committed`, all previous P0/P1 verification claims are unverified at HEAD until P0-REPAIR achieves green CI.
+- **Method for this file:** every item restated from `docscout_gapanalysis_20261009.md` and `do not commit!/docscout_assessment.md` §5 (citing file:line evidence at the pinned baseline). No implementation approach is prescribed here - only WHAT / QUALITY BAR / SUCCESS.
 - **Status vocabulary:** `TODO` / `TODO (forced)` / `PLANNED` / `IN_PROGRESS` / `DONE` / `VERIFIED` (`VERIFIED` = gates green + evidence artifact committed).
 - **Execution rule:** strictly one task at a time, highest remaining P0-REPAIR → P1-GUARD → P2-1 → P2-2 → P2-3 → P2-4 → P2-5 → P2-GUARD. Update status after each task.
 
@@ -33,11 +33,11 @@ Gates that guard S-1…S-12: `ruff check + ruff format --check`, `mypy` strict (
 
 ---
 
-## P0 — Blocking operational-retrieval maturity (build in this order)
+## P0 - Blocking operational-retrieval maturity (build in this order)
 
 Order rationale (assessment §5): P0-REPAIR first (restore green CI gate coherence) → P0-4 (unblocks reviewability) → P0-1 (capability ceiling) → P0-3 (makes tuning measurable) → P0-2 (freshness truth) → P0-5 (correctness fix triggered by P0-2).
 
-### P0-REPAIR — Evidence & Gate Coherence | Status: VERIFIED (Actions run 37938332326 on f9cbd70: all 5 CI jobs green - quality, eval-gate, deploy-smoke, secrets, supply-chain; .gitattributes LF normalization; POSIX report_dir; readyz contract)
+### P0-REPAIR - Evidence & Gate Coherence | Status: VERIFIED (Actions run 37938332326 on f9cbd70: all 5 CI jobs green - quality, eval-gate, deploy-smoke, secrets, supply-chain; .gitattributes LF normalization; POSIX report_dir; readyz contract)
 
 - **Dimension:** Verification integrity, CI gate health, and cross-platform artifact determinism (§3.9, §3.16).
 - **Current evidenced state:** Actions run `37933392448` on `69021ef` is RED across three jobs: `quality` (fails on `test_metadata_matches_the_committed_file` asserting LF digest `1a640cce...` vs committed CRLF digest `ea148e32...`), `eval-gate` (fails on invariant check `gold set 2.0.0 changed content without a version bump` and `corpus manifest changed since the last baseline` due to CRLF digests `ea148e32...` and `7fad4b6e...` in `20261009T063630Z.json` vs LF digests in Linux runner), and `deploy-smoke` (fails on `KeyError: 'corpus_chunks'` from 170-era `/healthz` assertion after P0-5 liveness/readiness split). `secrets` and `supply-chain` are green.
@@ -104,9 +104,9 @@ Order rationale (assessment §5): P0-REPAIR first (restore green CI gate coheren
 
 ---
 
-## P1 — Expected operational maturity (after P0, any defensible order)
+## P1 - Expected operational maturity (after P0, any defensible order)
 
-### P1-GUARD — P0/P1 Non-Regression | Status: VERIFIED (no regression — verified 2026-10-09 against Actions run 37938332326, all S-1…S-12 strengths green, 170-era fixtures swept)
+### P1-GUARD - P0/P1 Non-Regression | Status: VERIFIED (no regression - verified 2026-10-09 against Actions run 37938332326, all S-1…S-12 strengths green, 170-era fixtures swept)
 
 - **Dimension:** Non-regression and scale-hardening (§3.9, §10.1).
 - **Current evidenced state:** S-1…S-12 load-bearing strengths and P1 contracts verified at 35 docs / 230 chunks / 425 gold scale; hard-coded 170-era assumptions in tests and fixtures (e.g. `tests/test_api_answer.py:72`, `tests/test_gate.py`) audited and cleaned.
@@ -166,7 +166,7 @@ Order rationale (assessment §5): P0-REPAIR first (restore green CI gate coheren
 
 ---
 
-## P2 — Forced operational capabilities (build in strict order: P2-1 → P2-2 → P2-3 → P2-4 → P2-5 → P2-GUARD)
+## P2 - Forced operational capabilities (build in strict order: P2-1 → P2-2 → P2-3 → P2-4 → P2-5 → P2-GUARD)
 
 Each P2 capability is now defensible and forced by concrete failing query classes exhibited on the grown 35-doc / 230-chunk / 425-gold regulatory corpus.
 
@@ -179,42 +179,42 @@ Each P2 capability is now defensible and forced by concrete failing query classe
 | P2-5 | Ingestion-Scale Harness | **Scale throughput & latency bottleneck**: Ingestion loop lacks back-pressure against regulator 429s, lacks shrink-retry on token ceiling, lacks tokenization cache, and linear re-embedding slows corpus-refresh beyond SLA. | VERIFIED |
 | P2-GUARD | P2 Non-Regression & Evidence Close-out | **Verification integrity**: Ensure every P2 lands without regressing S-1…S-12, all new modes are A/B-measured with paired bootstrap + McNemar, no architectural scaffolding, and evidence artifacts committed. | VERIFIED |
 
-### P2-1 — Retrieval-Port Adapter (one seam, not a matrix) | Status: VERIFIED (Actions run 37941465593 on 33f94be: all 5 CI jobs green; VectorStore Protocol in app/retrieval/port.py; PgVectorStore adapter; config/retrieval.json registry; ADR-0019; tests/test_retrieval_port.py 6/6 passing; zero metric regression Δ recall@5 = 0.000)
+### P2-1 - Retrieval-Port Adapter (one seam, not a matrix) | Status: VERIFIED (Actions run 37941465593 on 33f94be: all 5 CI jobs green; VectorStore Protocol in app/retrieval/port.py; PgVectorStore adapter; config/retrieval.json registry; ADR-0019; tests/test_retrieval_port.py 6/6 passing; zero metric regression Δ recall@5 = 0.000)
 
 - **Failing query class / operability gap:** Swapping the embedding model or adding a second vector store forces changes across 6+ files (`app/retrieval/{dense,lexical,fusion,search}.py`, `app/ingest/embed.py`) with no seam.
 - **WHAT TO DO:** Introduce a retrieval-port abstraction (`RetrievalPort` / `VectorStore`) so pgvector is an implementation, not the interface.
 - **QUALITY BAR:** Interface over implementation. Single production adapter (`pgvector`); `Retriever` depends on port, not `psycopg`/`pgvector` SQL directly; `tests/test_retrieval_port.py` proves `hybrid-rrf` via port == direct SQL within rounding; `Δ recall@5 ≤ 0.002` on 365 items; ADR-0019 records "single pgvector today, port exists for one-system-well" with rejected alternatives.
 - **WHAT SUCCESS LOOKS LIKE:** Port protocol committed, `app/retrieval/search.py` wired to port, config coherence test verifies registry, zero metric regression on 365 items.
 
-### P2-2 — Lightweight Knowledge-Graph over Regulatory Provisions | Status: VERIFIED (Migration 0007_knowledge_graph applied; grounded span extraction; 5/5 tests in tests/test_knowledge_graph.py passing; 525+ full suite passing; ADR-0020 committed)
+### P2-2 - Lightweight Knowledge-Graph over Regulatory Provisions | Status: VERIFIED (Migration 0007_knowledge_graph applied; grounded span extraction; 5/5 tests in tests/test_knowledge_graph.py passing; 525+ full suite passing; ADR-0020 committed)
 
 - **Failing query class:** The 12 multi-hop items in `evals/gold/v1` (cross-document provision amendments where `multi-hop MRR ≈ 0.55–0.65` vs `extractive 0.85`).
 - **WHAT TO DO:** Minimal entity graph over provisions (document, section/§, provision; edges: cites, amends, supersedes, implements) extracted from parsed `§` markers, plus graph-assisted hybrid retrieval.
 - **QUALITY BAR:** Migration `0007_knowledge_graph` stores nodes/edges with provenance (`source_doc`, `char_start/char_end`); no ungrounded LLM graph invention; retrieval joins graph expansion with hybrid fusion; fallback to plain hybrid when graph has no hit.
 - **WHAT SUCCESS LOOKS LIKE:** Graph schema populated for 35 docs, `app/retrieval/graph.py` exists, `mode=graph-hybrid` evaluated in A/B, multi-hop recall@5 moves with paired bootstrap CI that excludes zero (or defended serving default), ADR-0020 committed.
 
-### P2-3 — Tight Agentic Research Loop + Minimal Workspace | Status: VERIFIED (Migration 0008 applied; deterministic plan->retrieve->synthesize->critique loop; workspace persistence in app/generate/agent.py; endpoints POST /v1/research, POST /v1/workspaces, GET /v1/workspaces/{id}/artifacts; 40-task double-labelled calibration report at evals/calibration/20261009T200000Z/research_report.md with 100% grounding, 100% table generation, 100% abstention, 100% canary defense; ADR-0021 committed; 533/533 tests passing; CI run 37956579479 on 13d308a all 5 jobs green)
+### P2-3 - Tight Agentic Research Loop + Minimal Workspace | Status: VERIFIED (Migration 0008 applied; deterministic plan->retrieve->synthesize->critique loop; workspace persistence in app/generate/agent.py; endpoints POST /v1/research, POST /v1/workspaces, GET /v1/workspaces/{id}/artifacts; 40-task double-labelled calibration report at evals/calibration/20261009T200000Z/research_report.md with 100% grounding, 100% table generation, 100% abstention, 100% canary defense; ADR-0021 committed; 533/533 tests passing; CI run 37956579479 on 13d308a all 5 jobs green)
 
 - **Failing query class:** Complex analyst synthesis questions requiring multi-aspect comparisons (e.g. compromise-settlement eligibility before vs after Green Deposits circular with condition table) where single-pass k=5 fails answer completeness.
 - **WHAT TO DO:** Deterministic agentic research loop (`planner → retrieve → synthesize → critique → final`) producing citation-grounded comparison artifacts, plus minimal workspace persistence.
 - **QUALITY BAR:** Determinism and grounding over cleverness. Planner seeded; every claim cites a passage; corpus text is data, never instructions (canary 100% defended); `POST /v1/research` returns auditable `steps[]`; workspace persistence.
 - **WHAT SUCCESS LOOKS LIKE:** `POST /v1/research` operational, double-labelled calibration report (30-50 research tasks, agreement, abstention on unanswerable prompts), injection canary 100% defended, ADR-0021 committed.
 
-### P2-4 — Pluggable Extraction Chain with Docling/MinerU Fallback | Status: VERIFIED (Actions run 37958913797 on 9bb1232: all 5 CI jobs green; app/ingest/extract_chain.py implemented; evaluate_fidelity heuristics; FastPypdfExtractor + DeepFallbackExtractor; DOCSCOUT_EXTRACTOR configuration in app/config.py; sebi_scanned_annexure.pdf fixture in tests/fixtures/; 6/6 tests in tests/test_extract_chain.py passing; 53/53 ingestion tests passing; exact byte match and zero regression on clean corpus docs; ADR-0022 committed)
+### P2-4 - Pluggable Extraction Chain with Docling/MinerU Fallback | Status: VERIFIED (Actions run 37958913797 on 9bb1232: all 5 CI jobs green; app/ingest/extract_chain.py implemented; evaluate_fidelity heuristics; FastPypdfExtractor + DeepFallbackExtractor; DOCSCOUT_EXTRACTOR configuration in app/config.py; sebi_scanned_annexure.pdf fixture in tests/fixtures/; 6/6 tests in tests/test_extract_chain.py passing; 53/53 ingestion tests passing; exact byte match and zero regression on clean corpus docs; ADR-0022 committed)
 
 - **Failing query class:** Real SEBI master circulars with scanned annexures, merged-cell tables, or figures where `pypdf` yields low text fidelity / table collapse (`recall` on scanned fixture near-zero).
 - **WHAT TO DO:** Pluggable extraction chain: fast-path `pypdf` for clean documents + deep parser fallback (Docling or MinerU) triggered when fidelity signals indicate low quality.
 - **QUALITY BAR:** Honest fallback, not a zoo. Clean docs retain fast path (zero regression); fallback preserves char offsets for FR-7 re-derivation; tables linearized with grounded spans; scanned-image fixture committed.
 - **WHAT SUCCESS LOOKS LIKE:** `app/ingest/extract_chain.py` with fallback, `DOCSCOUT_EXTRACTOR` flag, tests proving scanned fixture recall improvement while clean fixture recall is unchanged, ADR-0022 committed.
 
-### P2-5 — Ingestion-Scale Harness | Status: VERIFIED (Actions run 37962948267 on 9dde863: all 5 CI jobs green; app/ingest/harness.py implemented with TokenBucketLimiter, DomainRateGovernor with domain isolation, adaptive shrink_retry with bisection and jittered backoff, bounded LRU ChunkEmbeddingCache, IngestionStateMachine with checkpoint persistence, and ConcurrentIngestionHarness; 10/10 tests in tests/test_ingest_harness.py passing; 200-doc scale benchmark executed across concurrency 1, 4, 8 and committed to loadtests/reports/20261009T164315Z/ingest-scale.json; ADR-0023 committed)
+### P2-5 - Ingestion-Scale Harness | Status: VERIFIED (Actions run 37962948267 on 9dde863: all 5 CI jobs green; app/ingest/harness.py implemented with TokenBucketLimiter, DomainRateGovernor with domain isolation, adaptive shrink_retry with bisection and jittered backoff, bounded LRU ChunkEmbeddingCache, IngestionStateMachine with checkpoint persistence, and ConcurrentIngestionHarness; 10/10 tests in tests/test_ingest_harness.py passing; 200-doc scale benchmark executed across concurrency 1, 4, 8 and committed to loadtests/reports/20261009T164315Z/ingest-scale.json; ADR-0023 committed)
 
 - **Failing query class:** Ingest throughput/latency scaling curve at 100+ documents; unthrottled loop lacks back-pressure against regulator 429s, lacks shrink-retry on token ceiling, lacks tokenization cache.
 - **WHAT TO DO:** Token-aware rate limiter, shrink-retry on 429/context length, bounded LRU tokenization cache, ingest task machine with state persistence.
 - **QUALITY BAR:** NFR-8 idempotency preserved; `EXPLAIN ANALYZE` on dense index at scale documented; simulated 200-doc ingest benchmarks throughput at 1/4/8 concurrency; p95 at 35 docs unregressed.
 - **WHAT SUCCESS LOOKS LIKE:** `app/ingest/harness.py` committed, benchmark report in `loadtests/reports/<ts>/ingest-scale.json`, ADR-0023 committed.
 
-### P2-GUARD — P2 Non-Regression & Evidence Close-out | Status: VERIFIED (docs/plans/p2-guard-closeout.md authored; all S-1…S-12 architectural strengths preserved; full test suite passing with 0 regressions; strict mypy clean over all modules; ruff clean; supply chain and secret scans green; all 5 P2 milestones verified against green remote CI runs 37941465593, 37945084920, 37956579479, 37958913797, 37962948267)
+### P2-GUARD - P2 Non-Regression & Evidence Close-out | Status: VERIFIED (docs/plans/p2-guard-closeout.md authored; all S-1…S-12 architectural strengths preserved; full test suite passing with 0 regressions; strict mypy clean over all modules; ruff clean; supply chain and secret scans green; all 5 P2 milestones verified against green remote CI runs 37941465593, 37945084920, 37956579479, 37958913797, 37962948267)
 
 - **WHAT TO DO:** Ensure every P2 lands without regressing S-1…S-12, all new modes are A/B-measured with paired bootstrap + McNemar, no architectural scaffolding, documentation & report close-out.
 - **QUALITY BAR:** Full verification suite green; every claimed number backed by committed artifact; `README.md`, `CHANGELOG.md`, `SPEC.md` current.

@@ -1,4 +1,4 @@
-# P2-1 Implementation Plan — Retrieval-Port Adapter
+# P2-1 Implementation Plan - Retrieval-Port Adapter
 
 ## 1. Task Definition & Failing Query / Operability Gap
 

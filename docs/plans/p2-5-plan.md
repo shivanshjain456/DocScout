@@ -1,4 +1,4 @@
-# P2-5 Implementation Plan — Ingestion-Scale Harness
+# P2-5 Implementation Plan - Ingestion-Scale Harness
 
 ## 1. Task Definition & Operational Gap
 

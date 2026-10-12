@@ -1,6 +1,6 @@
 """Shared database fixtures.
 
-Both the schema tests and the ingestion tests need the same two connections — the owner,
+Both the schema tests and the ingestion tests need the same two connections - the owner,
 which can create and drop things, and the least-privilege application role the service
 actually runs as. Keeping one definition here means a change to how the suite reaches the
 database cannot leave two files disagreeing about it.

@@ -1,4 +1,4 @@
-"""Live regulatory document discovery engine for RBI and SEBI — ARCHITECTURE §3.1, FR-1.
+"""Live regulatory document discovery engine for RBI and SEBI - ARCHITECTURE §3.1, FR-1.
 
 Implements ongoing automated discovery and change classification:
 1. Crawls authoritative publication indexes (RBI Notifications & Master Circulars,

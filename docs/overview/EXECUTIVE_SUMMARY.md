@@ -1,6 +1,6 @@
-# DocScout — Architecture & Systems Overview
+# DocScout - Architecture & Systems Overview
 
-> **Headline:** DocScout — citation-grounded RBI/SEBI RAG, hybrid-rrf MRR 0.854 @ p95 42ms, 448 fns (555 cases), 5/5 green.
+> **Headline:** DocScout - citation-grounded RBI/SEBI RAG, hybrid-rrf MRR 0.854 @ p95 42ms, 448 fns (555 cases), 5/5 green.
 
 DocScout is a production-grade, citation-grounded retrieval-augmented generation engine engineered specifically for complex Indian financial-regulatory circulars (RBI and SEBI).
 

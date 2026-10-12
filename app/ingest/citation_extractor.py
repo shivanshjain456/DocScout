@@ -66,7 +66,7 @@ _RE_SEBI_CIRCULAR = re.compile(
 )
 
 _RE_MASTER_DIRECTION = re.compile(
-    r"\b(?:Master\s+Direction|Master\s+Circular)\s*[-–—:]\s*([A-Za-z0-9\.\-\/\(\)]+)\b",
+    r"\b(?:Master\s+Direction|Master\s+Circular)\s*[-:\u2013\u2014]\s*([A-Za-z0-9\.\-\/\(\)]+)\b",
     re.IGNORECASE,
 )
 

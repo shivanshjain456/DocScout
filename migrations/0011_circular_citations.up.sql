@@ -1,4 +1,4 @@
--- 0011: circular_citations — explicit circular citation lineage graph (FEAT-005).
+-- 0011: circular_citations - explicit circular citation lineage graph (FEAT-005).
 --
 -- Why: Formal cross-document statutory references (e.g. 'DBOD.No.BP.BC...',
 -- 'RBI/2022-23/111') must be extracted and resolved to construct an explicit

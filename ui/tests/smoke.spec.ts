@@ -6,7 +6,7 @@ test("browser launches, renders a document, and screenshots", async ({ page }) =
   await page.goto("about:blank");
   await expect(page.locator("html")).toHaveCount(1);
   await page.setContent(
-    "<h1 style='font-family:sans-serif'>DocScout — Phase 0 browser smoke</h1>" +
+    "<h1 style='font-family:sans-serif'>DocScout - Phase 0 browser smoke</h1>" +
       `<p style='font-family:monospace'>${new Date().toISOString()}</p>`,
   );
   await page.screenshot({ path: "../docs/setup/ui-smoke.png", fullPage: true });

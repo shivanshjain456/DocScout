@@ -5,14 +5,14 @@
 section exists to block."* §4.2 then chose (b).
 
 A decision recorded only in prose decays. The pressure to publish a faithfulness number is
-real — it is the metric a reader expects from a RAG project, it looks bad to omit, and it
+real - it is the metric a reader expects from a RAG project, it looks bad to omit, and it
 would take one line to invent. So the withdrawal is a test: if a withdrawn metric reappears
 as a published number, or a judge role is quietly marked approved, the build fails.
 
 The project already uses this pattern once, in `test_goldset.py`, which asserts the gold
 set's metadata claims no Cohen's κ. This generalises it to the whole repository.
 
-Scope note: these tests read documents. That is deliberate and not a category error — the
+Scope note: these tests read documents. That is deliberate and not a category error - the
 published claims *are* the artifact being protected, and nothing else checks them.
 """
 

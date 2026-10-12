@@ -100,7 +100,7 @@ class SafeMathEvaluator:
             expression.replace("×", "*")
             .replace("÷", "/")
             .replace("–", "-")
-            .replace("—", "-")
+            .replace("\u2014", "-")
             .replace("^", "**")
         )
         clean_expr = re.sub(r"(?<=\d|\))\s*[xX]\s*(?=\d|\()", " * ", clean_expr)

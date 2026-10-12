@@ -7,7 +7,7 @@
 SET search_path = public;
 
 -- ---------------------------------------------------------------------------------------
--- users — analyst identity authenticated via Auth0 (OAuth 2.0 / OIDC).
+-- users - analyst identity authenticated via Auth0 (OAuth 2.0 / OIDC).
 -- ---------------------------------------------------------------------------------------
 CREATE TABLE users (
     user_id      uuid        PRIMARY KEY DEFAULT uuidv7(),
@@ -27,7 +27,7 @@ COMMENT ON COLUMN users.auth0_sub IS 'Stable unique subject identifier from vali
 COMMENT ON COLUMN users.role IS 'reader (analyst research) | admin (corpus management, ingestion, invalidation).';
 
 -- ---------------------------------------------------------------------------------------
--- user_interests — saved regulatory research interests / watchlists.
+-- user_interests - saved regulatory research interests / watchlists.
 -- ---------------------------------------------------------------------------------------
 CREATE TABLE user_interests (
     interest_id uuid        PRIMARY KEY DEFAULT uuidv7(),
@@ -47,7 +47,7 @@ CREATE INDEX idx_user_interests_user ON user_interests (user_id);
 COMMENT ON TABLE user_interests IS 'Saved analyst research interests for personalized monitoring.';
 
 -- ---------------------------------------------------------------------------------------
--- subscriptions — digest subscriptions with explicit consent and unsubscribe token.
+-- subscriptions - digest subscriptions with explicit consent and unsubscribe token.
 -- ---------------------------------------------------------------------------------------
 CREATE TABLE subscriptions (
     subscription_id   uuid        PRIMARY KEY DEFAULT uuidv7(),
@@ -72,7 +72,7 @@ CREATE INDEX idx_subscriptions_active ON subscriptions (is_active) WHERE is_acti
 COMMENT ON TABLE subscriptions IS 'Topic-based digest subscriptions with explicit consent tracking.';
 
 -- ---------------------------------------------------------------------------------------
--- subscription_topics — selected regulatory topics per subscription.
+-- subscription_topics - selected regulatory topics per subscription.
 -- ---------------------------------------------------------------------------------------
 CREATE TABLE subscription_topics (
     id              uuid        PRIMARY KEY DEFAULT uuidv7(),
@@ -90,7 +90,7 @@ CREATE TABLE subscription_topics (
 CREATE INDEX idx_subscription_topics_sub ON subscription_topics (subscription_id);
 
 -- ---------------------------------------------------------------------------------------
--- digest_deliveries — durable email delivery log with Brevo provider tracking.
+-- digest_deliveries - durable email delivery log with Brevo provider tracking.
 -- ---------------------------------------------------------------------------------------
 CREATE TABLE digest_deliveries (
     delivery_id      uuid        PRIMARY KEY DEFAULT uuidv7(),
@@ -124,7 +124,7 @@ CREATE INDEX idx_digest_deliveries_recipient ON digest_deliveries (recipient_ema
 COMMENT ON TABLE digest_deliveries IS 'Durable email delivery log preventing duplicate sends on retries and restarts.';
 
 -- ---------------------------------------------------------------------------------------
--- ocr_extractions — bounded OCR.Space extraction cache keyed by document content SHA-256.
+-- ocr_extractions - bounded OCR.Space extraction cache keyed by document content SHA-256.
 -- ---------------------------------------------------------------------------------------
 CREATE TABLE ocr_extractions (
     sha256          char(64)         PRIMARY KEY,

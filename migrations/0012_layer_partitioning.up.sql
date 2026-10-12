@@ -1,4 +1,4 @@
--- 0012: layer_partitioning — taxonomy layer partitioning on chunks (FEAT-006).
+-- 0012: layer_partitioning - taxonomy layer partitioning on chunks (FEAT-006).
 --
 -- Why: Partition lexical and dense search indexes across the 9 taxonomy layers
 -- to enable isolated domain searches and lower vector search latency.

@@ -1,4 +1,4 @@
-"""OCR.Space API integration and bounded extraction fallback — ARCHITECTURE §3.1, FR-3.
+"""OCR.Space API integration and bounded extraction fallback - ARCHITECTURE §3.1, FR-3.
 
 Provides bounded optical character recognition for scanned regulatory documents:
 1. Fast-path check: native clean documents extracted by pypdf never trigger OCR.

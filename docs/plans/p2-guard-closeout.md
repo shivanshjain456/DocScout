@@ -1,4 +1,4 @@
-# P2-GUARD — Non-Regression Verification and Final Operational Close-Out
+# P2-GUARD - Non-Regression Verification and Final Operational Close-Out
 
 ## 1. Executive Summary & Mission Accomplishment
 
