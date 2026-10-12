@@ -34,7 +34,7 @@
 - [x] FEAT-020: Persona-Tailored Query Profiling
 
 ### Pillar 3: Regulatory Compliance Formulas & Quantitative Verification
-- [ ] FEAT-021: Statutory Formula Computational Engine
+- [x] FEAT-021: Statutory Formula Computational Engine
 - [ ] FEAT-022: Automated Formula Extraction from Circulars
 - [ ] FEAT-023: Statutory Threshold & Boundary Validator
 - [ ] FEAT-024: Compliance "What-If" Sensitivity Simulator
@@ -155,6 +155,7 @@
 | FEAT-018 | 252f7d4 | PASS | Typo-tolerant regulatory normalizer with SymSpell index (1,434 terms, 60-typo eval 100%, p95 <= 0.25ms) |
 | FEAT-019 | c2ebb22 | PASS | Interactive search query suggestions with prefix & acronym index, related queries from graph edges, GET /v1/search/suggestions, p95 <= 0.1ms (<15ms target) |
 | FEAT-020 | de45bde | PASS | Persona-tailored query profiling (fintech_developer, statutory_auditor, risk_officer, compliance_officer), GET /v1/search/personas endpoint, cache isolation |
+| FEAT-021 | 4d0f354 | PASS | Safe AST mathematical formula computational engine (24 canonical taxonomy + 4 banking ratios), POST /v1/compliance/calculate, GET /v1/compliance/formulas, p95 <= 0.1ms |
 
 ---
 
