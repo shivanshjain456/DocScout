@@ -145,6 +145,8 @@ from app.api.models import (
     ResolveFormulaVersionRequest,
     ScanAntipatternsRequest,
     ScanAntipatternsResponse,
+    ScorecardRequest,
+    ScorecardResponse,
     SearchRequest,
     SearchResponse,
     SimulationRequest,
@@ -2979,6 +2981,53 @@ def classify_scope_endpoint(
         confidence=res.confidence,
         operative_condition=res.operative_condition,
         latency_ms=round(latency_ms, 3),
+    )
+
+
+# --- Regulatory Risk Scorecard Generator (FEAT-040) ---
+
+
+@app.post(
+    "/v1/compliance/scorecard",
+    response_model=ScorecardResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "invalid request input"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def generate_regulatory_risk_scorecard(
+    payload: ScorecardRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> ScorecardResponse:
+    """Generate executive regulatory risk scorecard from policy document dossier (FEAT-040)."""
+    t0 = time.perf_counter()
+    from app.compliance.scorecard import RegulatoryRiskScorecardEngine
+
+    engine = RegulatoryRiskScorecardEngine()
+    result = engine.generate_scorecard(
+        policy_document_texts=payload.policy_document_texts,
+        organization_type=payload.organization_type,
+        include_pdf=payload.include_pdf,
+        rubric_weights=payload.grading_rubric_weights,
+    )
+
+    metrics.SCORECARDS_GENERATED_TOTAL.labels(grade=result.overall_grade).inc()
+    duration_s = time.perf_counter() - t0
+    metrics.SCORECARD_DURATION_SECONDS.observe(duration_s)
+
+    return ScorecardResponse(
+        overall_grade=result.overall_grade,
+        numerical_score=result.numerical_score,
+        antipatterns_count=len(result.antipattern_findings),
+        deprecations_count=len(result.deprecation_detections),
+        standards_coverage_score=result.standards_coverage_score,
+        critical_risks=result.critical_risks,
+        remediation_timeline_days=result.remediation_timeline_days,
+        markdown_report=result.markdown_report,
+        pdf_content_base64=result.pdf_base64,
+        latency_ms=round(duration_s * 1000.0, 3),
     )
 
 

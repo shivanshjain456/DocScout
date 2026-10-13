@@ -1402,3 +1402,45 @@ class ClassifyScopeResponse(BaseModel):
     confidence: float
     operative_condition: str
     latency_ms: float = 0.0
+
+
+class ScorecardRequest(BaseModel):
+    policy_document_texts: list[str] = Field(
+        ...,
+        description="List of policy document texts to evaluate against compliance rubrics",
+    )
+    organization_type: str = Field(
+        default="scheduled_commercial_bank",
+        description="Type of entity: scheduled_commercial_bank, nbfc, payment_aggregator, fintech, etc.",
+    )
+    include_pdf: bool = Field(
+        default=False,
+        description="Whether to render and return a base64-encoded PDF audit scorecard",
+    )
+    grading_rubric_weights: dict[str, float] | None = Field(
+        default=None,
+        description="Custom rubric weights for antipatterns, deprecations, and standards_coverage",
+    )
+
+    @field_validator("policy_document_texts")
+    @classmethod
+    def validate_policy_texts(cls, v: list[str]) -> list[str]:
+        if not v:
+            raise ValueError("At least 1 policy document text must be provided")
+        has_adequate_doc = any(len(doc.split()) >= 100 for doc in v if doc and doc.strip())
+        if not has_adequate_doc:
+            raise ValueError("At least 1 policy document text must contain at least 100 words")
+        return v
+
+
+class ScorecardResponse(BaseModel):
+    overall_grade: Literal["A", "B", "C", "D", "F"]
+    numerical_score: float = Field(..., ge=0.0, le=100.0)
+    antipatterns_count: int
+    deprecations_count: int
+    standards_coverage_score: float = Field(..., ge=0.0, le=100.0)
+    critical_risks: list[str]
+    remediation_timeline_days: int
+    markdown_report: str
+    pdf_content_base64: str | None = None
+    latency_ms: float = 0.0
