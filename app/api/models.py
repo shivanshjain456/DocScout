@@ -1554,3 +1554,42 @@ class DocumentStandardMentionsResponse(BaseModel):
     document_id: str
     mentions: list[StandardMentionResponse]
     total_count: int
+
+
+# --- Audit Evidence Package Exporter (FEAT-047) ---
+
+
+class ExportEvidenceRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field(
+        ..., min_length=1, max_length=512, description="Target search query or audit mandate"
+    )
+    passage_ids: list[str] = Field(
+        ...,
+        min_length=1,
+        max_length=50,
+        description="List of cited passage or chunk IDs to bundle (1 to 50 items)",
+    )
+    format: Literal["PDF", "ZIP", "MARKDOWN"] = Field(
+        default="PDF", description="Output export archive format"
+    )
+    audit_reference_id: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        pattern=r"^[a-zA-Z0-9_\-\.:/ ]+$",
+        description="Auditor reference tracking number or engagement ID",
+    )
+    include_control_mappings: bool = Field(
+        default=True, description="Whether to include resolved statutory control crosswalks"
+    )
+
+
+class ExportResponse(BaseModel):
+    download_url: str
+    file_sha256: str
+    expires_at: datetime
+    items_included: int
+    format: Literal["PDF", "ZIP", "MARKDOWN"]
+    audit_reference_id: str

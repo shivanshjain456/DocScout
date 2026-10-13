@@ -625,6 +625,18 @@ STANDARD_MENTIONS_EXTRACTED_TOTAL = Counter(
     ("standard_id",),
 )
 
+AUDIT_PACKAGES_EXPORTED_TOTAL = Counter(
+    "docscout_audit_packages_exported_total",
+    "Total audit evidence packages exported by format (FEAT-047).",
+    ("format",),
+)
+
+AUDIT_PACKAGE_EXPORT_DURATION_SECONDS = Histogram(
+    "docscout_audit_package_export_duration_seconds",
+    "End-to-end latency of audit package export generation in seconds (FEAT-047).",
+    buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 3.0],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

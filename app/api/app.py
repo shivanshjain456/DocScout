@@ -107,6 +107,8 @@ from app.api.models import (
     EvaluateGraphRequest,
     EvaluateGraphResponse,
     EvaluationTraceStep,
+    ExportEvidenceRequest,
+    ExportResponse,
     ExtractDeadlinesRequest,
     ExtractDeadlinesResponse,
     ExtractParametersRequest,
@@ -4435,4 +4437,98 @@ async def get_document_standard_mentions(
         document_id=doc_uuid,
         mentions=response_mentions,
         total_count=len(response_mentions),
+    )
+
+
+@app.post(
+    "/v1/compliance/export-evidence",
+    response_model=ExportResponse,
+    tags=["Compliance"],
+    responses={
+        200: {"description": "Signed audit evidence dossier compiled"},
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "validation error"},
+    },
+)
+async def export_audit_evidence(
+    payload: ExportEvidenceRequest,
+    request: Request,
+    fingerprint: str = Depends(require_api_key),
+) -> ExportResponse:
+    """Compile and export statutory audit evidence package (FEAT-047)."""
+    from app.compliance.exporter import get_default_audit_exporter
+
+    exporter = get_default_audit_exporter()
+
+    # Resolve passages from database if available
+    if hasattr(request.app.state, "pool") and request.app.state.pool is not None:
+        with request.app.state.pool.connection() as conn:
+            passages = exporter.resolve_passages_from_db(conn, payload.passage_ids)
+    else:
+        try:
+            with psycopg.connect(database_url()) as conn:
+                passages = exporter.resolve_passages_from_db(conn, payload.passage_ids)
+        except Exception:
+            passages = exporter.resolve_passages_from_db(None, payload.passage_ids)  # type: ignore[arg-type]
+
+    try:
+        artifact = exporter.export_package(
+            query=payload.query,
+            passages=passages,
+            format=payload.format,
+            audit_reference_id=payload.audit_reference_id,
+        )
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(err),
+        ) from err
+
+    return ExportResponse(
+        download_url=artifact.download_url,
+        file_sha256=artifact.file_sha256,
+        expires_at=artifact.expires_at,
+        items_included=artifact.items_included,
+        format=artifact.format,
+        audit_reference_id=artifact.audit_reference_id,
+    )
+
+
+@app.get(
+    "/v1/compliance/export-download/{file_id}",
+    tags=["Compliance"],
+    responses={
+        200: {"description": "Downloadable audit package binary stream"},
+        404: {"description": "export package not found or expired"},
+    },
+)
+async def download_audit_evidence_package(
+    file_id: str,
+    fingerprint: str = Depends(require_api_key),
+) -> Response:
+    """Download compiled statutory audit evidence dossier (FEAT-047)."""
+    from app.compliance.exporter import get_default_audit_exporter
+
+    exporter = get_default_audit_exporter()
+    artifact = exporter.get_export_artifact(file_id)
+
+    if artifact is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "type": "https://docscout.internal/errors/export-not-found",
+                "title": "Export Package Not Found or Expired",
+                "status": 404,
+                "detail": f"Export dossier '{file_id}' does not exist or has exceeded its 60-minute retention window.",
+            },
+        )
+
+    return Response(
+        content=artifact.file_bytes,
+        media_type=artifact.content_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{artifact.filename}"',
+            "X-DocScout-SHA256": artifact.file_sha256,
+            "X-DocScout-Audit-Ref": artifact.audit_reference_id,
+        },
     )
