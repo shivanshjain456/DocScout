@@ -59,7 +59,7 @@
 
 ### Pillar 5: Multi-Standard Cross-Walk & Governance Registry
 - [x] FEAT-041: Unified Standards Registry & Authority Engine
-- [ ] FEAT-042: Cross-Framework Control Mapping Matrix
+- [x] FEAT-042: Cross-Framework Control Mapping Matrix
 - [ ] FEAT-043: Multi-Jurisdiction Compliance Harmonizer
 - [ ] FEAT-044: Standard-Constrained Search API Filtering
 - [ ] FEAT-045: Regulatory Authority Hierarchy Resolver
@@ -176,6 +176,7 @@
 | FEAT-039 | abf41e4 | PASS | Active circular temporal filtering (point-in-time search), migration 0029, bitemporal predicate, zero future leak across 25 benchmark queries, SLA p95 <= 28ms |
 | FEAT-040 | 44d75d0 | PASS | Regulatory risk scorecard generator, pure-Python PDF/A & Markdown generation, 10 benchmark policy dossiers 100% grading precision, POST /v1/compliance/scorecard, ScorecardView.tsx, SLA <= 2.5s |
 | FEAT-041 | 88f8a57 | PASS | Unified standards registry & authority engine, migration 0030, 100% taxonomy fidelity across 53 standards, control families & calibrated counts, GET /v1/standards, GET /v1/standards/{id}, SLA p95 <= 0.05ms |
+| FEAT-042 | 065e08e | PASS | Cross-framework control mapping matrix, migration 0031, 50 benchmark controls mapped between RBI CSF, ISO 27001, and NIST CSF 2.0 with >=98% accuracy, GET /v1/standards/crosswalk, SLA p95 <= 0.05ms |
 
 
 ---
