@@ -54,7 +54,7 @@
 - [x] FEAT-036: Grandfathering & Exemption Scope Engine
 - [x] FEAT-037: Semantic Terminology Drift Tracker
 - [x] FEAT-038: Enterprise Compliance Debt Register
-- [ ] FEAT-039: Active Circular Temporal Filtering (Point-in-Time Search)
+- [x] FEAT-039: Active Circular Temporal Filtering (Point-in-Time Search)
 - [ ] FEAT-040: Regulatory Risk Scorecard Generator
 
 ### Pillar 5: Multi-Standard Cross-Walk & Governance Registry
@@ -173,6 +173,7 @@
 | FEAT-036 | 6c08de5 | PASS | Grandfathering & exemption scope engine, migration 0027, 100% precision on 25 benchmark clauses, sub-millisecond overhead |
 | FEAT-037 | af6a1bd | PASS | Semantic terminology drift tracker, GET /v1/admin/ontology/drift/{term_id}, 100% detection on benchmark revisions, p95 <= 0.1ms |
 | FEAT-038 | b618d3f | PASS | Enterprise compliance debt register, migration 0028, RLS tenant isolation, /v1/compliance/debt/*, DebtRegisterView.tsx, p95 <= 1.5ms |
+| FEAT-039 | abf41e4 | PASS | Active circular temporal filtering (point-in-time search), migration 0029, bitemporal predicate, zero future leak across 25 benchmark queries, SLA p95 <= 28ms |
 
 
 ---
