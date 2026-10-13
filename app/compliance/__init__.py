@@ -31,6 +31,12 @@ from app.compliance.consistency_auditor import (
     MathematicalSanityAuditor,
     get_default_consistency_auditor,
 )
+from app.compliance.control_mapper import (
+    ControlMapper,
+    CrosswalkMapping,
+    FrameworkCoverage,
+    get_default_control_mapper,
+)
 from app.compliance.debt_register import (
     ComplianceDebtAuditEntry,
     ComplianceDebtItem,
@@ -129,6 +135,9 @@ __all__ = [
     "ConflictSeverity",
     "ConflictType",
     "ConsistencyAnomaly",
+    "ControlMapper",
+    "CrosswalkMapping",
+    "FrameworkCoverage",
     "CreateDebtItemRequest",
     "DebtItemListResponse",
     "DebtRegisterConfig",
@@ -176,6 +185,7 @@ __all__ = [
     "get_default_clause_conflict_detector",
     "get_default_compliance_simulator",
     "get_default_consistency_auditor",
+    "get_default_control_mapper",
     "get_default_debt_register",
     "get_default_deprecation_engine",
     "get_default_drift_tracker",

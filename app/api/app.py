@@ -88,6 +88,7 @@ from app.api.models import (
     Confidence,
     ConflictBenchmarkResponse,
     ConsistencyAnomalyModel,
+    CrosswalkResponse,
     DependencyGraphResponse,
     DeprecationCatalogResponse,
     DeprecationDetectionModel,
@@ -121,6 +122,7 @@ from app.api.models import (
     GraphTemplateSummaryModel,
     IntentClassification,
     LivenessResponse,
+    MappedControl,
     NormalizedQuantityModel,
     NormalizeUnitsRequest,
     NormalizeUnitsResponse,
@@ -4153,6 +4155,66 @@ def list_standards_endpoint(
         total=len(results),
         domains=reg.get_domains(),
         governing_bodies=reg.get_governing_bodies(),
+    )
+
+
+@app.get(
+    "/v1/standards/crosswalk",
+    response_model=CrosswalkResponse,
+    tags=["standards", "compliance"],
+    responses={
+        400: {"description": "invalid framework identifier or parameter format"},
+        401: {"description": "missing or invalid API key"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def get_standards_crosswalk_endpoint(
+    response: Response,
+    source_framework: str = Query(..., description="Source standard or regulatory framework"),
+    target_framework: str = Query(..., description="Target standard or regulatory framework"),
+    control_id: str | None = Query(
+        default=None, description="Optional control identifier to filter"
+    ),
+    fingerprint: str = Depends(require_api_key),
+) -> CrosswalkResponse:
+    """Establish bidirectional cross-framework control mapping matrix (FEAT-042)."""
+    from app.compliance.control_mapper import get_default_control_mapper
+
+    t0 = time.perf_counter()
+    mapper = get_default_control_mapper()
+
+    try:
+        raw_result = mapper.get_crosswalk(
+            source_framework=source_framework,
+            target_framework=target_framework,
+            control_id=control_id,
+        )
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(err),
+        ) from err
+
+    canon_src = raw_result["source_framework"]
+    canon_tgt = raw_result["target_framework"]
+
+    metrics.CROSSWALK_QUERIES_TOTAL.labels(source=canon_src, target=canon_tgt).inc()
+    duration_s = time.perf_counter() - t0
+    metrics.CROSSWALK_QUERY_DURATION_SECONDS.observe(duration_s)
+
+    response.headers["Cache-Control"] = "public, max-age=86400"
+
+    return CrosswalkResponse(
+        source_framework=raw_result["source_framework"],
+        target_framework=raw_result["target_framework"],
+        source_control=raw_result["source_control"],
+        source_control_title=raw_result["source_control_title"],
+        target_controls=[MappedControl(**tc) for tc in raw_result["target_controls"]],
+        citation_spans=raw_result["citation_spans"],
+        equivalence_summary=raw_result["equivalence_summary"],
+        coverage_percentage=raw_result.get("coverage_percentage"),
+        total_mappings=raw_result["total_mappings"],
+        mappings=raw_result.get("mappings"),
     )
 
 

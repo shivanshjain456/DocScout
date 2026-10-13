@@ -589,6 +589,18 @@ STANDARDS_QUERY_DURATION_SECONDS = Histogram(
     buckets=[0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1],
 )
 
+CROSSWALK_QUERIES_TOTAL = Counter(
+    "docscout_crosswalk_queries_total",
+    "Total cross-framework control mapping queries (FEAT-042).",
+    ("source", "target"),
+)
+
+CROSSWALK_QUERY_DURATION_SECONDS = Histogram(
+    "docscout_crosswalk_query_duration_seconds",
+    "Query execution latency for cross-framework control mapping in seconds (FEAT-042).",
+    buckets=[0.0005, 0.001, 0.002, 0.0035, 0.005, 0.01, 0.025],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

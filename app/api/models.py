@@ -1467,3 +1467,28 @@ class StandardsListResponse(BaseModel):
     total: int
     domains: list[str] = Field(default_factory=list)
     governing_bodies: list[str] = Field(default_factory=list)
+
+
+# --- Cross-Framework Control Mapping Matrix (FEAT-042) ---
+
+
+class MappedControl(BaseModel):
+    framework: str
+    control_id: str
+    title: str
+    equivalence_level: Literal["EXACT", "SUBSET", "SUPERSET"]
+    citation_spans: list[str] = Field(default_factory=list)
+    notes: str | None = None
+
+
+class CrosswalkResponse(BaseModel):
+    source_framework: str
+    target_framework: str
+    source_control: str | None = None
+    source_control_title: str | None = None
+    target_controls: list[MappedControl] = Field(default_factory=list)
+    citation_spans: list[str] = Field(default_factory=list)
+    equivalence_summary: str | None = None
+    coverage_percentage: float | None = None
+    total_mappings: int = 0
+    mappings: list[dict[str, Any]] | None = None
