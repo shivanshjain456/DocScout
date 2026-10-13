@@ -19,6 +19,11 @@ from pydantic import BaseModel, Field
 
 from app.api.metrics import ONTOLOGY_CANDIDATES_REVIEWED
 from app.api.security import require_api_key
+from app.compliance.drift_tracker import (
+    DriftConfig,
+    TermDriftReport,
+    get_default_drift_tracker,
+)
 from app.ingest.ontology_extractor import (
     DocumentPayload,
     OntologyExtractor,
@@ -295,4 +300,30 @@ def _update_candidate_status(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update candidate status: {exc}",
+        ) from exc
+
+
+@router.get("/drift/{term_id}", response_model=TermDriftReport)
+def get_term_drift_report(
+    term_id: str,
+    alert_threshold: float = Query(default=0.25, ge=0.0, le=1.0),
+    fingerprint: str = Depends(require_api_key),
+) -> TermDriftReport:
+    """Evaluate longitudinal semantic drift of statutory definitions for a term (FEAT-037)."""
+    tracker = get_default_drift_tracker()
+    try:
+        report = tracker.compute_drift(
+            term_id, config=DriftConfig(alert_threshold_distance=alert_threshold)
+        )
+        return report
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Term '{term_id}' not found in terminology registry",
+        ) from exc
+    except Exception as exc:
+        logger.warning("term_drift_evaluation_failed", term_id=term_id, error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to compute semantic drift: {exc}",
         ) from exc

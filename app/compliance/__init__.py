@@ -54,6 +54,13 @@ from app.compliance.deprecation_engine import (
     SupersessionNode,
     get_default_deprecation_engine,
 )
+from app.compliance.drift_tracker import (
+    DriftConfig,
+    HistoricalDef,
+    TermDriftReport,
+    TerminologyDriftTracker,
+    get_default_drift_tracker,
+)
 from app.compliance.formula_engine import FormulaEngine, get_default_formula_engine
 from app.compliance.formula_evolution import (
     ChangeClassification,
@@ -115,11 +122,13 @@ __all__ = [
     "DeprecationSeverity",
     "DeprecationStatus",
     "DetectedConflict",
+    "DriftConfig",
     "FormulaDependencyGraph",
     "FormulaEngine",
     "FormulaEvolutionManager",
     "FormulaVersion",
     "FormulaVersionDiff",
+    "HistoricalDef",
     "IndianFinancialUnitNormalizer",
     "MathematicalSanityAuditor",
     "NodeType",
@@ -139,6 +148,8 @@ __all__ = [
     "SubjectType",
     "SupersessionChain",
     "SupersessionNode",
+    "TermDriftReport",
+    "TerminologyDriftTracker",
     "format_indian_number",
     "format_international_number",
     "get_default_antipattern_scanner",
@@ -147,6 +158,7 @@ __all__ = [
     "get_default_compliance_simulator",
     "get_default_consistency_auditor",
     "get_default_deprecation_engine",
+    "get_default_drift_tracker",
     "get_default_formula_engine",
     "get_default_formula_evolution_manager",
     "get_default_remediation_engine",

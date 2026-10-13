@@ -549,6 +549,11 @@ SCOPE_CLASSIFICATION_DURATION_SECONDS = Histogram(
     buckets=[0.00005, 0.0001, 0.0002, 0.0005, 0.001],
 )
 
+TERMINOLOGY_DRIFTS_FLAGGED_TOTAL = Counter(
+    "docscout_terminology_drifts_flagged_total",
+    "Total regulatory terms flagged with significant semantic drift across circular versions (FEAT-037).",
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.
