@@ -24,6 +24,7 @@ Three things are load-bearing in the design:
 
 from __future__ import annotations
 
+import re
 import time
 import uuid
 from collections.abc import AsyncIterator
@@ -152,7 +153,9 @@ from app.api.models import (
     SimulationRequest,
     SimulationResponse,
     StandardListResponse,
+    StandardMetadata,
     StandardResponse,
+    StandardsListResponse,
     StatutoryDeprecationModel,
     StatutoryParameterModel,
     SubgraphResponse,
@@ -4103,3 +4106,105 @@ def get_taxonomy_dictionary_endpoint(response: Response) -> dict[str, Any]:
 
     response.headers["Cache-Control"] = "public, max-age=86400"
     return get_taxonomy_dictionary()
+
+
+@app.get(
+    "/v1/standards",
+    response_model=StandardsListResponse,
+    tags=["standards", "compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def list_standards_endpoint(
+    domain: str | None = Query(default=None, description="Filter standards by domain category"),
+    governing_body: str | None = Query(
+        default=None, description="Filter standards by governing body"
+    ),
+    search: str | None = Query(
+        default=None, description="Free-text search query across standards metadata"
+    ),
+    fingerprint: str = Depends(require_api_key),
+) -> StandardsListResponse:
+    """Query unified regulatory and technical standards registry (FEAT-041)."""
+    from app.compliance.standards_registry import get_default_standards_registry
+
+    t0 = time.perf_counter()
+    reg = get_default_standards_registry()
+
+    if search:
+        stds = reg.search_standards(search)
+        if domain:
+            dom_norm = domain.strip().lower()
+            stds = [s for s in stds if s.domain.lower() == dom_norm]
+        if governing_body:
+            gb_norm = governing_body.strip().lower()
+            stds = [s for s in stds if s.governing_body.lower() == gb_norm]
+    else:
+        stds = reg.list_standards(domain=domain, governing_body=governing_body)
+
+    results = [StandardMetadata(**s.to_metadata_dict()) for s in stds]
+    duration_s = time.perf_counter() - t0
+    metrics.STANDARDS_QUERY_DURATION_SECONDS.observe(duration_s)
+
+    return StandardsListResponse(
+        standards=results,
+        total=len(results),
+        domains=reg.get_domains(),
+        governing_bodies=reg.get_governing_bodies(),
+    )
+
+
+@app.get(
+    "/v1/standards/{standard_id:path}",
+    response_model=StandardMetadata,
+    tags=["standards", "compliance"],
+    responses={
+        400: {"description": "invalid standard identifier format"},
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "standard not found"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def get_standard_endpoint(
+    standard_id: str,
+    fingerprint: str = Depends(require_api_key),
+) -> StandardMetadata:
+    """Retrieve full authority metadata, control families, and statutory scope for a standard (FEAT-041)."""
+    from app.compliance.standards_registry import get_default_standards_registry
+
+    t0 = time.perf_counter()
+    std_id_clean = standard_id.strip()
+
+    # Input validation pattern per spec: ^[A-Z0-9\-\.\/ ]+$ (case-insensitive with syntax punctuation)
+    if not re.match(r"^[a-zA-Z0-9\-\.\/:\(\)_, ]+$", std_id_clean):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Standard identifier '{standard_id}' contains invalid characters.",
+        )
+
+    reg = get_default_standards_registry()
+    std = reg.get_standard(std_id_clean)
+
+    if std is None:
+        closest = [s.id for s in reg.search_standards(std_id_clean)[:5]]
+        all_ids = reg.get_all_standard_ids()
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "type": "https://docscout.internal/errors/standard-not-found",
+                "title": "Standard Not Found",
+                "status": 404,
+                "detail": f"Standard '{std_id_clean}' not found in unified authority registry.",
+                "closest_matches": closest,
+                "available_standards_sample": all_ids[:10],
+                "total_available_standards": len(all_ids),
+            },
+        )
+
+    metrics.STANDARDS_QUERIED_TOTAL.labels(standard_id=std.id).inc()
+    duration_s = time.perf_counter() - t0
+    metrics.STANDARDS_QUERY_DURATION_SECONDS.observe(duration_s)
+
+    return StandardMetadata(**std.to_metadata_dict())

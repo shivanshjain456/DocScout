@@ -577,6 +577,18 @@ SCORECARD_DURATION_SECONDS = Histogram(
     buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0],
 )
 
+STANDARDS_QUERIED_TOTAL = Counter(
+    "docscout_standards_queried_total",
+    "Total standards queries performed by standard ID (FEAT-041).",
+    ("standard_id",),
+)
+
+STANDARDS_QUERY_DURATION_SECONDS = Histogram(
+    "docscout_standards_query_duration_seconds",
+    "Lookup duration of standards queries in seconds (FEAT-041).",
+    buckets=[0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

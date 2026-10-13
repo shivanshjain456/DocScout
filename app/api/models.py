@@ -1444,3 +1444,26 @@ class ScorecardResponse(BaseModel):
     markdown_report: str
     pdf_content_base64: str | None = None
     latency_ms: float = 0.0
+
+
+class StandardMetadata(BaseModel):
+    id: str
+    name: str
+    governing_body: str
+    domain: str
+    jurisdiction: str = "global"
+    category: str = "technical"
+    note: str | None = None
+    description: str | None = None
+    official_reference_url: str | None = None
+    control_families: list[str] = Field(default_factory=list)
+    control_count: int = 0
+    mapped_circulars_count: int = 0
+    aliases: list[str] = Field(default_factory=list)
+
+
+class StandardsListResponse(BaseModel):
+    standards: list[StandardMetadata]
+    total: int
+    domains: list[str] = Field(default_factory=list)
+    governing_bodies: list[str] = Field(default_factory=list)
