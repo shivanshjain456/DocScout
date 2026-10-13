@@ -170,6 +170,7 @@ from app.api.models import (
     WorkspaceResponse,
 )
 from app.api.security import RATE_LIMIT_REQUESTS, load_keys, require_api_key
+from app.compliance.debt_register import router as compliance_debt_router
 from app.config import database_url, sha256_file, staleness_budget_hours
 from app.generate import GeneratedAnswer, get_generator
 from app.generate.agent import (
@@ -313,6 +314,7 @@ app = FastAPI(
 
 app.include_router(admin_ontology_router)
 app.include_router(chat_router)
+app.include_router(compliance_debt_router)
 
 
 @app.middleware("http")

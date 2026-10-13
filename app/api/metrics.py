@@ -554,6 +554,12 @@ TERMINOLOGY_DRIFTS_FLAGGED_TOTAL = Counter(
     "Total regulatory terms flagged with significant semantic drift across circular versions (FEAT-037).",
 )
 
+OPEN_COMPLIANCE_DEBT_ITEMS = Gauge(
+    "docscout_open_compliance_debt_items",
+    "Current count of active compliance debt items by tenant and severity (FEAT-038).",
+    ("tenant_id", "severity"),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.
