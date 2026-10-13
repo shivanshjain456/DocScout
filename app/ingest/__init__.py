@@ -10,6 +10,12 @@ from __future__ import annotations
 
 from app.ingest.chunk import Chunk, chunk_document, verify_offsets
 from app.ingest.clean import clean_char_count, clean_preserving_offsets
+from app.ingest.deadline_extractor import (
+    DeadlineAlertConfig,
+    DeadlineExtractor,
+    RegulatoryDeadline,
+    extract_regulatory_deadlines,
+)
 from app.ingest.embed import EMBEDDING_DIM, MODEL_ID, QUERY_PREFIX, Embedder
 from app.ingest.errors import (
     CredentialBleedError,
@@ -32,12 +38,15 @@ __all__ = [
     "Action",
     "Chunk",
     "CredentialBleedError",
+    "DeadlineAlertConfig",
+    "DeadlineExtractor",
     "DisallowedHostError",
     "EmbeddingContractError",
     "Embedder",
     "ExtractionError",
     "IngestError",
     "IngestReport",
+    "RegulatoryDeadline",
     "ShortExtractionError",
     "SourceDocument",
     "StoreOutcome",
@@ -48,6 +57,7 @@ __all__ = [
     "clean_preserving_offsets",
     "connect",
     "extract",
+    "extract_regulatory_deadlines",
     "iter_manifest_documents",
     "run_ingest",
     "store_document",

@@ -94,11 +94,15 @@ from app.api.models import (
     DigestDispatchResponse,
     DiscoveryTriggerRequest,
     DiscoveryTriggerResponse,
+    DispatchDeadlineAlertsRequest,
+    DispatchDeadlineAlertsResponse,
     DocumentParametersResponse,
     DocumentResponse,
     EvaluateGraphRequest,
     EvaluateGraphResponse,
     EvaluationTraceStep,
+    ExtractDeadlinesRequest,
+    ExtractDeadlinesResponse,
     ExtractParametersRequest,
     ExtractParametersResponse,
     FormulaCalcRequest,
@@ -130,6 +134,7 @@ from app.api.models import (
     RatioValidationRequest,
     RatioValidationResponse,
     ReadinessResponse,
+    RegulatoryDeadlineModel,
     RemediationCatalogResponse,
     RemediationPlanModel,
     ResearchArtifactSummary,
@@ -2787,6 +2792,130 @@ def remediation_catalog_endpoint(
         total_plans=len(plan_models),
         total_practices_mapped=total_recs,
         plans=plan_models,
+    )
+
+
+# --- Sunset Clause & Mandatory Cutover Alerting (FEAT-035) ---
+
+
+@app.post(
+    "/v1/ingest/deadlines/extract",
+    response_model=ExtractDeadlinesResponse,
+    tags=["ingest"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "invalid request input"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def extract_deadlines_endpoint(
+    payload: ExtractDeadlinesRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> ExtractDeadlinesResponse:
+    """Extract transition deadlines, cutover dates, and sunset clauses from circular text (FEAT-035)."""
+    t0 = time.perf_counter()
+    from datetime import date
+
+    from app.ingest.deadline_extractor import DeadlineAlertConfig, DeadlineExtractor
+
+    config = DeadlineAlertConfig(
+        critical_threshold_days=payload.critical_threshold_days,
+        warning_threshold_days=payload.warning_threshold_days,
+    )
+    extractor = DeadlineExtractor(config=config)
+
+    ref_date = None
+    if payload.reference_date:
+        try:
+            ref_date = date.fromisoformat(payload.reference_date)
+        except ValueError as val_err:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Invalid reference_date format; expected YYYY-MM-DD",
+            ) from val_err
+
+    try:
+        deadlines = extractor.extract(
+            text=payload.text,
+            doc_id=payload.doc_id,
+            reference_date=ref_date,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+    deadline_models = [
+        RegulatoryDeadlineModel(
+            doc_id=d.doc_id,
+            mandate_description=d.mandate_description,
+            effective_date=d.effective_date.isoformat(),
+            days_remaining=d.days_remaining,
+            urgency_level=d.urgency_level,
+            extracted_snippet=d.extracted_snippet,
+            confidence=d.confidence,
+        )
+        for d in deadlines
+    ]
+
+    latency_ms = (time.perf_counter() - t0) * 1000.0
+    return ExtractDeadlinesResponse(
+        doc_id=payload.doc_id,
+        total_deadlines=len(deadline_models),
+        deadlines=deadline_models,
+        latency_ms=round(latency_ms, 3),
+    )
+
+
+@app.post(
+    "/v1/compliance/deadlines/dispatch-alerts",
+    response_model=DispatchDeadlineAlertsResponse,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "invalid request input"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def dispatch_deadline_alerts_endpoint(
+    payload: DispatchDeadlineAlertsRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> DispatchDeadlineAlertsResponse:
+    """Dispatch countdown alerts for pending regulatory cutovers (FEAT-035)."""
+    from datetime import date
+
+    from app.digests.deadline_notifier import DeadlineNotifier
+    from app.ingest.deadline_extractor import RegulatoryDeadline
+
+    deadlines = [
+        RegulatoryDeadline(
+            doc_id=d.doc_id,
+            mandate_description=d.mandate_description,
+            effective_date=date.fromisoformat(d.effective_date),
+            days_remaining=d.days_remaining,
+            urgency_level=d.urgency_level,
+            extracted_snippet=d.extracted_snippet,
+            confidence=d.confidence,
+        )
+        for d in payload.deadlines
+    ]
+
+    pool = getattr(app.state, "pool", None)
+    notifier = DeadlineNotifier(pool=pool)
+    result = notifier.dispatch_alerts(
+        deadlines=deadlines,
+        recipients=payload.recipients,
+        dry_run=payload.dry_run,
+    )
+
+    return DispatchDeadlineAlertsResponse(
+        total_checked=result.total_checked,
+        alerts_dispatched=result.alerts_dispatched,
+        critical_count=result.critical_count,
+        warning_count=result.warning_count,
+        info_count=result.info_count,
+        duration_ms=round(result.duration_ms, 3),
     )
 
 

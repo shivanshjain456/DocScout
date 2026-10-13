@@ -1328,3 +1328,45 @@ class RemediationCatalogResponse(BaseModel):
     total_plans: int
     total_practices_mapped: int
     plans: list[RemediationPlanModel]
+
+
+class RegulatoryDeadlineModel(BaseModel):
+    doc_id: str
+    mandate_description: str
+    effective_date: str
+    days_remaining: int
+    urgency_level: Literal["CRITICAL", "WARNING", "INFO"]
+    extracted_snippet: str | None = None
+    confidence: float = 1.0
+
+
+class ExtractDeadlinesRequest(BaseModel):
+    text: str = Field(..., min_length=100, description="Circular document text")
+    doc_id: str = Field(..., description="Circular identifier or reference")
+    critical_threshold_days: int = Field(default=15, ge=1)
+    warning_threshold_days: int = Field(default=45, ge=1)
+    reference_date: str | None = Field(default=None, description="Reference date YYYY-MM-DD")
+
+
+class ExtractDeadlinesResponse(BaseModel):
+    doc_id: str
+    total_deadlines: int
+    deadlines: list[RegulatoryDeadlineModel]
+    latency_ms: float = 0.0
+
+
+class DispatchDeadlineAlertsRequest(BaseModel):
+    deadlines: list[RegulatoryDeadlineModel] = Field(default_factory=list)
+    recipients: list[str] = Field(
+        default_factory=list, description="Target email recipients for cutover alerts"
+    )
+    dry_run: bool = Field(default=False, description="Simulate dispatch without sending emails")
+
+
+class DispatchDeadlineAlertsResponse(BaseModel):
+    total_checked: int
+    alerts_dispatched: int
+    critical_count: int
+    warning_count: int
+    info_count: int
+    duration_ms: float

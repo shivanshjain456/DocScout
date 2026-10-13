@@ -519,6 +519,24 @@ REMEDIATION_LOOKUP_DURATION_SECONDS = Histogram(
     buckets=[0.0001, 0.0003, 0.0005, 0.001, 0.005],
 )
 
+UPCOMING_DEADLINES_COUNT = Gauge(
+    "docscout_upcoming_deadlines_count",
+    "Current count of upcoming regulatory deadlines by urgency level (FEAT-035).",
+    ("urgency",),
+)
+
+DEADLINE_ALERTS_SENT_TOTAL = Counter(
+    "docscout_deadline_alerts_sent_total",
+    "Total regulatory cutover and deadline alerts dispatched (FEAT-035).",
+    ("channel", "urgency"),
+)
+
+DEADLINE_EXTRACTION_DURATION_SECONDS = Histogram(
+    "docscout_deadline_extraction_duration_seconds",
+    "Latency of transition deadline and cutover extraction in seconds (FEAT-035).",
+    buckets=[0.0001, 0.0005, 0.001, 0.002, 0.005],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

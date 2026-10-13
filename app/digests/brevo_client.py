@@ -212,3 +212,113 @@ class BrevoTransactionalClient:
             error_detail="Exceeded maximum delivery retry attempts",
             attempts=max_attempts,
         )
+
+    def send_transactional_email(
+        self,
+        recipient_email: str,
+        subject: str,
+        html_content: str,
+        text_content: str | None = None,
+        recipient_name: str | None = None,
+        tags: list[str] | None = None,
+    ) -> BrevoSendResult:
+        """Send a single arbitrary transactional email (e.g. cutover deadline alert)."""
+        if not self.api_key:
+            return BrevoSendResult(
+                success=False,
+                status="CONFIG_ERROR",
+                message_id=None,
+                error_detail="BREVO_API_KEY is not configured",
+            )
+
+        if not self.sender_email:
+            return BrevoSendResult(
+                success=False,
+                status="CONFIG_ERROR",
+                message_id=None,
+                error_detail="BREVO_SENDER_EMAIL is not configured",
+            )
+
+        if not self._check_quota():
+            return BrevoSendResult(
+                success=False,
+                status="QUOTA_EXCEEDED",
+                message_id=None,
+                error_detail="Daily sending limit reached",
+            )
+
+        url = f"{self.api_url}/smtp/email"
+        headers = {
+            "api-key": self.api_key,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+
+        body = {
+            "sender": {
+                "name": self.sender_name,
+                "email": self.sender_email,
+            },
+            "to": [
+                {
+                    "email": recipient_email,
+                    "name": recipient_name or "Compliance Officer",
+                }
+            ],
+            "subject": subject,
+            "htmlContent": html_content,
+            "textContent": text_content or "",
+            "tags": tags or ["docscout-deadline-alert"],
+        }
+
+        max_attempts = 3
+        backoff = 1.0
+
+        for attempt in range(1, max_attempts + 1):
+            try:
+                with httpx.Client(timeout=self.timeout) as client:
+                    resp = client.post(url, json=body, headers=headers)
+                    if resp.status_code == 201:
+                        data = resp.json()
+                        message_id = str(data.get("messageId", ""))
+                        self._daily_sends += 1
+                        return BrevoSendResult(
+                            success=True,
+                            status="ACCEPTED",
+                            message_id=message_id,
+                            http_status=resp.status_code,
+                            attempts=attempt,
+                        )
+                    if 400 <= resp.status_code < 500 and resp.status_code != 429:
+                        return BrevoSendResult(
+                            success=False,
+                            status="FAILED",
+                            message_id=None,
+                            error_detail=resp.text[:300],
+                            http_status=resp.status_code,
+                            attempts=attempt,
+                        )
+                    if attempt < max_attempts:
+                        time.sleep(backoff)
+                        backoff *= 2.0
+                        continue
+            except Exception as exc:
+                if attempt < max_attempts:
+                    time.sleep(backoff)
+                    backoff *= 2.0
+                    continue
+                return BrevoSendResult(
+                    success=False,
+                    status="FAILED",
+                    message_id=None,
+                    error_detail=f"Brevo network connection failure: {exc}",
+                    attempts=attempt,
+                )
+
+        return BrevoSendResult(
+            success=False,
+            status="FAILED",
+            message_id=None,
+            error_detail="Exceeded maximum delivery retry attempts",
+            attempts=max_attempts,
+        )
