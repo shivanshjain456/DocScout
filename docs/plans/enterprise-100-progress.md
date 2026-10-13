@@ -53,7 +53,7 @@
 - [x] FEAT-035: Sunset Clause & Mandatory Cutover Alerting
 - [x] FEAT-036: Grandfathering & Exemption Scope Engine
 - [x] FEAT-037: Semantic Terminology Drift Tracker
-- [ ] FEAT-038: Enterprise Compliance Debt Register
+- [x] FEAT-038: Enterprise Compliance Debt Register
 - [ ] FEAT-039: Active Circular Temporal Filtering (Point-in-Time Search)
 - [ ] FEAT-040: Regulatory Risk Scorecard Generator
 
@@ -172,6 +172,7 @@
 | FEAT-035 | 03810d0 | PASS | Sunset clause & mandatory cutover alerting, migration 0026, 100% benchmark recall/precision, p95 <= 0.4ms |
 | FEAT-036 | 6c08de5 | PASS | Grandfathering & exemption scope engine, migration 0027, 100% precision on 25 benchmark clauses, sub-millisecond overhead |
 | FEAT-037 | af6a1bd | PASS | Semantic terminology drift tracker, GET /v1/admin/ontology/drift/{term_id}, 100% detection on benchmark revisions, p95 <= 0.1ms |
+| FEAT-038 | b618d3f | PASS | Enterprise compliance debt register, migration 0028, RLS tenant isolation, /v1/compliance/debt/*, DebtRegisterView.tsx, p95 <= 1.5ms |
 
 
 ---
