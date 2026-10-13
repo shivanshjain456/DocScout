@@ -86,6 +86,11 @@ from app.compliance.formula_evolution import (
     FormulaVersionDiff,
     get_default_formula_evolution_manager,
 )
+from app.compliance.harmonizer import (
+    ComplianceHarmonizer,
+    HarmonizerConfig,
+    get_default_compliance_harmonizer,
+)
 from app.compliance.remediation_engine import (
     PracticeRecommendation,
     PrescriptiveRemediationEngine,
@@ -131,7 +136,9 @@ __all__ = [
     "ComplianceDebtAuditEntry",
     "ComplianceDebtItem",
     "ComplianceDebtRegister",
+    "ComplianceHarmonizer",
     "ComplianceSimulator",
+    "HarmonizerConfig",
     "ConflictSeverity",
     "ConflictType",
     "ConsistencyAnomaly",
@@ -183,6 +190,7 @@ __all__ = [
     "get_default_antipattern_scanner",
     "get_default_boundary_validator",
     "get_default_clause_conflict_detector",
+    "get_default_compliance_harmonizer",
     "get_default_compliance_simulator",
     "get_default_consistency_auditor",
     "get_default_control_mapper",

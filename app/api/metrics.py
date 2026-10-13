@@ -601,6 +601,18 @@ CROSSWALK_QUERY_DURATION_SECONDS = Histogram(
     buckets=[0.0005, 0.001, 0.002, 0.0035, 0.005, 0.01, 0.025],
 )
 
+HARMONIZATIONS_PERFORMED_TOTAL = Counter(
+    "docscout_harmonizations_performed_total",
+    "Total multi-jurisdiction compliance harmonizations performed (FEAT-043).",
+    ("delta_classification", "topic"),
+)
+
+HARMONIZATION_DURATION_SECONDS = Histogram(
+    "docscout_harmonization_duration_seconds",
+    "Latency of harmonization analysis in seconds (FEAT-043).",
+    buckets=[0.001, 0.005, 0.01, 0.02, 0.05, 0.1],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

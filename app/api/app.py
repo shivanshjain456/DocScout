@@ -120,6 +120,8 @@ from app.api.models import (
     GraphNode,
     GraphNodeModel,
     GraphTemplateSummaryModel,
+    HarmonizationReport,
+    HarmonizeRequest,
     IntentClassification,
     LivenessResponse,
     MappedControl,
@@ -3032,6 +3034,60 @@ def generate_regulatory_risk_scorecard(
         remediation_timeline_days=result.remediation_timeline_days,
         markdown_report=result.markdown_report,
         pdf_content_base64=result.pdf_base64,
+        latency_ms=round(duration_s * 1000.0, 3),
+    )
+
+
+# --- Multi-Jurisdiction Compliance Harmonizer (FEAT-043) ---
+
+
+@app.post(
+    "/v1/compliance/harmonize",
+    response_model=HarmonizationReport,
+    tags=["compliance"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "unknown jurisdiction or invalid input"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def harmonize_compliance_endpoint(
+    payload: HarmonizeRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> HarmonizationReport:
+    """Execute multi-jurisdiction comparative regulatory analysis and statutory delta classification (FEAT-043)."""
+    t0 = time.perf_counter()
+    from app.compliance.harmonizer import get_default_compliance_harmonizer
+
+    harmonizer = get_default_compliance_harmonizer()
+    try:
+        raw_result = harmonizer.harmonize(
+            topic=payload.topic,
+            jurisdiction_a=payload.jurisdiction_a,
+            jurisdiction_b=payload.jurisdiction_b,
+        )
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(err),
+        ) from err
+
+    metrics.HARMONIZATIONS_PERFORMED_TOTAL.labels(
+        delta_classification=raw_result["delta_classification"],
+        topic=raw_result["topic"],
+    ).inc()
+    duration_s = time.perf_counter() - t0
+    metrics.HARMONIZATION_DURATION_SECONDS.observe(duration_s)
+
+    return HarmonizationReport(
+        topic=raw_result["topic"],
+        jurisdiction_a=raw_result["jurisdiction_a"],
+        jurisdiction_b=raw_result["jurisdiction_b"],
+        delta_classification=raw_result["delta_classification"],
+        comparative_analysis=raw_result["comparative_analysis"],
+        localized_mandates=raw_result["localized_mandates"],
+        confidence_score=raw_result["confidence_score"],
+        statutory_citations=raw_result["statutory_citations"],
         latency_ms=round(duration_s * 1000.0, 3),
     )
 

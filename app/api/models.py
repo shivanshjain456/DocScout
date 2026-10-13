@@ -1492,3 +1492,32 @@ class CrosswalkResponse(BaseModel):
     coverage_percentage: float | None = None
     total_mappings: int = 0
     mappings: list[dict[str, Any]] | None = None
+
+
+# --- Multi-Jurisdiction Compliance Harmonizer (FEAT-043) ---
+
+
+class HarmonizeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    topic: str = Field(
+        ..., min_length=2, max_length=200, description="Compliance domain or statutory subject"
+    )
+    jurisdiction_a: str = Field(
+        ..., description="First jurisdiction code (e.g. IN_RBI, EU_DORA, US_NIST)"
+    )
+    jurisdiction_b: str = Field(
+        ..., description="Second jurisdiction code (e.g. EU_GDPR, US_FEDRAMP, GLOBAL_ISO)"
+    )
+
+
+class HarmonizationReport(BaseModel):
+    topic: str
+    jurisdiction_a: str
+    jurisdiction_b: str
+    delta_classification: Literal["STRICTER_A", "EQUIVALENT", "STRICTER_B"]
+    comparative_analysis: str
+    localized_mandates: list[str] = Field(default_factory=list)
+    confidence_score: float = Field(default=1.0, ge=0.0, le=1.0)
+    statutory_citations: list[str] = Field(default_factory=list)
+    latency_ms: float = 0.0
