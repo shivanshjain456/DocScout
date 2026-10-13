@@ -51,7 +51,7 @@
 - [x] FEAT-033: Regulatory & Technical Antipattern Scanner
 - [x] FEAT-034: "Instead-Of" Prescriptive Remediation Engine
 - [x] FEAT-035: Sunset Clause & Mandatory Cutover Alerting
-- [ ] FEAT-036: Grandfathering & Exemption Scope Engine
+- [x] FEAT-036: Grandfathering & Exemption Scope Engine
 - [ ] FEAT-037: Semantic Terminology Drift Tracker
 - [ ] FEAT-038: Enterprise Compliance Debt Register
 - [ ] FEAT-039: Active Circular Temporal Filtering (Point-in-Time Search)
@@ -170,6 +170,7 @@
 | FEAT-033 | b64364e | PASS | Regulatory & technical antipattern scanner (30 taxonomy antipatterns, document scanner, synthetic benchmark 100% recall/precision, GET /v1/compliance/antipatterns/catalog, POST /v1/compliance/antipatterns/scan, GET /v1/compliance/antipatterns/benchmark) |
 | FEAT-034 | 23b14eb | PASS | Instead-Of prescriptive remediation engine (38 plans across 30 antipatterns and 8 deprecations, 116 replacement practices mapped, checklist generation, POST /v1/compliance/remediation/plan, POST /batch, GET /catalog, p95 <= 0.05ms) |
 | FEAT-035 | 03810d0 | PASS | Sunset clause & mandatory cutover alerting, migration 0026, 100% benchmark recall/precision, p95 <= 0.4ms |
+| FEAT-036 | 6c08de5 | PASS | Grandfathering & exemption scope engine, migration 0027, 100% precision on 25 benchmark clauses, sub-millisecond overhead |
 
 
 ---
