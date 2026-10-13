@@ -50,7 +50,7 @@
 - [x] FEAT-032: Circular Clause Conflict Detector
 - [x] FEAT-033: Regulatory & Technical Antipattern Scanner
 - [x] FEAT-034: "Instead-Of" Prescriptive Remediation Engine
-- [ ] FEAT-035: Sunset Clause & Mandatory Cutover Alerting
+- [x] FEAT-035: Sunset Clause & Mandatory Cutover Alerting
 - [ ] FEAT-036: Grandfathering & Exemption Scope Engine
 - [ ] FEAT-037: Semantic Terminology Drift Tracker
 - [ ] FEAT-038: Enterprise Compliance Debt Register
@@ -169,6 +169,7 @@
 | FEAT-032 | 13c17f1 | PASS | Circular clause conflict detector (pairwise semantic & threshold contradiction detection, normative modality clashes, synthetic benchmark >90% detection rate, p95 <= 0.1ms) |
 | FEAT-033 | b64364e | PASS | Regulatory & technical antipattern scanner (30 taxonomy antipatterns, document scanner, synthetic benchmark 100% recall/precision, GET /v1/compliance/antipatterns/catalog, POST /v1/compliance/antipatterns/scan, GET /v1/compliance/antipatterns/benchmark) |
 | FEAT-034 | 23b14eb | PASS | Instead-Of prescriptive remediation engine (38 plans across 30 antipatterns and 8 deprecations, 116 replacement practices mapped, checklist generation, POST /v1/compliance/remediation/plan, POST /batch, GET /catalog, p95 <= 0.05ms) |
+| FEAT-035 | 03810d0 | PASS | Sunset clause & mandatory cutover alerting, migration 0026, 100% benchmark recall/precision, p95 <= 0.4ms |
 
 
 ---
