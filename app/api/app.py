@@ -699,6 +699,14 @@ def search(
             query=payload.query,
         )
 
+    if payload.filter is not None and payload.filter.standard is not None:
+        metrics.STANDARD_CONSTRAINED_QUERIES_TOTAL.labels(standard=payload.filter.standard).inc()
+        logger.info(
+            "search.standard_filter",
+            filter_standard=payload.filter.standard,
+            query=payload.query,
+        )
+
     cached: CachedResult | None = state.result_cache.get(cache_key) if payload.use_cache else None
     if cached is not None:
         metrics.CACHE_EVENTS.labels("hit").inc()
@@ -726,6 +734,7 @@ def search(
             mode=payload.mode,
             k=payload.k,
             filter=payload.filter.as_dict() if payload.filter else None,
+            filter_standard=payload.filter.standard if payload.filter else None,
             difficulty_band=payload.difficulty_band,
             extracted_tags=cached.extracted_tags,
             duration_ms=round(total_ms, 2),
@@ -915,6 +924,7 @@ def search(
         mode=payload.mode,
         k=payload.k,
         filter=payload.filter.as_dict() if payload.filter else None,
+        filter_standard=payload.filter.standard if payload.filter else None,
         difficulty_band=payload.difficulty_band,
         extracted_tags=result.extracted_tags,
         duration_ms=round(total_ms, 2),

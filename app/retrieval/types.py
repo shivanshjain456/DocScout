@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from app.retrieval.rerank import MODEL_ID as RERANK_MODEL_ID
 
@@ -65,6 +65,7 @@ class ChunkMeta:
     tags: list[str] = field(default_factory=list)
     applicability_scope: str = "ALL"
     superseded_date: date | None = None
+    standard_ids: tuple[str, ...] = ()
 
 
 class MetadataFilter(BaseModel):
@@ -73,7 +74,8 @@ class MetadataFilter(BaseModel):
     Enables bounding regulatory retrieval by authority (RBI, SEBI), issuance
     date windows (date_from, date_to), version status (is_current), specific
     document UUIDs / canonical URLs, taxonomy layers, domain tags (FEAT-016),
-    entity vintage scope (FEAT-036), or point-in-time temporal state (FEAT-039).
+    entity vintage scope (FEAT-036), point-in-time temporal state (FEAT-039),
+    or statutory standard/framework compliance mapping (FEAT-044).
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -92,6 +94,31 @@ class MetadataFilter(BaseModel):
     tags: list[str] | None = None
     entity_vintage: Literal["existing", "new"] | None = None
     as_of_date: date | None = None
+    standard: str | None = None
+    framework: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_framework_and_standard(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "framework" in data and "standard" not in data:
+                data["standard"] = data["framework"]
+        return data
+
+    @field_validator("standard")
+    @classmethod
+    def validate_standard(cls, v: str | None) -> str | None:
+        if v is not None:
+            from app.compliance.standards_registry import get_default_standards_registry
+
+            std = get_default_standards_registry().get_standard(v)
+            if std is None:
+                known = sorted(get_default_standards_registry().get_all_standard_ids()[:15])
+                raise ValueError(
+                    f"Unrecognized standard '{v}'. Must be a recognized standard ID or name. "
+                    f"Known standards include: {known}"
+                )
+        return v
 
     @field_validator("taxonomy_layers")
     @classmethod
@@ -137,6 +164,7 @@ class MetadataFilter(BaseModel):
             self.relationship_filter,
             self.entity_vintage,
             self.as_of_date.isoformat() if self.as_of_date else None,
+            self.standard,
         )
 
     def as_dict(self) -> dict[str, Any]:
@@ -201,6 +229,28 @@ class MetadataFilter(BaseModel):
             ):
                 return False
             if self.entity_vintage == "new" and chunk_scope not in ("ALL", "NEW_ENTRANTS_ONLY"):
+                return False
+
+        if self.standard is not None:
+            chunk_stds = getattr(meta, "standard_ids", ())
+            if not chunk_stds:
+                return False
+            from app.compliance.standards_registry import get_default_standards_registry
+
+            std = get_default_standards_registry().get_standard(self.standard)
+            cand_keys = {
+                self.standard.lower(),
+                self.standard.lower().replace("-", " ").replace("_", " "),
+            }
+            if std is not None:
+                cand_keys.add(std.id.lower())
+                cand_keys.add(std.name.lower())
+                for a in std.aliases:
+                    cand_keys.add(a.lower())
+            meta_standards = {s.lower() for s in chunk_stds} | {
+                s.lower().replace("-", " ").replace("_", " ") for s in chunk_stds
+            }
+            if not (cand_keys & meta_standards):
                 return False
 
         return True

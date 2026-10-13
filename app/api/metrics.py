@@ -613,6 +613,12 @@ HARMONIZATION_DURATION_SECONDS = Histogram(
     buckets=[0.001, 0.005, 0.01, 0.02, 0.05, 0.1],
 )
 
+STANDARD_CONSTRAINED_QUERIES_TOTAL = Counter(
+    "docscout_standard_constrained_queries_total",
+    "Total search queries constrained by a standard or framework filter (FEAT-044).",
+    ("standard",),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

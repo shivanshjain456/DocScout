@@ -105,14 +105,43 @@ def search(
             )
             params["as_of_date"] = filter.as_of_date
 
+    join_clauses = [
+        "JOIN document_versions AS v ON v.version_id = c.version_id",
+        "JOIN documents AS d ON d.document_id = c.document_id",
+    ]
+
+    if filter is not None and filter.standard is not None:
+        from app.compliance.standards_registry import get_default_standards_registry
+
+        std = get_default_standards_registry().get_standard(filter.standard)
+        match_keys = {
+            filter.standard,
+            filter.standard.lower(),
+            filter.standard.upper(),
+            filter.standard.replace("-", "_"),
+            filter.standard.replace("_", " "),
+        }
+        if std is not None:
+            match_keys.add(std.id)
+            match_keys.add(std.name)
+            for a in std.aliases:
+                match_keys.add(a)
+        clean_keys = list({k for k in match_keys if k})
+        join_clauses.append("JOIN framework_control_crosswalk AS fc ON fc.chunk_id = c.chunk_id")
+        where_clauses.append(
+            "(fc.standard_id = ANY(%(std_keys)s) OR fc.source_framework = ANY(%(std_keys)s) OR fc.target_framework = ANY(%(std_keys)s))"
+        )
+        params["std_keys"] = clean_keys
+
     where_sql = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+    joins_sql = "\n        ".join(join_clauses)
 
     query = f"""
         SELECT c.chunk_id::text, 1.0 - (c.embedding <=> %(vector)s::vector) AS similarity
         FROM chunks AS c
-        JOIN document_versions AS v ON v.version_id = c.version_id
-        JOIN documents AS d ON d.document_id = c.document_id
+        {joins_sql}
         {where_sql}
+        GROUP BY c.chunk_id, c.embedding
         ORDER BY c.embedding <=> %(vector)s::vector
         LIMIT %(k)s
     """  # noqa: S608 - predicate templates are fixed literals; all dynamic values are securely bound in params

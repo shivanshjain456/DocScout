@@ -36,9 +36,12 @@ from collections import defaultdict
 from dataclasses import dataclass
 
 import psycopg
+import structlog
 
 from app.retrieval.types import ChunkMeta, MetadataFilter
 from app.rowtypes import as_int, as_str
+
+logger = structlog.get_logger(__name__)
 
 # Okapi BM25's standard parameters. k1 controls term-frequency saturation, b controls how
 # strongly document length is normalised. These are the canonical defaults and are held
@@ -123,6 +126,32 @@ class BM25Index:
             WHERE v.is_current
             """
         )
+        # Check if framework_control_crosswalk exists to link standard mappings to chunks
+        chunk_stds: dict[str, set[str]] = defaultdict(set)
+        try:
+            cw_check = conn.execute(
+                "SELECT 1 FROM information_schema.tables WHERE table_name = 'framework_control_crosswalk'"
+            ).fetchone()
+            if cw_check is not None:
+                cw_rows = conn.execute(
+                    """
+                    SELECT chunk_id::text, standard_id, source_framework, target_framework
+                    FROM framework_control_crosswalk
+                    WHERE chunk_id IS NOT NULL
+                    """
+                ).fetchall()
+                for c_id, std_id, src_fw, tgt_fw in cw_rows:
+                    if c_id:
+                        c_str = as_str(c_id)
+                        if std_id:
+                            chunk_stds[c_str].add(as_str(std_id))
+                        if src_fw:
+                            chunk_stds[c_str].add(as_str(src_fw))
+                        if tgt_fw:
+                            chunk_stds[c_str].add(as_str(tgt_fw))
+        except Exception as exc:
+            logger.debug("crosswalk_standard_load_failed", error=str(exc))
+
         rows = conn.execute(query_sql).fetchall()
         for (
             chunk_id,
@@ -151,6 +180,7 @@ class BM25Index:
                     title=as_str(doc_title) if doc_title is not None else None,
                     is_synthetic=bool(is_synthetic),
                     taxonomy_layer=as_str(tax_layer) if tax_layer is not None else None,
+                    standard_ids=tuple(sorted(chunk_stds.get(cid, set()))),
                 )
 
             count = as_int(tf)
@@ -211,12 +241,46 @@ class BM25Index:
         If a filter is provided, candidate chunks are checked against its metadata
         during posting iteration, skipping disqualified candidates before accumulation.
         """
+        matching_cids: set[str] | None = None
+        if filter is not None and filter.standard is not None:
+            from app.compliance.standards_registry import get_default_standards_registry
+
+            std = get_default_standards_registry().get_standard(filter.standard)
+            match_keys = {
+                filter.standard,
+                filter.standard.lower(),
+                filter.standard.upper(),
+                filter.standard.replace("-", "_"),
+                filter.standard.replace("_", " "),
+            }
+            if std is not None:
+                match_keys.add(std.id)
+                match_keys.add(std.name)
+                for a in std.aliases:
+                    match_keys.add(a)
+            clean_keys = list({k for k in match_keys if k})
+            try:
+                cw_rows = conn.execute(
+                    """
+                    SELECT DISTINCT chunk_id::text
+                    FROM framework_control_crosswalk
+                    WHERE chunk_id IS NOT NULL
+                      AND (standard_id = ANY(%(keys)s) OR source_framework = ANY(%(keys)s) OR target_framework = ANY(%(keys)s))
+                    """,
+                    {"keys": clean_keys},
+                ).fetchall()
+                matching_cids = {as_str(r[0]) for r in cw_rows if r[0]}
+            except Exception:
+                matching_cids = None
+
         scores: dict[str, float] = defaultdict(float)
         for term in self.query_terms(conn, query):
             idf = self._idf(term)
             if idf == 0.0:
                 continue
             for posting in self._postings[term]:
+                if matching_cids is not None and posting.chunk_id not in matching_cids:
+                    continue
                 if filter is not None and not filter.matches(
                     self._chunk_meta.get(posting.chunk_id)
                 ):
