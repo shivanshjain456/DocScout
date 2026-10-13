@@ -619,6 +619,12 @@ STANDARD_CONSTRAINED_QUERIES_TOTAL = Counter(
     ("standard",),
 )
 
+STANDARD_MENTIONS_EXTRACTED_TOTAL = Counter(
+    "docscout_standard_mentions_extracted_total",
+    "Total external standard mentions extracted from regulatory text (FEAT-046).",
+    ("standard_id",),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

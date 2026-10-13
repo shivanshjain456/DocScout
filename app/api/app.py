@@ -35,6 +35,7 @@ from pathlib import Path
 from threading import Lock
 from typing import Annotated, Any, Literal
 
+import psycopg
 import structlog
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
 from fastapi import Path as FastApiPath
@@ -102,6 +103,7 @@ from app.api.models import (
     DispatchDeadlineAlertsResponse,
     DocumentParametersResponse,
     DocumentResponse,
+    DocumentStandardMentionsResponse,
     EvaluateGraphRequest,
     EvaluateGraphResponse,
     EvaluationTraceStep,
@@ -109,6 +111,8 @@ from app.api.models import (
     ExtractDeadlinesResponse,
     ExtractParametersRequest,
     ExtractParametersResponse,
+    ExtractStandardMentionsRequest,
+    ExtractStandardMentionsResponse,
     FormulaCalcRequest,
     FormulaCalcResult,
     FormulaHistoryResponse,
@@ -157,6 +161,7 @@ from app.api.models import (
     SimulationRequest,
     SimulationResponse,
     StandardListResponse,
+    StandardMentionResponse,
     StandardMetadata,
     StandardResponse,
     StandardsListResponse,
@@ -4336,3 +4341,98 @@ def get_standard_endpoint(
     metrics.STANDARDS_QUERY_DURATION_SECONDS.observe(duration_s)
 
     return StandardMetadata(**std.to_metadata_dict())
+
+
+@app.post(
+    "/v1/compliance/extract-standard-mentions",
+    response_model=ExtractStandardMentionsResponse,
+    tags=["Compliance"],
+    responses={
+        200: {"description": "Standard citations extracted with character spans"},
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "validation error"},
+    },
+)
+async def extract_standard_mentions(
+    payload: ExtractStandardMentionsRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> ExtractStandardMentionsResponse:
+    """Extract external standard mentions and control hints from circular text (FEAT-046)."""
+    from app.ingest.standard_mention_extractor import StandardMentionExtractor
+
+    extractor = StandardMentionExtractor()
+    mentions = extractor.extract(
+        text=payload.text,
+        doc_id=payload.document_id,
+        chunk_id=payload.chunk_id,
+    )
+
+    response_mentions = [
+        StandardMentionResponse(
+            span=list(m.span),
+            raw_text=m.raw_text,
+            standard_id=m.standard_id,
+            control_hint=m.control_hint,
+            standard_name=m.standard_name,
+            governing_body=m.governing_body,
+        )
+        for m in mentions
+    ]
+
+    return ExtractStandardMentionsResponse(
+        mentions=response_mentions,
+        total_count=len(response_mentions),
+    )
+
+
+@app.get(
+    "/v1/documents/{document_id}/standard-mentions",
+    response_model=DocumentStandardMentionsResponse,
+    tags=["Compliance"],
+    responses={
+        200: {"description": "Persisted standard mentions for the document"},
+        400: {"description": "invalid document UUID"},
+        401: {"description": "missing or invalid API key"},
+    },
+)
+async def get_document_standard_mentions(
+    document_id: str,
+    request: Request,
+    fingerprint: str = Depends(require_api_key),
+) -> DocumentStandardMentionsResponse:
+    """Retrieve persisted standard mentions for a specific document (FEAT-046)."""
+    from app.ingest.standard_mention_extractor import fetch_mentions_for_document
+
+    doc_uuid = document_id.strip()
+    try:
+        uuid.UUID(doc_uuid)
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid document UUID format: '{document_id}'",
+        ) from err
+
+    if hasattr(request.app.state, "pool") and request.app.state.pool is not None:
+        with request.app.state.pool.connection() as conn:
+            mentions = fetch_mentions_for_document(conn, doc_uuid)
+    else:
+        with psycopg.connect(database_url()) as conn:
+            mentions = fetch_mentions_for_document(conn, doc_uuid)
+
+    response_mentions = [
+        StandardMentionResponse(
+            span=list(m.span),
+            raw_text=m.raw_text,
+            standard_id=m.standard_id,
+            control_hint=m.control_hint,
+            standard_name=m.standard_name,
+            governing_body=m.governing_body,
+        )
+        for m in mentions
+    ]
+
+    return DocumentStandardMentionsResponse(
+        document_id=doc_uuid,
+        mentions=response_mentions,
+        total_count=len(response_mentions),
+    )

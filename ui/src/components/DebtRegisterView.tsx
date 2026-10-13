@@ -1,7 +1,7 @@
 // DocScout Enterprise Compliance Debt Register (FEAT-038)
 // Real-time tracking of compliance exceptions, deprecated procedures, and remediation target dates.
 
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 
 export interface ComplianceDebtItem {
   id: string
@@ -101,9 +101,9 @@ export const DebtRegisterView: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>('ALL')
   const [filterSeverity, setFilterSeverity] = useState<string>('ALL')
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false)
-  const [selectedAuditItem, setSelectedAuditItem] = useState<ComplianceDebtItem | null>(null)
 
   // Form state
+
   const [practiceName, setPracticeName] = useState('')
   const [ownerEmail, setOwnerEmail] = useState('')
   const [targetDate, setTargetDate] = useState('')

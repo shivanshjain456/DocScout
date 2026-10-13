@@ -1521,3 +1521,36 @@ class HarmonizationReport(BaseModel):
     confidence_score: float = Field(default=1.0, ge=0.0, le=1.0)
     statutory_citations: list[str] = Field(default_factory=list)
     latency_ms: float = 0.0
+
+
+# --- ISO/NIST Clause Cross-Citation Hyperlinking (FEAT-046) ---
+
+
+class ExtractStandardMentionsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    text: str = Field(
+        ..., min_length=1, max_length=500000, description="Regulatory circular text to analyze"
+    )
+    document_id: str | None = Field(default=None, description="Optional document UUID")
+    chunk_id: str | None = Field(default=None, description="Optional chunk UUID")
+
+
+class StandardMentionResponse(BaseModel):
+    span: list[int]
+    raw_text: str
+    standard_id: str
+    control_hint: str | None = None
+    standard_name: str | None = None
+    governing_body: str | None = None
+
+
+class ExtractStandardMentionsResponse(BaseModel):
+    mentions: list[StandardMentionResponse]
+    total_count: int
+
+
+class DocumentStandardMentionsResponse(BaseModel):
+    document_id: str
+    mentions: list[StandardMentionResponse]
+    total_count: int
