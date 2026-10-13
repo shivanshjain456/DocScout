@@ -64,6 +64,7 @@ class ChunkMeta:
     taxonomy_layer: str | None = None
     tags: list[str] = field(default_factory=list)
     applicability_scope: str = "ALL"
+    superseded_date: date | None = None
 
 
 class MetadataFilter(BaseModel):
@@ -72,7 +73,7 @@ class MetadataFilter(BaseModel):
     Enables bounding regulatory retrieval by authority (RBI, SEBI), issuance
     date windows (date_from, date_to), version status (is_current), specific
     document UUIDs / canonical URLs, taxonomy layers, domain tags (FEAT-016),
-    or entity vintage scope (FEAT-036).
+    entity vintage scope (FEAT-036), or point-in-time temporal state (FEAT-039).
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -90,6 +91,7 @@ class MetadataFilter(BaseModel):
     ) = None
     tags: list[str] | None = None
     entity_vintage: Literal["existing", "new"] | None = None
+    as_of_date: date | None = None
 
     @field_validator("taxonomy_layers")
     @classmethod
@@ -134,6 +136,7 @@ class MetadataFilter(BaseModel):
             tags_tuple,
             self.relationship_filter,
             self.entity_vintage,
+            self.as_of_date.isoformat() if self.as_of_date else None,
         )
 
     def as_dict(self) -> dict[str, Any]:
@@ -147,7 +150,15 @@ class MetadataFilter(BaseModel):
         if not self.include_synthetic and meta.is_synthetic:
             return False
 
-        if self.is_current is not None and meta.is_current != self.is_current:
+        if self.as_of_date is not None:
+            doc_pub = meta.published_date
+            if doc_pub is None and meta.fetch_ts is not None:
+                doc_pub = meta.fetch_ts.date()
+            if doc_pub is not None and doc_pub > self.as_of_date:
+                return False
+            if meta.superseded_date is not None and meta.superseded_date <= self.as_of_date:
+                return False
+        elif self.is_current is not None and meta.is_current != self.is_current:
             return False
 
         if self.source is not None:

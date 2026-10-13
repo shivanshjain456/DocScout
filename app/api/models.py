@@ -14,10 +14,17 @@ deliberate:
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
 
 from app.generate.models import GeneratedAnswer, ResearchArtifact
 from app.retrieval.types import MetadataFilter
@@ -83,6 +90,18 @@ class SearchRequest(BaseModel):
     ) = None
     # Entity vintage & grandfathering applicability filter (FEAT-036)
     entity_vintage: Literal["existing", "new"] | None = None
+    # Point-in-time active circular temporal filtering (FEAT-039)
+    as_of_date: date | None = None
+
+    @field_validator("as_of_date")
+    @classmethod
+    def validate_as_of_date(cls, v: date | None) -> date | None:
+        if v is not None:
+            if v > date.today():
+                raise ValueError("as_of_date cannot be in the future")
+            if v < date(1990, 1, 1):
+                raise ValueError("as_of_date cannot be before 1990-01-01")
+        return v
 
 
 class Passage(BaseModel):

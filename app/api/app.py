@@ -571,6 +571,11 @@ def _config_for(
     elif filt is not None and payload.entity_vintage is not None:
         filt = filt.model_copy(update={"entity_vintage": payload.entity_vintage})
 
+    if filt is None and payload.as_of_date is not None:
+        filt = MetadataFilter(as_of_date=payload.as_of_date)
+    elif filt is not None and payload.as_of_date is not None:
+        filt = filt.model_copy(update={"as_of_date": payload.as_of_date})
+
     if payload.mode == "hybrid":
         base_cfg = RetrievalConfig(
             name=SERVING_CONFIG.name,
@@ -665,7 +670,17 @@ def search(
         payload.auto_constrain_tags,
         payload.enable_normalization,
         payload.persona,
+        payload.entity_vintage,
+        payload.as_of_date.isoformat() if payload.as_of_date else None,
     )
+
+    if payload.as_of_date is not None:
+        metrics.TEMPORAL_QUERIES_TOTAL.inc()
+        logger.info(
+            "search.temporal_filter",
+            as_of_date=payload.as_of_date.isoformat(),
+            query=payload.query,
+        )
 
     if payload.relationship_filter is not None:
         metrics.RELATIONSHIP_QUERIES_TOTAL.labels(relation=payload.relationship_filter).inc()

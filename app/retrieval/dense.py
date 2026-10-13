@@ -52,12 +52,13 @@ def search(
     params: dict[str, Any] = {"vector": vector, "k": k}
     where_clauses: list[str] = []
 
-    # Version currency filter
-    is_curr = filter.is_current if filter is not None else True
-    if is_curr is True:
-        where_clauses.append("v.is_current")
-    elif is_curr is False:
-        where_clauses.append("NOT v.is_current")
+    # Version currency filter (only when point-in-time as_of_date is not active)
+    if filter is None or filter.as_of_date is None:
+        is_curr = filter.is_current if filter is not None else True
+        if is_curr is True:
+            where_clauses.append("v.is_current")
+        elif is_curr is False:
+            where_clauses.append("NOT v.is_current")
 
     # Synthetic artifact exclusion invariant
     inc_synth = filter.include_synthetic if filter is not None else False
@@ -96,6 +97,13 @@ def search(
         if filter.tags is not None:
             where_clauses.append("c.tags && %(tags)s")
             params["tags"] = list(filter.tags)
+
+        if filter.as_of_date is not None:
+            where_clauses.append(
+                "COALESCE(d.published_date, v.fetch_ts::date) <= %(as_of_date)s "
+                "AND (d.superseded_date IS NULL OR d.superseded_date > %(as_of_date)s)"
+            )
+            params["as_of_date"] = filter.as_of_date
 
     where_sql = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
 

@@ -560,6 +560,11 @@ OPEN_COMPLIANCE_DEBT_ITEMS = Gauge(
     ("tenant_id", "severity"),
 )
 
+TEMPORAL_QUERIES_TOTAL = Counter(
+    "docscout_temporal_queries_total",
+    "Total point-in-time search queries executed with as_of_date filtering (FEAT-039).",
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

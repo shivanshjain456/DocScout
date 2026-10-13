@@ -71,7 +71,8 @@ def test_metadata_filter_and_config_relationship_filter() -> None:
     filt = MetadataFilter(relationship_filter="supersedes")
     assert filt.relationship_filter == "supersedes"
     tup = filt.canonical_tuple()
-    assert tup[-1] == "supersedes"
+    assert "supersedes" in tup
+    assert tup[9] == "supersedes"
 
     cfg = RetrievalConfig(name="test_rel", relationship_filter="requires")
     assert cfg.relationship_filter == "requires"
