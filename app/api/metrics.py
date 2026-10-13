@@ -537,6 +537,18 @@ DEADLINE_EXTRACTION_DURATION_SECONDS = Histogram(
     buckets=[0.0001, 0.0005, 0.001, 0.002, 0.005],
 )
 
+GRANDFATHERED_CLAUSES_EXTRACTED_TOTAL = Counter(
+    "docscout_grandfathered_clauses_extracted_total",
+    "Total regulatory clauses classified as grandfathered exemptions (FEAT-036).",
+    ("scope",),
+)
+
+SCOPE_CLASSIFICATION_DURATION_SECONDS = Histogram(
+    "docscout_scope_classification_duration_seconds",
+    "Latency of chunk grandfathering and exemption scope classification in seconds (FEAT-036).",
+    buckets=[0.00005, 0.0001, 0.0002, 0.0005, 0.001],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

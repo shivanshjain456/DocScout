@@ -78,6 +78,8 @@ from app.api.models import (
     CheckSupersessionRequest,
     CheckSupersessionResponse,
     CircularClauseModel,
+    ClassifyScopeRequest,
+    ClassifyScopeResponse,
     CompareClausePairRequest,
     CompareClausePairResponse,
     CompareFormulaVersionsRequest,
@@ -561,6 +563,11 @@ def _config_for(
         filt = MetadataFilter(relationship_filter=payload.relationship_filter)
     elif filt is not None and payload.relationship_filter is not None:
         filt = filt.model_copy(update={"relationship_filter": payload.relationship_filter})
+
+    if filt is None and payload.entity_vintage is not None:
+        filt = MetadataFilter(entity_vintage=payload.entity_vintage)
+    elif filt is not None and payload.entity_vintage is not None:
+        filt = filt.model_copy(update={"entity_vintage": payload.entity_vintage})
 
     if payload.mode == "hybrid":
         base_cfg = RetrievalConfig(
@@ -2916,6 +2923,45 @@ def dispatch_deadline_alerts_endpoint(
         warning_count=result.warning_count,
         info_count=result.info_count,
         duration_ms=round(result.duration_ms, 3),
+    )
+
+
+# --- Grandfathering & Exemption Scope Engine (FEAT-036) ---
+
+
+@app.post(
+    "/v1/ingest/scope/classify",
+    response_model=ClassifyScopeResponse,
+    tags=["ingest"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "invalid request input"},
+        429: {"description": "rate limit exceeded"},
+    },
+)
+def classify_scope_endpoint(
+    payload: ClassifyScopeRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> ClassifyScopeResponse:
+    """Classify regulatory clause into applicability scope (FEAT-036)."""
+    t0 = time.perf_counter()
+    from app.ingest.scope_classifier import ScopeClassifier
+
+    classifier = ScopeClassifier()
+    try:
+        res = classifier.classify(payload.text)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+    latency_ms = (time.perf_counter() - t0) * 1000.0
+    return ClassifyScopeResponse(
+        scope=res.scope,
+        confidence=res.confidence,
+        operative_condition=res.operative_condition,
+        latency_ms=round(latency_ms, 3),
     )
 
 

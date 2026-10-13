@@ -28,6 +28,12 @@ from app.ingest.errors import (
 from app.ingest.extract import assert_extraction_long_enough, extract
 from app.ingest.guards import assert_no_deploy_credentials
 from app.ingest.pipeline import IngestReport, run_ingest, verify_stored_chunks
+from app.ingest.scope_classifier import (
+    ScopeClassification,
+    ScopeClassifier,
+    ScopeConfig,
+    classify_scope,
+)
 from app.ingest.source import SourceDocument, iter_manifest_documents
 from app.ingest.store import Action, StoreOutcome, connect, store_document
 
@@ -47,12 +53,16 @@ __all__ = [
     "IngestError",
     "IngestReport",
     "RegulatoryDeadline",
+    "ScopeClassification",
+    "ScopeClassifier",
+    "ScopeConfig",
     "ShortExtractionError",
     "SourceDocument",
     "StoreOutcome",
     "assert_extraction_long_enough",
     "assert_no_deploy_credentials",
     "chunk_document",
+    "classify_scope",
     "clean_char_count",
     "clean_preserving_offsets",
     "connect",

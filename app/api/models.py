@@ -81,6 +81,8 @@ class SearchRequest(BaseModel):
         ]
         | None
     ) = None
+    # Entity vintage & grandfathering applicability filter (FEAT-036)
+    entity_vintage: Literal["existing", "new"] | None = None
 
 
 class Passage(BaseModel):
@@ -1370,3 +1372,14 @@ class DispatchDeadlineAlertsResponse(BaseModel):
     warning_count: int
     info_count: int
     duration_ms: float
+
+
+class ClassifyScopeRequest(BaseModel):
+    text: str = Field(..., min_length=1, description="Clause text to classify")
+
+
+class ClassifyScopeResponse(BaseModel):
+    scope: Literal["ALL", "NEW_ENTRANTS_ONLY", "GRANDFATHERED_EXISTING"]
+    confidence: float
+    operative_condition: str
+    latency_ms: float = 0.0

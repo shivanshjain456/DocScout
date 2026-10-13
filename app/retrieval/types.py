@@ -63,6 +63,7 @@ class ChunkMeta:
     is_synthetic: bool = False
     taxonomy_layer: str | None = None
     tags: list[str] = field(default_factory=list)
+    applicability_scope: str = "ALL"
 
 
 class MetadataFilter(BaseModel):
@@ -70,7 +71,8 @@ class MetadataFilter(BaseModel):
 
     Enables bounding regulatory retrieval by authority (RBI, SEBI), issuance
     date windows (date_from, date_to), version status (is_current), specific
-    document UUIDs / canonical URLs, taxonomy layers, or domain tags (FEAT-016).
+    document UUIDs / canonical URLs, taxonomy layers, domain tags (FEAT-016),
+    or entity vintage scope (FEAT-036).
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -87,6 +89,7 @@ class MetadataFilter(BaseModel):
         Literal["supersedes", "requires", "enables", "complements", "specializedBy"] | None
     ) = None
     tags: list[str] | None = None
+    entity_vintage: Literal["existing", "new"] | None = None
 
     @field_validator("taxonomy_layers")
     @classmethod
@@ -130,6 +133,7 @@ class MetadataFilter(BaseModel):
             layers,
             tags_tuple,
             self.relationship_filter,
+            self.entity_vintage,
         )
 
     def as_dict(self) -> dict[str, Any]:
@@ -176,6 +180,16 @@ class MetadataFilter(BaseModel):
         if self.tags is not None:
             chunk_tags = getattr(meta, "tags", None) or []
             if not any(t in chunk_tags for t in self.tags):
+                return False
+
+        if self.entity_vintage is not None:
+            chunk_scope = getattr(meta, "applicability_scope", "ALL")
+            if self.entity_vintage == "existing" and chunk_scope not in (
+                "ALL",
+                "GRANDFATHERED_EXISTING",
+            ):
+                return False
+            if self.entity_vintage == "new" and chunk_scope not in ("ALL", "NEW_ENTRANTS_ONLY"):
                 return False
 
         return True
