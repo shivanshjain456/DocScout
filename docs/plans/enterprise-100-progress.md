@@ -64,7 +64,7 @@
 - [x] FEAT-044: Standard-Constrained Search API Filtering
 - [x] FEAT-045: Regulatory Authority Hierarchy Resolver
 - [x] FEAT-046: ISO/NIST Clause Cross-Citation Hyperlinking
-- [ ] FEAT-047: Audit Evidence Package Exporter
+- [x] FEAT-047: Audit Evidence Package Exporter
 - [ ] FEAT-048: Continuous Compliance Observation Window Tracker
 - [ ] FEAT-049: Third-Party Vendor Risk Assessment Engine
 - [ ] FEAT-050: Algorithmic & AI Impact Assessment Framework
@@ -181,6 +181,7 @@
 | FEAT-044 | e3a4c5a | PASS | Standard-constrained search API filtering, migration 0032, 100% precision across 30 benchmark queries (PCI-DSS, SOC-2, ISO 27001), POST /v1/search filter.standard |
 | FEAT-045 | 2c593b8 | PASS | Regulatory authority hierarchy resolver, migration 0033, 100% win rate across 20 conflicting benchmark queries, statutory precedence ACT > MASTER_DIRECTION > CIRCULAR > GUIDELINE > FAQ, p95 overhead <= 0.05ms |
 | FEAT-046 | 220a60c | PASS | ISO/NIST clause cross-citation hyperlinking, migration 0034, 10-circular precision benchmark >= 98%, DocumentReader.tsx, POST /v1/compliance/extract-standard-mentions, Playwright standard-links.spec.ts |
+| FEAT-047 | dc056ce | PASS | Audit evidence package exporter, multi-format PDF/ZIP/Markdown, 100% SHA-256 provenance match, ExportModal.tsx, POST /v1/compliance/export-evidence, SLA <= 3.0s |
 
 
 ---
