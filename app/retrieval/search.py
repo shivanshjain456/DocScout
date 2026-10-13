@@ -14,7 +14,7 @@ from different code than the hybrid number, and the comparison would not be clea
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import psycopg
 import structlog
@@ -51,6 +51,7 @@ class Retriever:
         expander: DomainQueryExpander | None = None,
         vector_store: VectorStore | None = None,
         graph_retriever: GraphRetriever | None = None,
+        authority_resolver: Any | None = None,
     ) -> None:
         if conn is None and vector_store is None:
             raise ValueError(
@@ -68,7 +69,16 @@ class Retriever:
         self._expander = expander
         self._vector_store = vector_store
         self._graph_retriever = graph_retriever
+        self._authority_resolver = authority_resolver
         self._meta: dict[str, ChunkRow] = {}
+
+    @property
+    def authority_resolver(self) -> Any:
+        if self._authority_resolver is None:
+            from app.retrieval.authority import get_default_authority_resolver
+
+            self._authority_resolver = get_default_authority_resolver()
+        return self._authority_resolver
 
     @property
     def graph_retriever(self) -> GraphRetriever:
@@ -421,6 +431,61 @@ class Retriever:
             except Exception as exc:
                 logger.warning("centrality_boost_failed", error=str(exc))
 
+        # Regulatory Authority Hierarchy Resolver (FEAT-045)
+        applied_authority: dict[str, Any] = {}
+        if config.enable_authority_hierarchy:
+            try:
+                from app.retrieval.authority import AuthorityConfig, RegulatoryAuthorityResolver
+
+                auth_cfg = (
+                    AuthorityConfig(tier_multipliers=config.authority_multipliers)
+                    if config.authority_multipliers
+                    else None
+                )
+                resolver = (
+                    RegulatoryAuthorityResolver(auth_cfg)
+                    if auth_cfg is not None
+                    else self.authority_resolver
+                )
+
+                cand_ids = [cid for cid, _, _ in fused[: max(config.k_final * 3, 30)]]
+                cand_meta = self._metadata(
+                    cand_ids,
+                    is_current=filter_spec.is_current if filter_spec is not None else True,
+                    adapter_name=config.vector_store_adapter,
+                )
+
+                auth_boosted: list[tuple[str, float, dict[str, int]]] = []
+                for cid, score, arm_ranks in fused:
+                    row = cand_meta.get(cid)
+                    doc_cls = row.document_class if row else None
+                    title_val = row.title if row else None
+                    tier_val = row.authority_tier if row else None
+                    boosted_score, weight = resolver.compute_boost(
+                        score, doc_cls, title=title_val, authority_tier=tier_val
+                    )
+                    applied_authority[cid] = weight
+                    auth_boosted.append((cid, boosted_score, arm_ranks))
+
+                # Re-sort candidates by boosted score descending with deterministic tie-breaking
+                auth_boosted.sort(key=lambda item: (-item[1], item[0]))
+                fused = auth_boosted
+
+                if fused:
+                    top_cid = fused[0][0]
+                    top_weight = applied_authority.get(top_cid)
+                    if top_weight:
+                        logger.info(
+                            "search_authority_hierarchy_applied",
+                            query=query,
+                            top_chunk_id=top_cid,
+                            applied_authority_tier=top_weight.tier,
+                            document_class=top_weight.document_class,
+                            boost_multiplier=top_weight.boost_multiplier,
+                        )
+            except Exception as exc:
+                logger.warning("authority_hierarchy_boost_failed", error=str(exc))
+
         top = fused[: config.k_final]
         if config.anchor_arm_top1 and config.mode in ("hybrid", "graph-hybrid"):
             top = _anchor_arm_leaders(top, arms, fused, config.k_final)
@@ -441,6 +506,16 @@ class Retriever:
                 from app.retrieval.difficulty import adapt_snippet
 
                 text_val = adapt_snippet(text_val, config.difficulty_band)
+
+            auth_w = applied_authority.get(chunk_id)
+            tier_val = auth_w.tier if auth_w else (row.authority_tier if row else None)
+            mult_val = auth_w.boost_multiplier if auth_w else 1.0
+            doc_cls_val = (
+                auth_w.document_class
+                if auth_w and auth_w.document_class != "UNKNOWN"
+                else (row.document_class if row else None)
+            )
+
             results.append(
                 Retrieved(
                     chunk_id=chunk_id,
@@ -458,6 +533,9 @@ class Retriever:
                     matching_relationships=matching_rels,
                     centrality_boost=float(boost_val),
                     difficulty_level=config.difficulty_band,
+                    authority_tier=tier_val,
+                    applied_authority_multiplier=mult_val,
+                    document_class=doc_cls_val,
                 )
             )
         return results

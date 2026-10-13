@@ -31,6 +31,8 @@ class ChunkRow:
     char_end: int
     title: str | None = None
     published_date: str | None = None
+    document_class: str | None = None
+    authority_tier: int | None = None
 
 
 @runtime_checkable
@@ -86,7 +88,8 @@ class PgVectorStore:
         query = f"""
             SELECT c.chunk_id::text, c.document_id::text, d.source, c.text,
                    d.canonical_url, c.char_start, c.char_end,
-                   d.title, d.published_date::text
+                   d.title, d.published_date::text,
+                   d.document_class, d.authority_tier
             FROM chunks AS c
             JOIN documents AS d ON d.document_id = c.document_id
             JOIN document_versions AS v ON v.version_id = c.version_id
@@ -95,7 +98,19 @@ class PgVectorStore:
         rows = self._conn.execute(query, (chunk_ids,)).fetchall()
 
         result: dict[str, ChunkRow] = {}
-        for chunk_id, document_id, source, text, url, start, end, title, pub_date in rows:
+        for (
+            chunk_id,
+            document_id,
+            source,
+            text,
+            url,
+            start,
+            end,
+            title,
+            pub_date,
+            doc_cls,
+            auth_tier,
+        ) in rows:
             result[as_str(chunk_id)] = ChunkRow(
                 document_id=as_str(document_id),
                 source=as_str(source),
@@ -105,6 +120,8 @@ class PgVectorStore:
                 char_end=as_int(end),
                 title=as_str(title) if title is not None else None,
                 published_date=as_str(pub_date) if pub_date is not None else None,
+                document_class=as_str(doc_cls) if doc_cls is not None else None,
+                authority_tier=as_int(auth_tier) if auth_tier is not None else None,
             )
         return result
 
