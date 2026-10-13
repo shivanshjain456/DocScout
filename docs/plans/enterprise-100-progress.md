@@ -55,7 +55,7 @@
 - [x] FEAT-037: Semantic Terminology Drift Tracker
 - [x] FEAT-038: Enterprise Compliance Debt Register
 - [x] FEAT-039: Active Circular Temporal Filtering (Point-in-Time Search)
-- [ ] FEAT-040: Regulatory Risk Scorecard Generator
+- [x] FEAT-040: Regulatory Risk Scorecard Generator
 
 ### Pillar 5: Multi-Standard Cross-Walk & Governance Registry
 - [ ] FEAT-041: Unified Standards Registry & Authority Engine
@@ -174,6 +174,7 @@
 | FEAT-037 | af6a1bd | PASS | Semantic terminology drift tracker, GET /v1/admin/ontology/drift/{term_id}, 100% detection on benchmark revisions, p95 <= 0.1ms |
 | FEAT-038 | b618d3f | PASS | Enterprise compliance debt register, migration 0028, RLS tenant isolation, /v1/compliance/debt/*, DebtRegisterView.tsx, p95 <= 1.5ms |
 | FEAT-039 | abf41e4 | PASS | Active circular temporal filtering (point-in-time search), migration 0029, bitemporal predicate, zero future leak across 25 benchmark queries, SLA p95 <= 28ms |
+| FEAT-040 | 44d75d0 | PASS | Regulatory risk scorecard generator, pure-Python PDF/A & Markdown generation, 10 benchmark policy dossiers 100% grading precision, POST /v1/compliance/scorecard, ScorecardView.tsx, SLA <= 2.5s |
 
 
 ---
