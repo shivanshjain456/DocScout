@@ -8,7 +8,12 @@ are the pipeline's seams; everything else is an implementation detail of a stage
 
 from __future__ import annotations
 
-from app.ingest.chunk import Chunk, chunk_document, verify_offsets
+from app.ingest.chunk import (
+    Chunk,
+    chunk_document,
+    chunk_document_hierarchical,
+    verify_offsets,
+)
 from app.ingest.clean import clean_char_count, clean_preserving_offsets
 from app.ingest.deadline_extractor import (
     DeadlineAlertConfig,
@@ -27,6 +32,12 @@ from app.ingest.errors import (
 )
 from app.ingest.extract import assert_extraction_long_enough, extract
 from app.ingest.guards import assert_no_deploy_credentials
+from app.ingest.hierarchical_chunker import (
+    ChunkingConfig,
+    HierarchicalChunk,
+    HierarchicalChunker,
+    get_default_hierarchical_chunker,
+)
 from app.ingest.pipeline import IngestReport, run_ingest, verify_stored_chunks
 from app.ingest.scope_classifier import (
     ScopeClassification,
@@ -43,6 +54,7 @@ __all__ = [
     "QUERY_PREFIX",
     "Action",
     "Chunk",
+    "ChunkingConfig",
     "CredentialBleedError",
     "DeadlineAlertConfig",
     "DeadlineExtractor",
@@ -50,6 +62,8 @@ __all__ = [
     "EmbeddingContractError",
     "Embedder",
     "ExtractionError",
+    "HierarchicalChunk",
+    "HierarchicalChunker",
     "IngestError",
     "IngestReport",
     "RegulatoryDeadline",
@@ -62,12 +76,14 @@ __all__ = [
     "assert_extraction_long_enough",
     "assert_no_deploy_credentials",
     "chunk_document",
+    "chunk_document_hierarchical",
     "classify_scope",
     "clean_char_count",
     "clean_preserving_offsets",
     "connect",
     "extract",
     "extract_regulatory_deadlines",
+    "get_default_hierarchical_chunker",
     "iter_manifest_documents",
     "run_ingest",
     "store_document",

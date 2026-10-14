@@ -378,6 +378,10 @@ def store_document(conn: psycopg.Connection[Any], prepared: PreparedDocument) ->
                     chunk.token_count,
                     prepared.embedding_model,
                     embedding,
+                    getattr(chunk, "parent_chunk_id", None),
+                    getattr(chunk, "clause_hierarchy", []),
+                    getattr(chunk, "is_proviso", False),
+                    getattr(chunk, "chunk_type", "standard"),
                 )
                 for chunk, embedding in zip(prepared.chunks, prepared.embeddings, strict=True)
             ]
@@ -386,8 +390,9 @@ def store_document(conn: psycopg.Connection[Any], prepared: PreparedDocument) ->
                     """
                     INSERT INTO chunks
                         (chunk_id, document_id, version_id, ordinal, text, char_start,
-                         char_end, token_count, embedding_model, embedding)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                         char_end, token_count, embedding_model, embedding,
+                         parent_chunk_id, clause_hierarchy, is_proviso, chunk_type)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     rows,
                 )

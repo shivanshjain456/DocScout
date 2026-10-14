@@ -84,6 +84,8 @@ from app.api.models import (
     CertifyReleaseRequest,
     CheckSupersessionRequest,
     CheckSupersessionResponse,
+    ChunkingRequest,
+    ChunkingResponse,
     CircularClauseModel,
     ClassifyScopeRequest,
     ClassifyScopeResponse,
@@ -145,6 +147,7 @@ from app.api.models import (
     GraphTemplateSummaryModel,
     HarmonizationReport,
     HarmonizeRequest,
+    HierarchicalChunkModel,
     IncidentCrisisState,
     IntentClassification,
     LivenessResponse,
@@ -6018,3 +6021,57 @@ async def get_custom_playbook_endpoint(
             detail=f"Custom playbook '{playbook_id}' not found for tenant '{tenant_id}'.",
         )
     return playbook
+
+
+# --- Hierarchical Structure-Aware Circular Chunking (FEAT-061) ---
+
+
+@app.post(
+    "/v1/ingest/chunk",
+    response_model=ChunkingResponse,
+    tags=["ingest"],
+    responses={
+        200: {"description": "Document parsed into hierarchical structure-aware semantic chunks"},
+        400: {"description": "Invalid extraction payload"},
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "validation error"},
+    },
+)
+async def chunk_regulatory_document_endpoint(
+    payload: ChunkingRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> ChunkingResponse:
+    """Parse regulatory text into hierarchical structure-aware chunks (FEAT-061)."""
+    from app.ingest.chunk import uncovered_characters
+    from app.ingest.hierarchical_chunker import ChunkingConfig, get_default_hierarchical_chunker
+
+    config = ChunkingConfig(
+        max_chunk_tokens=payload.max_chunk_tokens,
+        min_chunk_tokens=payload.min_chunk_tokens,
+        preserve_provisos=payload.preserve_provisos,
+    )
+    chunker = get_default_hierarchical_chunker(config=config)
+    chunks = chunker.chunk(payload.text)
+    uncovered = uncovered_characters(payload.text, chunks)
+
+    models = [
+        HierarchicalChunkModel(
+            chunk_id=c.chunk_id,
+            parent_chunk_id=c.parent_chunk_id,
+            ordinal=c.ordinal,
+            text=c.text,
+            clause_hierarchy=c.clause_hierarchy,
+            char_start=c.char_start,
+            char_end=c.char_end,
+            token_count=c.token_count,
+            is_proviso=c.is_proviso,
+            chunk_type=c.chunk_type,
+        )
+        for c in chunks
+    ]
+    return ChunkingResponse(
+        total_chunks=len(models),
+        uncovered_characters=uncovered,
+        strategy=payload.strategy,
+        chunks=models,
+    )

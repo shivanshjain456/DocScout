@@ -2303,3 +2303,46 @@ class CustomPlaybookListResponse(BaseModel):
     tenant_id: str
     total_count: int
     playbooks: list[CustomPlaybookDefinition]
+
+
+# --- Hierarchical Structure-Aware Circular Chunking (FEAT-061) ---
+
+
+class HierarchicalChunkModel(BaseModel):
+    chunk_id: UUID = Field(..., description="Unique chunk UUID identifier")
+    parent_chunk_id: UUID | None = Field(
+        default=None, description="UUID of parent structural clause if nested or proviso"
+    )
+    ordinal: int = Field(..., ge=0, description="Sequential chunk index in document")
+    text: str = Field(..., min_length=1, description="Exact chunk text slice")
+    clause_hierarchy: list[str] = Field(
+        default_factory=list,
+        description="Ordered taxonomy path, e.g. ['Section 2', 'Clause (a)']",
+    )
+    char_start: int = Field(..., ge=0, description="Inclusive character start index in source text")
+    char_end: int = Field(..., gt=0, description="Exclusive character end index in source text")
+    token_count: int = Field(
+        ..., ge=1, le=512, description="Token count complying with 512 context ceiling"
+    )
+    is_proviso: bool = Field(
+        default=False, description="True if chunk represents or contains a regulatory proviso"
+    )
+    chunk_type: str = Field(
+        default="standard",
+        description="Structural type: gazette_header, preamble, section, clause, proviso, schedule, standard",
+    )
+
+
+class ChunkingRequest(BaseModel):
+    text: str = Field(..., min_length=100, description="Document raw or cleaned regulatory text")
+    max_chunk_tokens: int = Field(default=512, ge=64, le=512)
+    min_chunk_tokens: int = Field(default=64, ge=16, le=256)
+    preserve_provisos: bool = Field(default=True)
+    strategy: str = Field(default="hierarchical")
+
+
+class ChunkingResponse(BaseModel):
+    total_chunks: int
+    uncovered_characters: int
+    strategy: str
+    chunks: list[HierarchicalChunkModel]

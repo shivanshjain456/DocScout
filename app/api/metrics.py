@@ -755,6 +755,18 @@ CUSTOM_PLAYBOOKS_CREATED_TOTAL = Counter(
     ("tenant_id",),
 )
 
+CHUNKS_CREATED_TOTAL = Counter(
+    "docscout_chunks_created_total",
+    "Total document chunks created across strategies (FEAT-061).",
+    ("strategy",),
+)
+
+CHUNK_TOKEN_COUNT = Histogram(
+    "docscout_chunk_token_count",
+    "Token count distribution of ingested chunks (FEAT-061).",
+    buckets=(16, 32, 64, 128, 256, 384, 512),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.
