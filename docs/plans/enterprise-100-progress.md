@@ -85,7 +85,7 @@
 - [x] FEAT-061: Hierarchical Structure-Aware Circular Chunking
 - [x] FEAT-062: High-Fidelity Table Lineage & Matrix Parser
 - [x] FEAT-063: Bidirectional Character-Exact Offset Traceability Matrix
-- [ ] FEAT-064: OCR Degradation & Confidence Scoring Pipeline
+- [x] FEAT-064: OCR Degradation & Confidence Scoring Pipeline
 - [ ] FEAT-065: Intelligent Regulatory Furniture & Gazette Stamp Stripper
 - [ ] FEAT-066: Annexure, Schedule & FAQ Relational Association
 - [ ] FEAT-067: Incremental Deterministic Chunk Hashing (UUIDv5)
@@ -198,6 +198,7 @@
 | FEAT-061 | a1957c3 | PASS | Hierarchical structure-aware circular chunking, ADR-0052, migration 0045, HierarchicalChunker with statutory regex parsing, proviso retention >= 98%, token ceiling <= 512, POST /v1/ingest/chunk, throughput >= 50,000 chars/sec |
 | FEAT-062 | be0f9be | PASS | High-fidelity table lineage and matrix parser, ADR-0053, migration 0046, TableParser with pdfplumber and text matrix extraction, multi-row header merging, 15 regulatory benchmark matrices cell accuracy >= 98%, POST /v1/ingest/tables, GET /v1/ingest/tables/{table_id}, throughput >= 30 pages/sec |
 | FEAT-063 | b141abb | PASS | Bidirectional character-exact offset traceability matrix, ADR-0054, migration 0047, OffsetTraceabilityMatrix with pdfplumber char layout, zero positional drift across 50 regulatory citations, IoU >= 0.95, CSS highlight generator, POST /v1/ingest/coordinates, GET /v1/ingest/coordinates/{chunk_id} |
+| FEAT-064 | d679c84 | PASS | OCR degradation and confidence scoring pipeline, ADR-0055, migration 0048, OCRQualityEvaluator with 4-pass image restoration (autocontrast, unsharp_mask, deskew, denoise), >= 40% WER reduction on 10 historical RBI gazette scans, vector PDF bypass, POST /v1/ingest/ocr/assess, GET /v1/ingest/ocr/{image_sha256} |
 
 
 
