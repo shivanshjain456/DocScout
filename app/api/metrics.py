@@ -818,6 +818,12 @@ DEVANAGARI_CHARACTERS_NORMALIZED_TOTAL = Counter(
     "Total Unicode Devanagari characters normalized during ingestion (FEAT-068).",
 )
 
+METADATA_FIELDS_EXTRACTED_TOTAL = Counter(
+    "docscout_metadata_fields_extracted_total",
+    "Total regulatory metadata fields extracted into structured columns (FEAT-069).",
+    ["field_name"],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

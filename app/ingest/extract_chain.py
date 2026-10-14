@@ -430,3 +430,15 @@ def extract_circular_citations(
 
     extractor = CircularCitationExtractor(config=config)
     return extractor.extract_citations(text, doc_id)
+
+
+def extract_document_metadata(
+    text: str,
+    filename: str = "",
+    config: Any | None = None,
+) -> Any:
+    """Extract structured administrative regulatory metadata immediately following text extraction (FEAT-069)."""
+    from app.ingest.metadata_extractor import RegulatoryMetadataExtractor
+
+    extractor = RegulatoryMetadataExtractor(config=config)
+    return extractor.extract(text, filename=filename)

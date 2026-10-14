@@ -194,6 +194,8 @@ from app.api.models import (
     RecordResilienceTestRequest,
     RecordResilienceTestResponse,
     RegulatoryDeadlineModel,
+    RegulatoryMetadataExtractRequest,
+    RegulatoryMetadataExtractResponse,
     ReleaseCertificate,
     RemediationCatalogResponse,
     RemediationPlanModel,
@@ -6835,4 +6837,54 @@ async def normalize_devanagari_endpoint(
         hindi_column_text=hi_col,
         english_column_text=en_col,
         latency_ms=round(elapsed_ms, 3),
+    )
+
+
+@app.post(
+    "/v1/ingest/metadata/extract",
+    response_model=RegulatoryMetadataExtractResponse,
+    tags=["ingest"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "validation error"},
+    },
+)
+async def extract_metadata_endpoint(
+    payload: RegulatoryMetadataExtractRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> RegulatoryMetadataExtractResponse:
+    """Extract structured administrative metadata and circular identifiers (FEAT-069)."""
+    from app.ingest.metadata_extractor import (
+        MetadataExtractorConfig as CoreMetaConfig,
+    )
+    from app.ingest.metadata_extractor import (
+        RegulatoryMetadataExtractor,
+    )
+
+    core_config = (
+        CoreMetaConfig(strict_pattern_matching=payload.config.strict_pattern_matching)
+        if payload.config
+        else CoreMetaConfig()
+    )
+    extractor = RegulatoryMetadataExtractor(config=core_config)
+    meta = extractor.extract(payload.text, filename=payload.filename)
+    fields_count = sum(
+        1
+        for val in (
+            meta.circular_no,
+            meta.department,
+            meta.subject,
+            meta.date_issued,
+            meta.signoff_officer,
+        )
+        if val is not None
+    )
+
+    return RegulatoryMetadataExtractResponse(
+        circular_no=meta.circular_no,
+        department=meta.department,
+        subject=meta.subject,
+        date_issued=meta.date_issued,
+        signoff_officer=meta.signoff_officer,
+        extracted_fields_count=fields_count,
     )

@@ -2630,3 +2630,56 @@ class DevanagariNormalizeResponse(BaseModel):
     hindi_column_text: str = Field(default="", description="Extracted Hindi column text stream")
     english_column_text: str = Field(default="", description="Extracted English column text stream")
     latency_ms: float = Field(..., ge=0.0, description="Processing duration in milliseconds")
+
+
+# --- Automated Regulatory Metadata Extraction (FEAT-069) ---
+
+
+class MetadataExtractorConfigModel(BaseModel):
+    strict_pattern_matching: bool = Field(
+        default=True,
+        description="Whether strict pattern matching is enforced for regulatory metadata.",
+    )
+
+
+class RegulatoryMetadataExtractRequest(BaseModel):
+    text: str = Field(
+        ...,
+        min_length=100,
+        description="Document raw or extracted text (minimum 100 characters).",
+    )
+    filename: str = Field(
+        default="",
+        description="Optional source filename for fallback pattern matching.",
+    )
+    config: MetadataExtractorConfigModel | None = Field(
+        default=None,
+        description="Optional metadata extractor configuration.",
+    )
+
+
+class RegulatoryMetadataExtractResponse(BaseModel):
+    circular_no: str | None = Field(
+        default=None,
+        description="Authoritative circular or notification reference number.",
+    )
+    department: str | None = Field(
+        default=None,
+        description="Authoritative issuing department name.",
+    )
+    subject: str | None = Field(
+        default=None,
+        description="Extracted subject line or directive caption.",
+    )
+    date_issued: date | None = Field(
+        default=None,
+        description="Official publication or notification issue date.",
+    )
+    signoff_officer: str | None = Field(
+        default=None,
+        description="Issuing officer signature name and designation.",
+    )
+    extracted_fields_count: int = Field(
+        default=0,
+        description="Total non-null metadata fields extracted.",
+    )
