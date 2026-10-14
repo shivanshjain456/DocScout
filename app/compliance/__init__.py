@@ -91,6 +91,12 @@ from app.compliance.harmonizer import (
     HarmonizerConfig,
     get_default_compliance_harmonizer,
 )
+from app.compliance.observation_tracker import (
+    ObservationConfig,
+    ObservationStatus,
+    ObservationTracker,
+    get_default_observation_tracker,
+)
 from app.compliance.remediation_engine import (
     PracticeRecommendation,
     PrescriptiveRemediationEngine,
@@ -167,6 +173,9 @@ __all__ = [
     "MathematicalSanityAuditor",
     "NodeType",
     "NormalizedFinancialValue",
+    "ObservationConfig",
+    "ObservationStatus",
+    "ObservationTracker",
     "PracticeRecommendation",
     "PrescriptiveRemediationEngine",
     "RegulatorCode",
@@ -199,6 +208,7 @@ __all__ = [
     "get_default_drift_tracker",
     "get_default_formula_engine",
     "get_default_formula_evolution_manager",
+    "get_default_observation_tracker",
     "get_default_remediation_engine",
     "get_default_standard_annotator",
     "get_default_standards_registry",

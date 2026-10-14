@@ -134,6 +134,7 @@ from app.api.models import (
     NormalizedQuantityModel,
     NormalizeUnitsRequest,
     NormalizeUnitsResponse,
+    ObservationStatusResponse,
     OCRInspectionResponse,
     Passage,
     PersonaListResponse,
@@ -175,6 +176,8 @@ from app.api.models import (
     SuggestionResponse,
     SupersessionChainModel,
     SupersessionNodeModel,
+    TelemetryBatch,
+    TelemetryIngestResponse,
     Timings,
     TrackedFormulaSummaryModel,
     UnsubscribeResponse,
@@ -4531,4 +4534,118 @@ async def download_audit_evidence_package(
             "X-DocScout-SHA256": artifact.file_sha256,
             "X-DocScout-Audit-Ref": artifact.audit_reference_id,
         },
+    )
+
+
+@app.post(
+    "/v1/compliance/telemetry/ingest",
+    response_model=TelemetryIngestResponse,
+    tags=["Compliance"],
+    responses={
+        200: {"description": "Continuous compliance telemetry batch ingested"},
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "validation error"},
+    },
+)
+async def ingest_compliance_telemetry(
+    payload: TelemetryBatch,
+    request: Request,
+    fingerprint: str = Depends(require_api_key),
+) -> TelemetryIngestResponse:
+    """Ingest continuous compliance telemetry events (FEAT-048)."""
+    from app.compliance.observation_tracker import get_default_observation_tracker
+
+    tracker = get_default_observation_tracker()
+    events = payload.to_events()
+
+    pool = getattr(request.app.state, "pool", None)
+    try:
+        if pool is not None:
+            with pool.connection() as conn:
+                event_ids = tracker.ingest_batch(events, conn=conn)
+        else:
+            try:
+                with psycopg.connect(database_url()) as conn:
+                    event_ids = tracker.ingest_batch(events, conn=conn)
+            except Exception:
+                event_ids = tracker.ingest_batch(events, conn=None)
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(err),
+        ) from err
+
+    return TelemetryIngestResponse(
+        accepted_count=len(event_ids),
+        status="INGESTED",
+        event_ids=event_ids,
+    )
+
+
+@app.get(
+    "/v1/compliance/telemetry/window/{control_id}",
+    response_model=ObservationStatusResponse,
+    tags=["Compliance"],
+    responses={
+        200: {"description": "Continuous compliance observation window status"},
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "validation error"},
+    },
+)
+async def get_observation_window_status(
+    control_id: str,
+    request: Request,
+    tenant_id: str = Query(default="default", max_length=100),
+    window_days: int = Query(default=90, ge=1, le=365),
+    fingerprint: str = Depends(require_api_key),
+) -> ObservationStatusResponse:
+    """Calculate rolling continuous compliance observation window status (FEAT-048)."""
+    from app.compliance.observation_tracker import get_default_observation_tracker
+
+    ctrl_id = control_id.strip()
+    if not ctrl_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="control_id cannot be empty",
+        )
+
+    tracker = get_default_observation_tracker()
+    pool = getattr(request.app.state, "pool", None)
+    if pool is not None:
+        with pool.connection() as conn:
+            status_obj = tracker.get_observation_status(
+                control_id=ctrl_id,
+                tenant_id=tenant_id,
+                window_days=window_days,
+                conn=conn,
+            )
+    else:
+        try:
+            with psycopg.connect(database_url()) as conn:
+                status_obj = tracker.get_observation_status(
+                    control_id=ctrl_id,
+                    tenant_id=tenant_id,
+                    window_days=window_days,
+                    conn=conn,
+                )
+        except Exception:
+            status_obj = tracker.get_observation_status(
+                control_id=ctrl_id,
+                tenant_id=tenant_id,
+                window_days=window_days,
+                conn=None,
+            )
+
+    return ObservationStatusResponse(
+        control_id=status_obj.control_id,
+        tenant_id=status_obj.tenant_id,
+        observation_window_days=status_obj.observation_window_days,
+        compliance_percentage=status_obj.compliance_percentage,
+        unbroken_streak_days=status_obj.unbroken_streak_days,
+        total_observations=status_obj.total_observations,
+        pass_count=status_obj.pass_count,
+        fail_count=status_obj.fail_count,
+        window_start=status_obj.window_start,
+        window_end=status_obj.window_end,
+        status=status_obj.status,
     )

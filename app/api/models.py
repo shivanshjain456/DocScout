@@ -1593,3 +1593,87 @@ class ExportResponse(BaseModel):
     items_included: int
     format: Literal["PDF", "ZIP", "MARKDOWN"]
     audit_reference_id: str
+
+
+# --- Continuous Compliance Observation Window Tracker (FEAT-048) ---
+
+
+class TelemetryEventInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str = Field(default="default", max_length=100)
+    control_id: str = Field(..., min_length=1, max_length=100)
+    observation_timestamp: datetime
+    check_result: Literal["PASS", "FAIL"]
+    evidence_hash: str = Field(..., min_length=64, max_length=64, pattern=r"^[0-9a-fA-F]{64}$")
+
+
+class TelemetryBatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str = Field(default="default", max_length=100)
+    control_id: str | None = Field(default=None, max_length=100)
+    observation_timestamp: datetime | None = None
+    check_result: Literal["PASS", "FAIL"] | None = None
+    evidence_hash: str | None = Field(default=None, max_length=64)
+    events: list[TelemetryEventInput] | None = None
+
+    @model_validator(mode="after")
+    def validate_batch_or_single(self) -> TelemetryBatch:
+        if self.events is None or len(self.events) == 0:
+            if (
+                not self.control_id
+                or not self.observation_timestamp
+                or not self.check_result
+                or not self.evidence_hash
+            ):
+                raise ValueError(
+                    "Either 'events' list or (control_id, observation_timestamp, check_result, evidence_hash) must be provided"
+                )
+        return self
+
+    def to_events(self) -> list[TelemetryEventInput]:
+        if self.events and len(self.events) > 0:
+            return self.events
+        if not (
+            self.control_id
+            and self.observation_timestamp
+            and self.check_result
+            and self.evidence_hash
+        ):
+            raise ValueError(
+                "Missing required telemetry event fields: control_id, observation_timestamp, check_result, evidence_hash"
+            )
+        return [
+            TelemetryEventInput(
+                tenant_id=self.tenant_id,
+                control_id=self.control_id,
+                observation_timestamp=self.observation_timestamp,
+                check_result=self.check_result,
+                evidence_hash=self.evidence_hash,
+            )
+        ]
+
+
+class TelemetryIngestResponse(BaseModel):
+    accepted_count: int
+    status: str = "INGESTED"
+    event_ids: list[str]
+
+
+class ObservationStatusResponse(BaseModel):
+    control_id: str
+    tenant_id: str = "default"
+    observation_window_days: int
+    compliance_percentage: float
+    unbroken_streak_days: int
+    total_observations: int
+    pass_count: int
+    fail_count: int
+    window_start: datetime | None = None
+    window_end: datetime | None = None
+    status: Literal["COMPLIANT", "NON_COMPLIANT", "INSUFFICIENT_DATA"]
+
+
+class ObservationConfigModel(BaseModel):
+    min_window_days: int = 90

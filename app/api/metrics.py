@@ -637,6 +637,18 @@ AUDIT_PACKAGE_EXPORT_DURATION_SECONDS = Histogram(
     buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 3.0],
 )
 
+TELEMETRY_EVENTS_INGESTED_TOTAL = Counter(
+    "docscout_telemetry_events_ingested_total",
+    "Total continuous compliance telemetry events ingested by check result (FEAT-048).",
+    ("check_result",),
+)
+
+TELEMETRY_WINDOW_CALC_DURATION_SECONDS = Histogram(
+    "docscout_telemetry_window_calc_duration_seconds",
+    "Latency of continuous compliance observation window calculation in seconds (FEAT-048).",
+    buckets=[0.0005, 0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.
