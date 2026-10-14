@@ -1919,3 +1919,24 @@ class PromoteStageRequest(BaseModel):
         default=None,
         description="Optional administrative exception rationale for bypassing exit criteria (min 15 chars)",
     )
+
+
+# --- Role-Based Compliance Task Routing (FEAT-054) ---
+
+
+class RoleTask(BaseModel):
+    task_id: str
+    title: str
+    stage: int
+    term_reference: str = ""
+    estimated_hours: int = 8
+    role: str
+    completed: bool = False
+    mandatory: bool = True
+
+
+class RoleTaskList(BaseModel):
+    role: str
+    pending_tasks: list[RoleTask]
+    completed_tasks: list[RoleTask] = Field(default_factory=list)
+    total_estimated_hours: int = 0

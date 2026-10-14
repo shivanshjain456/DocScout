@@ -29,6 +29,16 @@ from app.workflows.milestone_tracker import (
     StageProgress,
     get_default_milestone_tracker,
 )
+from app.workflows.task_router import (
+    ROLE_NORMALIZATION_MAP,
+    VALID_TAXONOMY_ROLES,
+    RoleTask,
+    RoleTaskList,
+    TaskRouter,
+    TaskRouterConfig,
+    get_default_task_router,
+    normalize_role,
+)
 
 __all__ = [
     "BUILTIN_PLAYBOOKS",
@@ -48,8 +58,16 @@ __all__ = [
     "PlaybookRun",
     "PlaybookRunNotFoundError",
     "PlaybookTemplate",
+    "ROLE_NORMALIZATION_MAP",
+    "RoleTask",
+    "RoleTaskList",
     "StageProgress",
+    "TaskRouter",
+    "TaskRouterConfig",
+    "VALID_TAXONOMY_ROLES",
     "get_default_exit_validator",
     "get_default_milestone_tracker",
     "get_default_playbook_engine",
+    "get_default_task_router",
+    "normalize_role",
 ]

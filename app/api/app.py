@@ -166,6 +166,8 @@ from app.api.models import (
     ResearchRequest,
     ResearchResponse,
     ResolveFormulaVersionRequest,
+    RoleTask,
+    RoleTaskList,
     ScanAntipatternsRequest,
     ScanAntipatternsResponse,
     ScorecardRequest,
@@ -5372,4 +5374,67 @@ async def promote_playbook_stage(
         stage_data=run.stage_data,
         created_at=run.created_at,
         updated_at=run.updated_at,
+    )
+
+
+@app.get(
+    "/v1/playbooks/{run_id}/tasks",
+    response_model=RoleTaskList,
+    tags=["Playbooks"],
+    responses={
+        200: {"description": "Role-partitioned task checklist"},
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "Playbook run not found"},
+        422: {"description": "Invalid taxonomy role specified"},
+    },
+)
+@app.get(
+    "/v1/playbooks/runs/{run_id}/tasks",
+    response_model=RoleTaskList,
+    tags=["Playbooks"],
+    responses={
+        200: {"description": "Role-partitioned task checklist"},
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "Playbook run not found"},
+        422: {"description": "Invalid taxonomy role specified"},
+    },
+)
+async def get_playbook_tasks_by_role(
+    run_id: str,
+    role: str | None = Query(
+        default=None,
+        description="Taxonomy role filter ('developer', 'qa-engineer', 'sre', 'engineering-manager', 'compliance-officer')",
+    ),
+    stage: int | None = Query(default=None, ge=1, le=10, description="Stage number filter (1-4)"),
+    tenant_id: str = Query(default="default", description="Tenant isolation key"),
+    fingerprint: str = Depends(require_api_key),
+) -> RoleTaskList:
+    """Dispatches and filters playbook tasks by assigned taxonomy role (FEAT-054)."""
+    from app.workflows.task_router import VALID_TAXONOMY_ROLES, get_default_task_router
+
+    router = get_default_task_router()
+    try:
+        task_list = router.get_tasks_for_role(
+            run_id=run_id,
+            role=role,
+            stage_number=stage,
+            tenant_id=tenant_id,
+        )
+    except ValueError as err:
+        err_msg = str(err)
+        if "Invalid role" in err_msg:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=f"Invalid role '{role}'. Supported taxonomy roles: {sorted(VALID_TAXONOMY_ROLES)}",
+            ) from err
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=err_msg,
+        ) from err
+
+    return RoleTaskList(
+        role=task_list.role,
+        pending_tasks=[RoleTask(**t.to_dict()) for t in task_list.pending_tasks],
+        completed_tasks=[RoleTask(**t.to_dict()) for t in task_list.completed_tasks],
+        total_estimated_hours=task_list.total_estimated_hours,
     )

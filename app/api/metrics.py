@@ -703,6 +703,12 @@ STAGE_PROMOTIONS_ATTEMPTED_TOTAL = Counter(
     ("status",),
 )
 
+TASKS_DISPATCHED_TOTAL = Counter(
+    "docscout_tasks_dispatched_total",
+    "Total playbook tasks dispatched or routed by statutory taxonomy role (FEAT-054).",
+    ("role",),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.
