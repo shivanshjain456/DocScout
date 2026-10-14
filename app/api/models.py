@@ -2008,3 +2008,36 @@ class CompleteIncidentActionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     notes: str = Field(default="", description="Optional verification or forensic notes")
+
+
+# --- Regulated Release Certification Pipeline (FEAT-056) ---
+
+
+class CertifyReleaseRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    commit_sha: str = Field(
+        ...,
+        pattern=r"^[0-9a-fA-F]{40}$",
+        description="40-character hexadecimal git commit SHA",
+    )
+    build_id: str = Field(..., min_length=1, description="CI build identifier")
+    test_report_path: str = Field(..., description="Path to JUnit XML or JSON test report")
+    coverage_report_path: str = Field(..., description="Path to coverage report (XML or JSON)")
+    mutation_report_path: str | None = Field(
+        default=None, description="Path to mutation score report"
+    )
+    sast_report_path: str | None = Field(
+        default=None, description="Path to static security scan report"
+    )
+
+
+class ReleaseCertificate(BaseModel):
+    certificate_id: UUID
+    commit_sha: str
+    build_id: str
+    is_certified: bool
+    gsn_safety_case_json: dict[str, Any]
+    signature_sha256: str
+    rejection_reasons: list[str] = Field(default_factory=list)
+    certified_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

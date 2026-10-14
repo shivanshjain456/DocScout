@@ -719,6 +719,12 @@ INCIDENT_MILESTONES_MET_TOTAL = Counter(
     "Total regulatory incident action items or milestones completed (FEAT-055).",
 )
 
+RELEASES_CERTIFIED_TOTAL = Counter(
+    "docscout_releases_certified_total",
+    "Total release candidate verification decisions by status (FEAT-056).",
+    ("status",),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

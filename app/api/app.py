@@ -81,6 +81,7 @@ from app.api.models import (
     BuildGraphRequest,
     CacheInvalidateRequest,
     CacheInvalidateResponse,
+    CertifyReleaseRequest,
     CheckSupersessionRequest,
     CheckSupersessionResponse,
     CircularClauseModel,
@@ -164,6 +165,7 @@ from app.api.models import (
     RatioValidationResponse,
     ReadinessResponse,
     RegulatoryDeadlineModel,
+    ReleaseCertificate,
     RemediationCatalogResponse,
     RemediationPlanModel,
     ResearchArtifactSummary,
@@ -5571,3 +5573,83 @@ async def list_incidents_endpoint(
 
     manager = get_default_incident_manager()
     return manager.list_incidents(tenant_id=tenant_id)
+
+
+# --- Regulated Release Certification Pipeline (FEAT-056) ---
+
+
+@app.post(
+    "/v1/compliance/certify-release",
+    response_model=ReleaseCertificate,
+    tags=["Compliance"],
+    responses={
+        200: {"description": "Release verification evaluated and GSN safety case synthesized"},
+        400: {"description": "Invalid report path or malformed test/coverage report"},
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "Validation error or quality gates failed in strict mode"},
+    },
+)
+async def certify_release_endpoint(
+    payload: CertifyReleaseRequest,
+    enforce_strict: bool = Query(
+        default=False,
+        description="If true, returns HTTP 422 when release candidate fails certification",
+    ),
+    tenant_id: str = Query(default="default", description="Tenant isolation key"),
+    fingerprint: str = Depends(require_api_key),
+) -> ReleaseCertificate:
+    """Operationalizes playbook.regulated-release, verifying test evidence, coverage, and mutation score (FEAT-056)."""
+    from app.workflows.release_certifier import get_default_release_certifier
+
+    certifier = get_default_release_certifier()
+    try:
+        cert = certifier.certify_release(
+            request=payload,
+            tenant_id=tenant_id,
+        )
+    except FileNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(err),
+        ) from err
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(err),
+        ) from err
+
+    if enforce_strict and not cert.is_certified:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"Release certification rejected: {'; '.join(cert.rejection_reasons)}",
+        )
+
+    return cert
+
+
+@app.get(
+    "/v1/compliance/release-certificates/{certificate_id}",
+    response_model=ReleaseCertificate,
+    tags=["Compliance"],
+    responses={
+        200: {"description": "Signed release certificate and GSN safety case"},
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "Release certificate not found"},
+    },
+)
+async def get_release_certificate_endpoint(
+    certificate_id: UUID,
+    tenant_id: str = Query(default="default", description="Tenant isolation key"),
+    fingerprint: str = Depends(require_api_key),
+) -> ReleaseCertificate:
+    """Retrieve cryptographically signed release certificate and GSN safety case (FEAT-056)."""
+    from app.workflows.release_certifier import get_default_release_certifier
+
+    certifier = get_default_release_certifier()
+    cert = certifier.get_certificate(certificate_id=certificate_id, tenant_id=tenant_id)
+    if not cert:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Release certificate '{certificate_id}' not found",
+        )
+    return cert
