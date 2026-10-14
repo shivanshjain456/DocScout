@@ -78,7 +78,7 @@
 - [x] FEAT-056: Regulated Release Certification Pipeline
 - [x] FEAT-057: Post-Quantum Cryptographic Migration Tracker
 - [x] FEAT-058: Digital Operational Resilience (DORA) Framework Runner
-- [ ] FEAT-059: Playbook Progress Dashboard in Console UI
+- [x] FEAT-059: Playbook Progress Dashboard in Console UI
 - [ ] FEAT-060: Custom Enterprise Compliance Playbook Builder
 
 ### Pillar 7: Ingestion, Extraction & Document Intelligence
@@ -193,6 +193,7 @@
 | FEAT-056 | 8b80930 | PASS | Regulated release certification pipeline, migration 0041, formal GSN Safety Case compiler, cryptographic SHA-256 attestation, scripts/certify_release.py CLI, POST /v1/compliance/certify-release, latency <= 1.5s |
 | FEAT-057 | c0fa3cd | PASS | Post-quantum cryptographic migration tracker, migration 0042, NIST FIPS 203/204/205 and SP 800-208 classifier, Harvest-Now-Decrypt-Later (HNDL) exposure scoring, PQCConsole.tsx, POST /v1/compliance/pqc/scan, 1000 evaluations <= 10ms |
 | FEAT-058 | 64d3009 | PASS | Digital operational resilience (DORA) framework runner, migration 0043, EU 2022/2554 Pillars 1-5 scorecards, mandatory TLPT 3-year cadence tracking, CTPP exit strategies, DORAConsole.tsx, POST /v1/compliance/dora/assess, 1000 systems benchmark <= 15.0ms |
+| FEAT-059 | f96657f | PASS | Playbook progress dashboard in console UI, PlaybookConsole.tsx, usePlaybooks.ts, visual SVG progress rings, 4-stage stepper, role filter toggles, exportable audit summary, Playwright test passing |
 
 
 
