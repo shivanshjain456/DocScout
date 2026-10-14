@@ -73,7 +73,7 @@
 - [x] FEAT-051: Interactive Compliance Playbook Runtime
 - [x] FEAT-052: 4-Stage Progressive Milestone Tracker
 - [x] FEAT-053: Automated Stage Exit Criteria Validator
-- [ ] FEAT-054: Role-Based Compliance Task Routing
+- [x] FEAT-054: Role-Based Compliance Task Routing
 - [ ] FEAT-055: Regulatory Cyber Incident Response Playbook
 - [ ] FEAT-056: Regulated Release Certification Pipeline
 - [ ] FEAT-057: Post-Quantum Cryptographic Migration Tracker
@@ -188,6 +188,7 @@
 | FEAT-051 | 10a406a | PASS | Interactive compliance playbook runtime, 12 statutory playbooks, 4-stage sequential state machine, PlaybookRuntimeView.tsx, /v1/playbooks/*, p95 <= 8ms |
 | FEAT-052 | 27e3983 | PASS | 4-Stage progressive milestone tracker, migration 0037, PostgreSQL playbook_milestones with RLS, MilestoneList.tsx, POST /v1/playbooks/{run_id}/milestones/{milestone_id}, p95 <= 4ms |
 | FEAT-053 | 885bd6e | PASS | Automated stage exit criteria validator, migration 0038, empirical precondition checks, HTTP 412 blocking gate, admin overrides with audit trail, StageExitGateModal.tsx, POST /v1/playbooks/{run_id}/promote, p95 <= 6ms |
+| FEAT-054 | bfd725e | PASS | Role-based compliance task routing, migration 0039, 5 canonical taxonomy roles, zero unassigned tasks across 12 playbooks, HTTP 422 validation, RoleTaskView.tsx, GET /v1/playbooks/{run_id}/tasks, p95 <= 2ms |
 
 
 
