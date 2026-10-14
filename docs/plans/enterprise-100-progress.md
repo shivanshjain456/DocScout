@@ -65,7 +65,7 @@
 - [x] FEAT-045: Regulatory Authority Hierarchy Resolver
 - [x] FEAT-046: ISO/NIST Clause Cross-Citation Hyperlinking
 - [x] FEAT-047: Audit Evidence Package Exporter
-- [ ] FEAT-048: Continuous Compliance Observation Window Tracker
+- [x] FEAT-048: Continuous Compliance Observation Window Tracker
 - [ ] FEAT-049: Third-Party Vendor Risk Assessment Engine
 - [ ] FEAT-050: Algorithmic & AI Impact Assessment Framework
 
@@ -182,6 +182,7 @@
 | FEAT-045 | 2c593b8 | PASS | Regulatory authority hierarchy resolver, migration 0033, 100% win rate across 20 conflicting benchmark queries, statutory precedence ACT > MASTER_DIRECTION > CIRCULAR > GUIDELINE > FAQ, p95 overhead <= 0.05ms |
 | FEAT-046 | 220a60c | PASS | ISO/NIST clause cross-citation hyperlinking, migration 0034, 10-circular precision benchmark >= 98%, DocumentReader.tsx, POST /v1/compliance/extract-standard-mentions, Playwright standard-links.spec.ts |
 | FEAT-047 | dc056ce | PASS | Audit evidence package exporter, multi-format PDF/ZIP/Markdown, 100% SHA-256 provenance match, ExportModal.tsx, POST /v1/compliance/export-evidence, SLA <= 3.0s |
+| FEAT-048 | ce6f2f5 | PASS | Continuous compliance observation window tracker, migration 0035, 10k event eval dataset, sub-ms ingestion >=1000/s, unbroken pass streak tracking, ObservationWindowView.tsx, POST /v1/compliance/telemetry/ingest, GET /v1/compliance/telemetry/window/{control_id} |
 
 
 ---
