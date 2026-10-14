@@ -34,6 +34,7 @@ import psycopg
 from pgvector.psycopg import register_vector
 
 from app.api.cache import trigger_corpus_invalidation
+from app.api.metrics import CHUNKS_REUSED_TOTAL
 from app.ingest.chunk import Chunk
 from app.ingest.ids import chunk_id
 from app.ingest.source import SourceDocument
@@ -271,6 +272,7 @@ def store_document(conn: psycopg.Connection[Any], prepared: PreparedDocument) ->
             if existing is not None:
                 version_id, document_id, canonical_url = existing
                 same_url = canonical_url == doc.url
+                CHUNKS_REUSED_TOTAL.inc(len(prepared.chunks))
                 return StoreOutcome(
                     url=doc.url,
                     action=(

@@ -114,6 +114,7 @@ def create_test_chunk(conn: psycopg.Connection[Any]) -> UUID:
         assert row_doc is not None
         doc_id = row_doc[0]
 
+        sha_val = uuid.uuid4().hex * 2
         cur.execute(
             """
             INSERT INTO document_versions
@@ -121,27 +122,30 @@ def create_test_chunk(conn: psycopg.Connection[Any]) -> UUID:
             VALUES (%s, %s, NOW(), 200, 2048, 1, 'pdfplumber', 1200, true)
             RETURNING version_id
             """,
-            (doc_id, uuid.uuid4().hex * 2),
+            (doc_id, sha_val),
         )
         row_ver = cur.fetchone()
         assert row_ver is not None
         ver_id = row_ver[0]
 
+        from app.ingest.ids import chunk_id as make_chunk_id
+
+        expected_chunk_id = make_chunk_id(sha_val, 0, 48)
         dummy_vec = "[" + "1.0," + ",".join(["0.0"] * 383) + "]"
         cur.execute(
             """
             INSERT INTO chunks
             (chunk_id, document_id, version_id, ordinal, text, char_start, char_end, token_count, embedding_model, embedding)
-            VALUES (gen_random_uuid(), %s, %s, 0, 'Test chunk text for FEAT-063 offset testing.', 0, 48, 10, 'test', %s::vector)
+            VALUES (%s, %s, %s, 0, 'Test chunk text for FEAT-063 offset testing.', 0, 48, 10, 'test', %s::vector)
             RETURNING chunk_id
             """,
-            (doc_id, ver_id, dummy_vec),
+            (expected_chunk_id, doc_id, ver_id, dummy_vec),
         )
         row_chunk = cur.fetchone()
         assert row_chunk is not None
-        chunk_id: UUID = row_chunk[0]
+        ret_chunk_id: UUID = row_chunk[0]
     conn.commit()
-    return chunk_id
+    return ret_chunk_id
 
 
 # ==============================================================================

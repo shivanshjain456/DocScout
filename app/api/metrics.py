@@ -808,6 +808,11 @@ ANNEXURES_LINKED_TOTAL = Counter(
     ["type"],
 )
 
+CHUNKS_REUSED_TOTAL = Counter(
+    "docscout_chunks_reused_total",
+    "Total unchanged chunks reused during incremental circular re-ingestion (FEAT-067).",
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.
