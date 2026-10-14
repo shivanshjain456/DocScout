@@ -813,6 +813,11 @@ CHUNKS_REUSED_TOTAL = Counter(
     "Total unchanged chunks reused during incremental circular re-ingestion (FEAT-067).",
 )
 
+DEVANAGARI_CHARACTERS_NORMALIZED_TOTAL = Counter(
+    "docscout_devanagari_characters_normalized_total",
+    "Total Unicode Devanagari characters normalized during ingestion (FEAT-068).",
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

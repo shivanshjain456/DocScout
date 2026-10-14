@@ -2585,3 +2585,48 @@ class LinkAnnexuresResponse(BaseModel):
 class DocumentRelationshipsResponse(BaseModel):
     document_id: str = Field(..., description="Document UUID")
     relationships: list[SectionRelationshipModel] = Field(default_factory=list)
+
+
+# --- Bilingual Devanagari / Hindi Normalization & Parsing (FEAT-068) ---
+
+
+class DevanagariNormalizeConfig(BaseModel):
+    normalize_nfc: bool = Field(
+        default=True, description="Apply canonical Unicode NFC normalization"
+    )
+    strip_zwj: bool = Field(default=False, description="Strip zero-width joiners and non-joiners")
+    clean_orphaned_matras: bool = Field(
+        default=True, description="Remove orphaned combining vowel signs"
+    )
+    separate_bilingual_sections: bool = Field(
+        default=True, description="Segment into language-specific sections"
+    )
+
+
+class DevanagariNormalizeRequest(BaseModel):
+    text: str = Field(
+        ..., min_length=1, description="Raw document text containing Devanagari or English"
+    )
+    config: DevanagariNormalizeConfig = Field(default_factory=DevanagariNormalizeConfig)
+
+
+class BilingualSectionModel(BaseModel):
+    language: str = Field(..., description="Linguistic classification: hi, en, or mixed")
+    text: str = Field(..., description="Section content")
+    char_start: int = Field(..., ge=0, description="Start character offset")
+    char_end: int = Field(..., ge=0, description="End character offset")
+    devanagari_ratio: float = Field(..., ge=0.0, le=1.0, description="Devanagari character density")
+
+
+class DevanagariNormalizeResponse(BaseModel):
+    normalized_text: str = Field(..., description="Normalized Unicode text")
+    devanagari_character_count: int = Field(..., ge=0, description="Count of Devanagari characters")
+    devanagari_ratio: float = Field(
+        ..., ge=0.0, le=1.0, description="Fraction of Devanagari characters"
+    )
+    sections: list[BilingualSectionModel] = Field(
+        default_factory=list, description="Classified sections"
+    )
+    hindi_column_text: str = Field(default="", description="Extracted Hindi column text stream")
+    english_column_text: str = Field(default="", description="Extracted English column text stream")
+    latency_ms: float = Field(..., ge=0.0, description="Processing duration in milliseconds")

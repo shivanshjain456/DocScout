@@ -80,7 +80,16 @@ def find_invisible(text: str) -> dict[str, int]:
     return dict(counts)
 
 
-def blank_invisible(text: str) -> str:
+NON_DEVANAGARI_NOISE_PATTERN = re.compile(
+    "["
+    "\u0180-\u024f"  # Latin Extended-B (pypdf mojibake)
+    "\u02b0-\u02ff"  # Spacing modifier letters (pypdf mojibake)
+    "\ufffd"  # replacement character
+    "]"
+)
+
+
+def blank_invisible(text: str, preserve_devanagari: bool = False) -> str:
     """Replace every invisible/private-use character with a single space.
 
     One character out for one character in, by construction: the comprehension cannot
@@ -90,7 +99,16 @@ def blank_invisible(text: str) -> str:
     """
     if not any(unicodedata.category(ch) in INVISIBLE_CATEGORIES for ch in text):
         return text
-    return "".join(" " if unicodedata.category(ch) in INVISIBLE_CATEGORIES else ch for ch in text)
+    if not preserve_devanagari:
+        return "".join(
+            " " if unicodedata.category(ch) in INVISIBLE_CATEGORIES else ch for ch in text
+        )
+    return "".join(
+        " "
+        if (unicodedata.category(ch) in INVISIBLE_CATEGORIES and ch not in ("\u200c", "\u200d"))
+        else ch
+        for ch in text
+    )
 
 
 def _blank(match: re.Match[str]) -> str:
@@ -98,16 +116,26 @@ def _blank(match: re.Match[str]) -> str:
     return " " * (match.end() - match.start())
 
 
-def clean_preserving_offsets(text: str) -> str:
+def clean_preserving_offsets(text: str, preserve_devanagari: bool = False) -> str:
     """Blank non-English furniture without moving any character position.
+
+    When `preserve_devanagari=True` (FEAT-068), statutory Devanagari Hindi text is preserved
+    and cleaned while maintaining the strict 1:1 character length invariant.
 
     Raises `RuntimeError` if the result is not the same length as the input. That can only
     happen if someone edits a pattern above into something non-length-preserving, and it
     is worth a cheap check on every call because the symptom otherwise shows up far away,
     as citations that quote the wrong span.
     """
-    cleaned = blank_invisible(text)
-    cleaned = NOISE_PATTERN.sub(" ", cleaned)
+    cleaned = blank_invisible(text, preserve_devanagari=preserve_devanagari)
+    if preserve_devanagari:
+        cleaned = NON_DEVANAGARI_NOISE_PATTERN.sub(" ", cleaned)
+        from app.ingest.devanagari import clean_devanagari_preserving_length
+
+        cleaned = clean_devanagari_preserving_length(cleaned)
+    else:
+        cleaned = NOISE_PATTERN.sub(" ", cleaned)
+
     cleaned = PAGE_FURNITURE_PATTERN.sub(_blank, cleaned)
 
     # Intelligent Regulatory Furniture & Gazette Stamp Stripper (FEAT-065)

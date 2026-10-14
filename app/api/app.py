@@ -77,6 +77,7 @@ from app.api.models import (
     AuditSanityResponse,
     BatchRemediationRequest,
     BatchRemediationResponse,
+    BilingualSectionModel,
     BoundaryCatalogResponse,
     BuildGraphRequest,
     CacheInvalidateRequest,
@@ -113,6 +114,8 @@ from app.api.models import (
     DetectConflictsRequest,
     DetectConflictsResponse,
     DetectedConflictModel,
+    DevanagariNormalizeRequest,
+    DevanagariNormalizeResponse,
     DigestDispatchResponse,
     DiscoveryTriggerRequest,
     DiscoveryTriggerResponse,
@@ -6759,4 +6762,77 @@ async def get_document_relationships_endpoint(
     return DocumentRelationshipsResponse(
         document_id=document_id,
         relationships=rel_models,
+    )
+
+
+# --- Bilingual Devanagari / Hindi Normalization & Parsing (FEAT-068) ---
+
+
+@app.post(
+    "/v1/ingest/devanagari/normalize",
+    response_model=DevanagariNormalizeResponse,
+    tags=["ingest"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "validation error"},
+    },
+)
+async def normalize_devanagari_endpoint(
+    payload: DevanagariNormalizeRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> DevanagariNormalizeResponse:
+    """Normalize Devanagari Unicode and parse bilingual Hindi/English sections (FEAT-068)."""
+    import time
+
+    from app.ingest.devanagari import (
+        DevanagariConfig as CoreDevaConfig,
+    )
+    from app.ingest.devanagari import (
+        count_devanagari,
+        devanagari_ratio,
+        extract_bilingual_columns,
+        normalize_devanagari,
+        separate_bilingual_text,
+    )
+
+    t0 = time.perf_counter()
+    core_config = CoreDevaConfig(
+        normalize_nfc=payload.config.normalize_nfc,
+        strip_zwj=payload.config.strip_zwj,
+        clean_orphaned_matras=payload.config.clean_orphaned_matras,
+        separate_bilingual_sections=payload.config.separate_bilingual_sections,
+    )
+
+    norm_text = normalize_devanagari(payload.text, config=core_config)
+    deva_count = count_devanagari(norm_text)
+    deva_rat = devanagari_ratio(norm_text)
+
+    sections: list[BilingualSectionModel] = []
+    hi_col = ""
+    en_col = ""
+
+    if payload.config.separate_bilingual_sections:
+        raw_sections = separate_bilingual_text(norm_text)
+        sections = [
+            BilingualSectionModel(
+                language=s.language,
+                text=s.text,
+                char_start=s.char_start,
+                char_end=s.char_end,
+                devanagari_ratio=s.devanagari_ratio,
+            )
+            for s in raw_sections
+        ]
+        hi_col, en_col = extract_bilingual_columns(norm_text)
+
+    elapsed_ms = (time.perf_counter() - t0) * 1000.0
+
+    return DevanagariNormalizeResponse(
+        normalized_text=norm_text,
+        devanagari_character_count=deva_count,
+        devanagari_ratio=deva_rat,
+        sections=sections,
+        hindi_column_text=hi_col,
+        english_column_text=en_col,
+        latency_ms=round(elapsed_ms, 3),
     )
