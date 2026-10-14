@@ -34,6 +34,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from threading import Lock
 from typing import Annotated, Any, Literal
+from uuid import UUID
 
 import psycopg
 import structlog
@@ -89,12 +90,14 @@ from app.api.models import (
     CompareClausePairResponse,
     CompareFormulaVersionsRequest,
     CompareFormulaVersionsResponse,
+    CompleteIncidentActionRequest,
     CompleteMilestoneRequest,
     Confidence,
     ConflictBenchmarkResponse,
     ConsistencyAnomalyModel,
     CriterionCheck,
     CrosswalkResponse,
+    DeclareIncidentRequest,
     DependencyGraphResponse,
     DeprecationCatalogResponse,
     DeprecationDetectionModel,
@@ -135,6 +138,7 @@ from app.api.models import (
     GraphTemplateSummaryModel,
     HarmonizationReport,
     HarmonizeRequest,
+    IncidentCrisisState,
     IntentClassification,
     LivenessResponse,
     MappedControl,
@@ -5438,3 +5442,132 @@ async def get_playbook_tasks_by_role(
         completed_tasks=[RoleTask(**t.to_dict()) for t in task_list.completed_tasks],
         total_estimated_hours=task_list.total_estimated_hours,
     )
+
+
+# --- Regulatory Cyber Incident Response Playbook (FEAT-055) ---
+
+
+@app.post(
+    "/v1/incidents/declare",
+    response_model=IncidentCrisisState,
+    tags=["Incidents"],
+    responses={
+        200: {"description": "Crisis response initialized with statutory 6-hour reporting window"},
+        400: {"description": "Validation error in discovery timestamp or summary"},
+        401: {"description": "missing or invalid API key"},
+    },
+)
+async def declare_incident_endpoint(
+    payload: DeclareIncidentRequest,
+    run_id: Annotated[UUID | None, Query(description="Optional associated playbook run ID")] = None,
+    tenant_id: str = Query(default="default", description="Tenant isolation key"),
+    fingerprint: str = Depends(require_api_key),
+) -> IncidentCrisisState:
+    """Operationalizes cyber incident response, starts 6-hour regulatory countdown, and auto-generates statutory RBI disclosure draft (FEAT-055)."""
+    from app.workflows.incident_playbook import (
+        IncidentValidationError,
+        get_default_incident_manager,
+    )
+
+    manager = get_default_incident_manager()
+    try:
+        return manager.declare_incident(
+            request=payload,
+            tenant_id=tenant_id,
+            run_id=run_id,
+        )
+    except (IncidentValidationError, ValueError) as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(err),
+        ) from err
+
+
+@app.get(
+    "/v1/incidents/{incident_id}/status",
+    response_model=IncidentCrisisState,
+    tags=["Incidents"],
+    responses={
+        200: {"description": "Real-time crisis state, minutes remaining, and disclosure template"},
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "Incident not found"},
+    },
+)
+async def get_incident_status_endpoint(
+    incident_id: UUID,
+    tenant_id: str = Query(default="default", description="Tenant isolation key"),
+    fingerprint: str = Depends(require_api_key),
+) -> IncidentCrisisState:
+    """Retrieve real-time regulatory crisis state, updated countdown timer, and statutory disclosure draft (FEAT-055)."""
+    from app.workflows.incident_playbook import (
+        IncidentNotFoundError,
+        get_default_incident_manager,
+    )
+
+    manager = get_default_incident_manager()
+    try:
+        return manager.get_incident_status(incident_id=incident_id, tenant_id=tenant_id)
+    except IncidentNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(err),
+        ) from err
+
+
+@app.post(
+    "/v1/incidents/{incident_id}/actions/{action_id}/complete",
+    response_model=IncidentCrisisState,
+    tags=["Incidents"],
+    responses={
+        200: {"description": "Action item marked complete and crisis state updated"},
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "Incident not found"},
+    },
+)
+async def complete_incident_action_endpoint(
+    incident_id: UUID,
+    action_id: str,
+    payload: CompleteIncidentActionRequest | None = None,
+    tenant_id: str = Query(default="default", description="Tenant isolation key"),
+    fingerprint: str = Depends(require_api_key),
+) -> IncidentCrisisState:
+    """Mark a forensic evidence preservation or statutory reporting action item complete (FEAT-055)."""
+    from app.workflows.incident_playbook import (
+        IncidentNotFoundError,
+        get_default_incident_manager,
+    )
+
+    manager = get_default_incident_manager()
+    notes = payload.notes if payload else ""
+    try:
+        return manager.complete_action(
+            incident_id=incident_id,
+            action_id=action_id,
+            tenant_id=tenant_id,
+            notes=notes,
+        )
+    except IncidentNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(err),
+        ) from err
+
+
+@app.get(
+    "/v1/incidents",
+    response_model=list[IncidentCrisisState],
+    tags=["Incidents"],
+    responses={
+        200: {"description": "List of active and historical cyber crisis incidents"},
+        401: {"description": "missing or invalid API key"},
+    },
+)
+async def list_incidents_endpoint(
+    tenant_id: str = Query(default="default", description="Tenant isolation key"),
+    fingerprint: str = Depends(require_api_key),
+) -> list[IncidentCrisisState]:
+    """List all active and historical cyber crisis incidents for a tenant (FEAT-055)."""
+    from app.workflows.incident_playbook import get_default_incident_manager
+
+    manager = get_default_incident_manager()
+    return manager.list_incidents(tenant_id=tenant_id)

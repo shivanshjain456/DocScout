@@ -709,6 +709,16 @@ TASKS_DISPATCHED_TOTAL = Counter(
     ("role",),
 )
 
+ACTIVE_CRISIS_INCIDENTS = Gauge(
+    "docscout_active_crisis_incidents",
+    "Current count of active regulatory cyber crisis incidents (FEAT-055).",
+)
+
+INCIDENT_MILESTONES_MET_TOTAL = Counter(
+    "docscout_incident_milestones_met_total",
+    "Total regulatory incident action items or milestones completed (FEAT-055).",
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

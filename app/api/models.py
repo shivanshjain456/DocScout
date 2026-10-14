@@ -14,8 +14,9 @@ deliberate:
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import Annotated, Any, Literal
+from uuid import UUID
 
 from pydantic import (
     BaseModel,
@@ -1940,3 +1941,70 @@ class RoleTaskList(BaseModel):
     pending_tasks: list[RoleTask]
     completed_tasks: list[RoleTask] = Field(default_factory=list)
     total_estimated_hours: int = 0
+
+
+# --- Regulatory Cyber Incident Response Playbook (FEAT-055) ---
+
+
+class DeclareIncidentRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    severity: Literal["SEV1", "SEV2"] = Field(
+        ...,
+        description="Incident severity tier per statutory incident response matrix",
+    )
+    summary: str = Field(
+        ...,
+        min_length=20,
+        description="Incident summary and initial forensic observations (minimum 20 characters)",
+    )
+    systems_impacted: list[str] = Field(
+        ...,
+        min_length=1,
+        description="Critical banking and infrastructure systems impacted",
+    )
+    discovery_timestamp: datetime = Field(
+        ...,
+        description="Timestamp when the cybersecurity incident was first discovered",
+    )
+
+    @field_validator("discovery_timestamp")
+    @classmethod
+    def validate_discovery_timestamp_not_future(cls, v: datetime) -> datetime:
+        now = datetime.now(UTC)
+        v_utc = v if v.tzinfo is not None else v.replace(tzinfo=UTC)
+        if (v_utc - now).total_seconds() > 10:
+            raise ValueError("discovery_timestamp cannot be in the future")
+        return v
+
+
+class IncidentActionItem(BaseModel):
+    action_id: str
+    title: str
+    role: str = "sre"
+    completed: bool = False
+    completed_at: datetime | None = None
+
+
+class IncidentCrisisState(BaseModel):
+    incident_id: UUID
+    severity: Literal["SEV1", "SEV2"]
+    summary: str
+    systems_impacted: list[str]
+    discovery_timestamp: datetime
+    statutory_reporting_deadline: datetime
+    minutes_remaining: int
+    required_actions: list[str]
+    actions_completed: list[str] = Field(default_factory=list)
+    disclosure_draft: str
+    status: Literal["DECLARED", "CONTAINED", "REPORTED", "RESOLVED"] = "DECLARED"
+    warning_issued: bool = False
+    run_id: UUID | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class CompleteIncidentActionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    notes: str = Field(default="", description="Optional verification or forensic notes")
