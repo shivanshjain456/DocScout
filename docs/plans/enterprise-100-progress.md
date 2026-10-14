@@ -83,7 +83,7 @@
 
 ### Pillar 7: Ingestion, Extraction & Document Intelligence
 - [x] FEAT-061: Hierarchical Structure-Aware Circular Chunking
-- [ ] FEAT-062: High-Fidelity Table Lineage & Matrix Parser
+- [x] FEAT-062: High-Fidelity Table Lineage & Matrix Parser
 - [ ] FEAT-063: Bidirectional Character-Exact Offset Traceability Matrix
 - [ ] FEAT-064: OCR Degradation & Confidence Scoring Pipeline
 - [ ] FEAT-065: Intelligent Regulatory Furniture & Gazette Stamp Stripper
@@ -196,6 +196,7 @@
 | FEAT-059 | f96657f | PASS | Playbook progress dashboard in console UI, PlaybookConsole.tsx, usePlaybooks.ts, visual SVG progress rings, 4-stage stepper, role filter toggles, exportable audit summary, Playwright test passing |
 | FEAT-060 | b18ec5d | PASS | Custom enterprise compliance playbook builder, migration 0044, CustomPlaybookBuilder, runtime template injection, PlaybookBuilder.tsx, POST /v1/playbooks/custom, GET /v1/playbooks/custom, 10 enterprise templates benchmark <= 12.0ms |
 | FEAT-061 | a1957c3 | PASS | Hierarchical structure-aware circular chunking, ADR-0052, migration 0045, HierarchicalChunker with statutory regex parsing, proviso retention >= 98%, token ceiling <= 512, POST /v1/ingest/chunk, throughput >= 50,000 chars/sec |
+| FEAT-062 | be0f9be | PASS | High-fidelity table lineage and matrix parser, ADR-0053, migration 0046, TableParser with pdfplumber and text matrix extraction, multi-row header merging, 15 regulatory benchmark matrices cell accuracy >= 98%, POST /v1/ingest/tables, GET /v1/ingest/tables/{table_id}, throughput >= 30 pages/sec |
 
 
 
