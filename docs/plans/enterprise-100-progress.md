@@ -90,7 +90,7 @@
 - [x] FEAT-066: Annexure, Schedule & FAQ Relational Association
 - [x] FEAT-067: Incremental Deterministic Chunk Hashing (UUIDv5)
 - [x] FEAT-068: Bilingual Devanagari / Hindi Normalization & Parsing
-- [ ] FEAT-069: Automated Regulatory Metadata & Notification ID Extraction
+- [x] FEAT-069: Automated Regulatory Metadata & Notification ID Extraction
 - [ ] FEAT-070: Duplicate & Reprint Deduplication Engine
 
 ### Pillar 8: Advanced Retrieval, Reranking & Evidence Synthesis
@@ -203,6 +203,7 @@
 | FEAT-066 | b146955 | PASS | Annexure, schedule & FAQ relational association, ADR-0057, migration 0049 (document_sections and section_relationships), AnnexureLinker with UNIFIED_HEADING_RE, 10 Master Directions benchmark passed, POST /v1/ingest/annexures/link, GET /v1/ingest/annexures/{document_id}, overhead <= 0.5ms |
 | FEAT-067 | 99dbacd | PASS | Incremental deterministic chunk hashing (UUIDv5), ADR-0058, DOCSCOUT_CHUNK_NAMESPACE, pre-hashed SHA-1 prefix batch generation (throughput >= 400,000 IDs/sec), zero-churn circular re-ingestion, fail-closed span validation, CHUNKS_REUSED_TOTAL metric, tests/test_chunk_ids.py |
 | FEAT-068 | eac8aea | PASS | Bilingual Devanagari / Hindi normalization and parsing, ADR-0059, DevanagariNormalizer with canonical Unicode NFC, stacked combining mark preservation, bilingual column and section separation, clean_preserving_offsets integration, POST /v1/ingest/devanagari/normalize, throughput >= 1,000,000 chars/sec |
+| FEAT-069 | 2f3b952 | PASS | Automated regulatory metadata and notification id extraction, ADR-0060, migration 0050 (circular_no, issuing_department, subject, signoff_authority), RegulatoryMetadataExtractor with 100% precision on circular numbers & departments, p95 <= 0.69ms (budget <= 1.5ms), METADATA_FIELDS_EXTRACTED_TOTAL metric, POST /v1/ingest/metadata/extract |
 
 ---
 
