@@ -649,6 +649,18 @@ TELEMETRY_WINDOW_CALC_DURATION_SECONDS = Histogram(
     buckets=[0.0005, 0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25],
 )
 
+VENDOR_CONTRACTS_AUDITED_TOTAL = Counter(
+    "docscout_vendor_contracts_audited_total",
+    "Total third-party vendor contracts evaluated by overall risk level (FEAT-049).",
+    ("risk_level",),
+)
+
+VENDOR_AUDIT_DURATION_SECONDS = Histogram(
+    "docscout_vendor_audit_duration_seconds",
+    "Latency of vendor contract statutory risk evaluation in seconds (FEAT-049).",
+    buckets=[0.005, 0.01, 0.02, 0.04, 0.06, 0.1, 0.25, 0.5],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

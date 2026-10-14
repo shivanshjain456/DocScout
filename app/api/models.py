@@ -1677,3 +1677,53 @@ class ObservationStatusResponse(BaseModel):
 
 class ObservationConfigModel(BaseModel):
     min_window_days: int = 90
+
+
+# --- Third-Party Vendor Risk Assessment Engine (FEAT-049) ---
+
+
+class VendorRiskAuditRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    contract_text: str = Field(
+        ...,
+        min_length=100,
+        max_length=150000,
+        description="Raw text of third-party vendor agreement (100 to 150,000 characters)",
+    )
+    vendor_type: Literal["CLOUD", "SAAS", "PAYMENT_SWITCH", "DATACENTER"] = Field(
+        ..., description="Classification category of third-party vendor"
+    )
+    vendor_name: str | None = Field(
+        default=None, max_length=150, description="Optional legal entity name of the vendor"
+    )
+    strict_localization: bool = Field(
+        default=True, description="Whether to enforce strict Indian onshore data storage"
+    )
+
+
+class MissingClauseModel(BaseModel):
+    clause_name: str
+    statutory_requirement: str
+    rbi_circular_citation: str
+    risk_level: Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+    remediation_guidance: str
+
+
+class DetectedClauseModel(BaseModel):
+    clause_name: str
+    confidence: float
+    matched_snippet: str
+
+
+class VendorRiskReportResponse(BaseModel):
+    vendor_name: str | None = None
+    vendor_type: Literal["CLOUD", "SAAS", "PAYMENT_SWITCH", "DATACENTER"]
+    compliance_score: float
+    risk_rating: Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+    mandatory_clauses_present: list[str]
+    missing_clauses: list[MissingClauseModel]
+    detected_clauses: list[DetectedClauseModel]
+    contract_char_count: int
+    audit_timestamp: datetime
+    strict_localization_enforced: bool

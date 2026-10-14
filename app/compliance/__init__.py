@@ -117,6 +117,11 @@ from app.compliance.unit_normalizer import (
     format_international_number,
     get_default_unit_normalizer,
 )
+from app.compliance.vendor_risk import (
+    VendorRiskAssessmentEngine,
+    VendorRiskConfig,
+    get_default_vendor_risk_engine,
+)
 from app.ingest.standard_linker import (
     AnnotatedFormula,
     StandardFormulaAnnotator,
@@ -194,6 +199,8 @@ __all__ = [
     "TermDriftReport",
     "TerminologyDriftTracker",
     "UpdateDebtStatusRequest",
+    "VendorRiskAssessmentEngine",
+    "VendorRiskConfig",
     "format_indian_number",
     "format_international_number",
     "get_default_antipattern_scanner",
@@ -213,6 +220,7 @@ __all__ = [
     "get_default_standard_annotator",
     "get_default_standards_registry",
     "get_default_unit_normalizer",
+    "get_default_vendor_risk_engine",
     "get_graph",
     "list_registered_graphs",
     "register_graph",

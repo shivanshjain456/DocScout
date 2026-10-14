@@ -184,6 +184,8 @@ from app.api.models import (
     UserInterestCreate,
     UserInterestResponse,
     UserProfileResponse,
+    VendorRiskAuditRequest,
+    VendorRiskReportResponse,
     WebhookProcessResponse,
     WorkspaceCreateRequest,
     WorkspaceResponse,
@@ -4649,3 +4651,37 @@ async def get_observation_window_status(
         window_end=status_obj.window_end,
         status=status_obj.status,
     )
+
+
+@app.post(
+    "/v1/compliance/vendor-audit",
+    response_model=VendorRiskReportResponse,
+    tags=["Compliance"],
+    responses={
+        200: {"description": "Vendor contract statutory compliance evaluated"},
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "validation error or invalid contract text"},
+    },
+)
+async def audit_vendor_contract(
+    payload: VendorRiskAuditRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> VendorRiskReportResponse:
+    """Evaluate third-party vendor contract against RBI and SEBI outsourcing mandates (FEAT-049)."""
+    from app.compliance.vendor_risk import get_default_vendor_risk_engine
+
+    engine = get_default_vendor_risk_engine()
+    try:
+        report = engine.evaluate_contract(
+            contract_text=payload.contract_text,
+            vendor_type=payload.vendor_type,
+            vendor_name=payload.vendor_name,
+            strict_localization=payload.strict_localization,
+        )
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(err),
+        ) from err
+
+    return report
