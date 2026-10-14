@@ -162,6 +162,9 @@ from app.api.models import (
     NormalizeUnitsResponse,
     ObservationStatusResponse,
     OCRInspectionResponse,
+    OCRQualityRequest,
+    OCRQualityResponse,
+    OCRQualityScore,
     Passage,
     PersonaListResponse,
     PersonaProfileResponse,
@@ -6437,3 +6440,131 @@ async def get_chunk_coordinates_endpoint(
         )
         for c in coords
     ]
+
+
+# --- OCR Degradation & Confidence Scoring Pipeline (FEAT-064) ---
+
+
+@app.post(
+    "/v1/ingest/ocr/assess",
+    response_model=OCRQualityResponse,
+    tags=["ingest"],
+    responses={
+        400: {"description": "Invalid image or PDF payload"},
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "validation error"},
+    },
+)
+async def assess_ocr_quality_endpoint(
+    payload: OCRQualityRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> OCRQualityResponse:
+    """Assess page OCR confidence and apply restoration if degraded (FEAT-064)."""
+    import base64
+    import hashlib
+    import time
+
+    from app.ingest.ocr_quality import (
+        OCRQualityConfig as CoreOCRConfig,
+    )
+    from app.ingest.ocr_quality import (
+        OCRQualityEvaluator,
+    )
+
+    t0 = time.perf_counter()
+    try:
+        content_bytes = base64.b64decode(payload.content_base64)
+    except Exception as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid base64 payload: {err}",
+        ) from err
+
+    if not content_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Empty content payload provided.",
+        )
+
+    content_sha256 = hashlib.sha256(content_bytes).hexdigest()
+    core_config = CoreOCRConfig(
+        degradation_threshold=payload.config.degradation_threshold,
+        auto_preprocess=payload.config.auto_preprocess,
+    )
+    evaluator = OCRQualityEvaluator(config=core_config)
+
+    score = evaluator.evaluate_page(content_bytes, page_number=payload.page_number)
+
+    # Persist to ocr_extractions table
+    try:
+        pool = getattr(app.state, "pool", None)
+        if pool is not None:
+            with pool.connection() as conn:
+                evaluator.save_quality_score(conn, content_sha256, score)
+        else:
+            with psycopg.connect(database_url()) as conn:
+                evaluator.save_quality_score(conn, content_sha256, score)
+    except Exception as store_err:
+        logger.warning("ocr_quality_endpoint.store_error", error=str(store_err))
+
+    duration_ms = (time.perf_counter() - t0) * 1000.0
+
+    return OCRQualityResponse(
+        quality_score=OCRQualityScore(
+            page_number=score.page_number,
+            confidence=score.confidence,
+            is_degraded=score.is_degraded,
+            preprocessing_applied=score.preprocessing_applied,
+            extracted_text=score.extracted_text,
+        ),
+        sha256=content_sha256,
+        processing_time_ms=round(duration_ms, 2),
+    )
+
+
+@app.get(
+    "/v1/ingest/ocr/{image_sha256}",
+    response_model=OCRQualityScore,
+    tags=["ingest"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "OCR quality record not found"},
+    },
+)
+async def get_ocr_quality_endpoint(
+    image_sha256: Annotated[str, FastApiPath(description="SHA-256 of image content")],
+    fingerprint: str = Depends(require_api_key),
+) -> OCRQualityScore:
+    """Retrieve cached OCR quality evaluation by SHA-256 (FEAT-064)."""
+    from app.ingest.ocr_quality import get_default_quality_evaluator
+
+    evaluator = get_default_quality_evaluator()
+    score: Any = None
+    pool = getattr(app.state, "pool", None)
+    if pool is not None:
+        try:
+            with pool.connection() as conn:
+                score = evaluator.get_quality_score(conn, image_sha256)
+        except Exception as err:
+            logger.debug("ocr_quality_get.pool_error", error=str(err))
+
+    if score is None:
+        try:
+            with psycopg.connect(database_url()) as conn:
+                score = evaluator.get_quality_score(conn, image_sha256)
+        except Exception as err:
+            logger.debug("ocr_quality_get.direct_conn_error", error=str(err))
+
+    if score is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No OCR quality record found for SHA-256 {image_sha256}",
+        )
+
+    return OCRQualityScore(
+        page_number=score.page_number,
+        confidence=score.confidence,
+        is_degraded=score.is_degraded,
+        preprocessing_applied=score.preprocessing_applied,
+        extracted_text=score.extracted_text,
+    )

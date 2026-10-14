@@ -786,6 +786,17 @@ COORDINATE_MAPPINGS_CREATED_TOTAL = Counter(
     ("status",),
 )
 
+OCR_MEAN_PAGE_CONFIDENCE = Gauge(
+    "docscout_ocr_mean_page_confidence",
+    "Average confidence score of processed OCR pages (FEAT-064).",
+)
+
+OCR_DEGRADED_PAGES_ROUTED_TOTAL = Counter(
+    "docscout_ocr_degraded_pages_routed_total",
+    "Total degraded OCR pages routed to preprocessing and fallback OCR (FEAT-064).",
+    ("status",),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

@@ -2438,3 +2438,44 @@ class CoordinateExtractionResponse(BaseModel):
     page_number: int
     highlight_css: str
     iou_score: float
+
+
+# --- OCR Degradation & Confidence Scoring Pipeline (FEAT-064) ---
+
+
+class OCRQualityConfig(BaseModel):
+    degradation_threshold: float = Field(
+        default=0.85,
+        ge=0.0,
+        le=1.0,
+        description="Confidence threshold below which a page is flagged as degraded",
+    )
+    auto_preprocess: bool = Field(
+        default=True,
+        description="Automatically apply multi-pass image preprocessing to degraded pages",
+    )
+
+
+class OCRQualityScore(BaseModel):
+    page_number: int = Field(default=1, ge=1, description="1-indexed PDF page number")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Overall character confidence score")
+    is_degraded: bool = Field(
+        ..., description="Whether the page confidence falls below the degradation threshold"
+    )
+    preprocessing_applied: list[str] = Field(
+        default_factory=list,
+        description="List of preprocessing transformations applied",
+    )
+    extracted_text: str = Field(default="", description="Extracted plain text from page")
+
+
+class OCRQualityRequest(BaseModel):
+    content_base64: str = Field(..., description="Base64 encoded PDF page or raster image")
+    page_number: int = Field(default=1, ge=1, description="Page number to evaluate")
+    config: OCRQualityConfig = Field(default_factory=OCRQualityConfig)
+
+
+class OCRQualityResponse(BaseModel):
+    quality_score: OCRQualityScore
+    sha256: str
+    processing_time_ms: float
