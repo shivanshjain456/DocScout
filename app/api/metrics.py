@@ -830,6 +830,17 @@ DUPLICATE_DOCUMENTS_DETECTED_TOTAL = Counter(
     ["match_type"],
 )
 
+RERANK_DURATION_SECONDS = Histogram(
+    "docscout_rerank_duration_seconds",
+    "Duration of cross-encoder candidate reranking in seconds (FEAT-071).",
+    buckets=[0.005, 0.010, 0.020, 0.030, 0.040, 0.050, 0.075, 0.100, 0.200],
+)
+
+RERANK_CIRCUIT_BREAKER_TRIPS_TOTAL = Counter(
+    "docscout_rerank_circuit_breaker_trips_total",
+    "Total times the cross-encoder rerank circuit breaker tripped due to timeout or error (FEAT-071).",
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

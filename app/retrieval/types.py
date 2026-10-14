@@ -317,10 +317,11 @@ class RetrievalConfig:
     # Cross-encoder reranking of the fused candidates. Off by default: it is the single
     # most expensive stage in the pipeline and ADR-0009 decides when it earns that cost.
     rerank: bool = False
-    # How many fused candidates the cross-encoder scores. Must be >= k_final, or the
-    # reranker would be asked to choose the top k from fewer than k candidates, which
-    # quietly degrades to "no reranking" while still charging for the model.
-    rerank_top_n: int = 20
+    # How many fused candidates the cross-encoder scores. Clamped to a maximum of 64
+    # candidates per FEAT-071 to respect inference latency budgets.
+    rerank_top_n: int = 50
+    rerank_batch_size: int = 16
+    rerank_timeout_ms: int = 40
     filter: MetadataFilter | None = None
     expand_query: bool = False
     expansion_mode: ExpansionMode = "none"
@@ -348,6 +349,15 @@ class RetrievalConfig:
                 "reranking fewer candidates than are returned pays for the model without "
                 "giving it anything to reorder"
             )
+        if self.rerank_top_n > 64:
+            raise ValueError(
+                f"rerank_top_n ({self.rerank_top_n}) exceeds maximum candidate pool ceiling of 64; "
+                "unbounded candidate pools exceed the inference latency budget"
+            )
+        if self.rerank_batch_size <= 0:
+            raise ValueError(f"rerank_batch_size must be positive, got {self.rerank_batch_size}")
+        if self.rerank_timeout_ms <= 0:
+            raise ValueError(f"rerank_timeout_ms must be positive, got {self.rerank_timeout_ms}")
         if self.expand_query and self.expansion_mode == "none":
             object.__setattr__(self, "expansion_mode", "synonym")
         elif self.expansion_mode != "none" and not self.expand_query:
@@ -383,6 +393,8 @@ class RetrievalConfig:
             "rerank": self.rerank,
             "rerank_top_n": self.rerank_top_n if self.rerank else None,
             "rerank_model": RERANK_MODEL_ID if self.rerank else None,
+            "rerank_batch_size": self.rerank_batch_size if self.rerank else None,
+            "rerank_timeout_ms": self.rerank_timeout_ms if self.rerank else None,
             "filter": self.filter.as_dict() if self.filter else None,
             "expand_query": self.expand_query,
             "expansion_mode": self.expansion_mode,

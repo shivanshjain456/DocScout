@@ -135,7 +135,9 @@ class Retriever:
         carry an RRF score while everything around it carried a cross-encoder score --
         two incomparable units in one `score` column.
         """
-        pool_ids = [chunk_id for chunk_id, _, _ in fused[: config.rerank_top_n]]
+        # Clamp rerank_top_n to max 64 per FEAT-071
+        effective_top_n = min(config.rerank_top_n, 64)
+        pool_ids = [chunk_id for chunk_id, _, _ in fused[:effective_top_n]]
         seen = set(pool_ids)
         for arm_ids in arms.values():
             if arm_ids and arm_ids[0] not in seen:
@@ -152,10 +154,30 @@ class Retriever:
             for chunk_id in pool_ids
         ]
         ranks = {chunk_id: arm_ranks for chunk_id, _, arm_ranks in fused}
-        ordered = [
-            (pool_ids[index], score, ranks.get(pool_ids[index], {}))
-            for index, score in self.reranker.order(query, candidates)
-        ]
+        fused_scores = {chunk_id: score for chunk_id, score, _ in fused}
+
+        ordered_indices = self.reranker.order(
+            query,
+            candidates,
+            batch_size=config.rerank_batch_size,
+            timeout_ms=config.rerank_timeout_ms,
+        )
+
+        if getattr(self.reranker, "last_circuit_breaker_tripped", False):
+            # Pre-rerank RRF candidate ranking returned without score disruption
+            ordered = [
+                (
+                    pool_ids[index],
+                    fused_scores.get(pool_ids[index], 0.0),
+                    ranks.get(pool_ids[index], {}),
+                )
+                for index, _ in ordered_indices
+            ]
+        else:
+            ordered = [
+                (pool_ids[index], score, ranks.get(pool_ids[index], {}))
+                for index, score in ordered_indices
+            ]
         # The untouched tail keeps its RRF score. It is unreachable whenever
         # rerank_top_n >= k_final, which __post_init__ enforces, and is kept so the list
         # stays a complete ranking rather than a truncated one.
