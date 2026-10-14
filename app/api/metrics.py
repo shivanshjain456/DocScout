@@ -802,6 +802,12 @@ FURNITURE_TOKENS_STRIPPED_TOTAL = Counter(
     "Total furniture tokens stripped from regulatory texts (FEAT-065).",
 )
 
+ANNEXURES_LINKED_TOTAL = Counter(
+    "docscout_annexures_linked_total",
+    "Total regulatory annexures, schedules, and FAQs linked by relationship type (FEAT-066).",
+    ["type"],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

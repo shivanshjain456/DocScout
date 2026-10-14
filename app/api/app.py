@@ -119,7 +119,9 @@ from app.api.models import (
     DispatchDeadlineAlertsRequest,
     DispatchDeadlineAlertsResponse,
     DocumentParametersResponse,
+    DocumentRelationshipsResponse,
     DocumentResponse,
+    DocumentSectionModel,
     DocumentStandardMentionsResponse,
     DORAAssessmentRequest,
     DORAComplianceReport,
@@ -154,6 +156,8 @@ from app.api.models import (
     HierarchicalChunkModel,
     IncidentCrisisState,
     IntentClassification,
+    LinkAnnexuresRequest,
+    LinkAnnexuresResponse,
     LivenessResponse,
     MappedControl,
     MilestoneSummaryModel,
@@ -202,6 +206,7 @@ from app.api.models import (
     ScorecardResponse,
     SearchRequest,
     SearchResponse,
+    SectionRelationshipModel,
     SimulationRequest,
     SimulationResponse,
     StageProgress,
@@ -6615,4 +6620,143 @@ async def strip_furniture_endpoint(
             categories_matched=summary.categories_matched,
         ),
         length_preserved=len(cleaned_text) == len(payload.text),
+    )
+
+
+# --- Annexure, Schedule & FAQ Relational Association (FEAT-066) ---
+
+
+@app.post(
+    "/v1/ingest/annexures/link",
+    response_model=LinkAnnexuresResponse,
+    tags=["ingest"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "validation error"},
+    },
+)
+async def link_annexures_endpoint(
+    payload: LinkAnnexuresRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> LinkAnnexuresResponse:
+    """Parse document sections and establish relational hierarchy links (FEAT-066)."""
+    import time
+
+    from app.ingest.annexure_linker import (
+        AnnexureLinker,
+    )
+    from app.ingest.annexure_linker import (
+        AnnexureLinkerConfig as CoreLinkerConfig,
+    )
+
+    t0 = time.perf_counter()
+    core_config = CoreLinkerConfig(
+        auto_link_faqs=payload.config.auto_link_faqs,
+        auto_link_annexures=payload.config.auto_link_annexures,
+        auto_link_schedules=payload.config.auto_link_schedules,
+        auto_link_appendices=payload.config.auto_link_appendices,
+    )
+    linker = AnnexureLinker(config=core_config)
+
+    sections, relationships = linker.process_document(
+        payload.text,
+        document_id=payload.document_id,
+        version_id=payload.version_id,
+        config=core_config,
+    )
+
+    if payload.document_id and payload.version_id:
+        try:
+            pool = getattr(app.state, "pool", None)
+            if pool is not None:
+                with pool.connection() as conn:
+                    linker.save_sections_and_relationships(
+                        conn, payload.document_id, payload.version_id, sections, relationships
+                    )
+            else:
+                with psycopg.connect(database_url()) as conn:
+                    linker.save_sections_and_relationships(
+                        conn, payload.document_id, payload.version_id, sections, relationships
+                    )
+        except Exception as db_err:
+            logger.warning("link_annexures_endpoint.store_error", error=str(db_err))
+
+    duration_ms = (time.perf_counter() - t0) * 1000.0
+
+    section_models = [
+        DocumentSectionModel(
+            section_id=s.section_id,
+            document_id=s.document_id,
+            version_id=s.version_id,
+            section_identifier=s.section_identifier,
+            section_title=s.section_title,
+            section_type=s.section_type,
+            char_start=s.char_start,
+            char_end=s.char_end,
+            parent_section_id=s.parent_section_id,
+        )
+        for s in sections
+    ]
+
+    relationship_models = [
+        SectionRelationshipModel(
+            parent_section_id=r.parent_section_id,
+            child_section_id=r.child_section_id,
+            relationship_type=r.relationship_type,
+            metadata=r.metadata,
+        )
+        for r in relationships
+    ]
+
+    return LinkAnnexuresResponse(
+        sections=section_models,
+        relationships=relationship_models,
+        total_linked=len(relationship_models),
+        execution_time_ms=round(duration_ms, 3),
+    )
+
+
+@app.get(
+    "/v1/ingest/annexures/{document_id}",
+    response_model=DocumentRelationshipsResponse,
+    tags=["ingest"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "document relationships not found"},
+    },
+)
+async def get_document_relationships_endpoint(
+    document_id: Annotated[str, FastApiPath(description="Document UUID")],
+    fingerprint: str = Depends(require_api_key),
+) -> DocumentRelationshipsResponse:
+    """Retrieve stored section relationships for a document (FEAT-066)."""
+    from app.ingest.annexure_linker import get_default_annexure_linker
+
+    linker = get_default_annexure_linker()
+    relationships: list[Any] = []
+
+    try:
+        pool = getattr(app.state, "pool", None)
+        if pool is not None:
+            with pool.connection() as conn:
+                relationships = linker.get_document_relationships(conn, document_id)
+        else:
+            with psycopg.connect(database_url()) as conn:
+                relationships = linker.get_document_relationships(conn, document_id)
+    except Exception as db_err:
+        logger.warning("get_document_relationships.db_error", error=str(db_err))
+
+    rel_models = [
+        SectionRelationshipModel(
+            parent_section_id=r.parent_section_id,
+            child_section_id=r.child_section_id,
+            relationship_type=r.relationship_type,
+            metadata=r.metadata,
+        )
+        for r in relationships
+    ]
+
+    return DocumentRelationshipsResponse(
+        document_id=document_id,
+        relationships=rel_models,
     )

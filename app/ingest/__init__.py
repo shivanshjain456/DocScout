@@ -8,6 +8,14 @@ are the pipeline's seams; everything else is an implementation detail of a stage
 
 from __future__ import annotations
 
+from app.ingest.annexure_linker import (
+    AnnexureLinker,
+    AnnexureLinkerConfig,
+    DocumentSection,
+    SectionRelationship,
+    get_default_annexure_linker,
+    link_annexures_and_schedules,
+)
 from app.ingest.chunk import (
     Chunk,
     chunk_document,
@@ -83,6 +91,8 @@ __all__ = [
     "MODEL_ID",
     "QUERY_PREFIX",
     "Action",
+    "AnnexureLinker",
+    "AnnexureLinkerConfig",
     "Chunk",
     "ChunkCoordinates",
     "ChunkingConfig",
@@ -90,6 +100,7 @@ __all__ = [
     "DeadlineAlertConfig",
     "DeadlineExtractor",
     "DisallowedHostError",
+    "DocumentSection",
     "EmbeddingContractError",
     "Embedder",
     "ExtractedTable",
@@ -109,6 +120,7 @@ __all__ = [
     "ScopeClassification",
     "ScopeClassifier",
     "ScopeConfig",
+    "SectionRelationship",
     "ShortExtractionError",
     "SourceDocument",
     "StoreOutcome",
@@ -130,12 +142,14 @@ __all__ = [
     "extract_regulatory_deadlines",
     "extract_span_coordinates",
     "extract_tables_from_pdf",
+    "get_default_annexure_linker",
     "get_default_furniture_stripper",
     "get_default_hierarchical_chunker",
     "get_default_offset_matrix",
     "get_default_quality_evaluator",
     "get_default_table_parser",
     "iter_manifest_documents",
+    "link_annexures_and_schedules",
     "run_ingest",
     "store_document",
     "strip_furniture",

@@ -2523,3 +2523,65 @@ class StripFurnitureResponse(BaseModel):
     cleaned_text: str = Field(..., description="Cleaned text with exact length preservation")
     summary: StrippedFurnitureSummary
     length_preserved: bool = Field(..., description="Whether len(cleaned_text) == len(raw_text)")
+
+
+# --- Annexure, Schedule & FAQ Relational Association (FEAT-066) ---
+
+
+SectionType = Literal["MAIN", "ANNEXURE", "SCHEDULE", "FAQ", "APPENDIX"]
+RelationshipType = Literal["ANNEXURE", "SCHEDULE", "FAQ", "APPENDIX"]
+
+
+class DocumentSectionModel(BaseModel):
+    section_id: str = Field(..., description="Unique section identifier (UUID)")
+    document_id: str | None = Field(default=None, description="Document ID UUID")
+    version_id: str | None = Field(default=None, description="Document version UUID")
+    section_identifier: str = Field(
+        ..., description="Canonical label (e.g. MAIN, Annexure I, Schedule A)"
+    )
+    section_title: str = Field(default="", description="Detected section heading title")
+    section_type: SectionType = Field(..., description="Section category")
+    char_start: int = Field(..., ge=0, description="Starting character offset in document")
+    char_end: int = Field(..., ge=0, description="Ending character offset in document")
+    parent_section_id: str | None = Field(default=None, description="Parent section UUID if nested")
+
+
+class SectionRelationshipModel(BaseModel):
+    parent_section_id: str = Field(..., description="Parent section UUID")
+    child_section_id: str = Field(..., description="Child section UUID")
+    relationship_type: RelationshipType = Field(..., description="Type of structural link")
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Metadata or section attributes"
+    )
+
+
+class AnnexureLinkerConfig(BaseModel):
+    auto_link_faqs: bool = Field(
+        default=True, description="Automatically link FAQ sections to main body"
+    )
+    auto_link_annexures: bool = Field(
+        default=True, description="Automatically link technical annexures"
+    )
+    auto_link_schedules: bool = Field(
+        default=True, description="Automatically link regulatory schedules"
+    )
+    auto_link_appendices: bool = Field(default=True, description="Automatically link appendices")
+
+
+class LinkAnnexuresRequest(BaseModel):
+    text: str = Field(..., description="Raw or cleaned document text with headings")
+    document_id: str | None = Field(default=None, description="Optional document UUID")
+    version_id: str | None = Field(default=None, description="Optional version UUID")
+    config: AnnexureLinkerConfig = Field(default_factory=AnnexureLinkerConfig)
+
+
+class LinkAnnexuresResponse(BaseModel):
+    sections: list[DocumentSectionModel] = Field(default_factory=list)
+    relationships: list[SectionRelationshipModel] = Field(default_factory=list)
+    total_linked: int = Field(..., ge=0, description="Number of relational links established")
+    execution_time_ms: float = Field(..., ge=0.0, description="Linking overhead in milliseconds")
+
+
+class DocumentRelationshipsResponse(BaseModel):
+    document_id: str = Field(..., description="Document UUID")
+    relationships: list[SectionRelationshipModel] = Field(default_factory=list)
