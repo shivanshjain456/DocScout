@@ -89,7 +89,7 @@
 - [x] FEAT-065: Intelligent Regulatory Furniture & Gazette Stamp Stripper
 - [x] FEAT-066: Annexure, Schedule & FAQ Relational Association
 - [x] FEAT-067: Incremental Deterministic Chunk Hashing (UUIDv5)
-- [ ] FEAT-068: Bilingual Devanagari / Hindi Normalization & Parsing
+- [x] FEAT-068: Bilingual Devanagari / Hindi Normalization & Parsing
 - [ ] FEAT-069: Automated Regulatory Metadata & Notification ID Extraction
 - [ ] FEAT-070: Duplicate & Reprint Deduplication Engine
 
@@ -202,6 +202,7 @@
 | FEAT-065 | 0550244 | PASS | Intelligent regulatory furniture and gazette stamp stripper, ADR-0056, FurnitureStripper with 5 compiled pattern sets, 100% gazette furniture elimination across 20 official benchmark notifications, strict length-preserving invariant len(cleaned) == len(raw), POST /v1/ingest/furniture/strip, throughput >= 1,000,000 chars/sec |
 | FEAT-066 | b146955 | PASS | Annexure, schedule & FAQ relational association, ADR-0057, migration 0049 (document_sections and section_relationships), AnnexureLinker with UNIFIED_HEADING_RE, 10 Master Directions benchmark passed, POST /v1/ingest/annexures/link, GET /v1/ingest/annexures/{document_id}, overhead <= 0.5ms |
 | FEAT-067 | 99dbacd | PASS | Incremental deterministic chunk hashing (UUIDv5), ADR-0058, DOCSCOUT_CHUNK_NAMESPACE, pre-hashed SHA-1 prefix batch generation (throughput >= 400,000 IDs/sec), zero-churn circular re-ingestion, fail-closed span validation, CHUNKS_REUSED_TOTAL metric, tests/test_chunk_ids.py |
+| FEAT-068 | eac8aea | PASS | Bilingual Devanagari / Hindi normalization and parsing, ADR-0059, DevanagariNormalizer with canonical Unicode NFC, stacked combining mark preservation, bilingual column and section separation, clean_preserving_offsets integration, POST /v1/ingest/devanagari/normalize, throughput >= 1,000,000 chars/sec |
 
 ---
 
