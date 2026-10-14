@@ -70,7 +70,7 @@
 - [x] FEAT-050: Algorithmic & AI Impact Assessment Framework
 
 ### Pillar 6: Playbook-Guided Compliance & Workflow Engines
-- [ ] FEAT-051: Interactive Compliance Playbook Runtime
+- [x] FEAT-051: Interactive Compliance Playbook Runtime
 - [ ] FEAT-052: 4-Stage Progressive Milestone Tracker
 - [ ] FEAT-053: Automated Stage Exit Criteria Validator
 - [ ] FEAT-054: Role-Based Compliance Task Routing
@@ -185,6 +185,7 @@
 | FEAT-048 | ce6f2f5 | PASS | Continuous compliance observation window tracker, migration 0035, 10k event eval dataset, sub-ms ingestion >=1000/s, unbroken pass streak tracking, ObservationWindowView.tsx, POST /v1/compliance/telemetry/ingest, GET /v1/compliance/telemetry/window/{control_id} |
 | FEAT-049 | 1a12ba1 | PASS | Third-party vendor risk assessment engine, RBI/SEBI statutory clause verification, negative offshore transfer detection, VendorRiskAuditView.tsx, POST /v1/compliance/vendor-audit |
 | FEAT-050 | bada028 | PASS | Algorithmic and AI impact assessment framework, SEBI/RBI statutory controls, strict kill switch gating, AlgoImpactView.tsx, POST /v1/compliance/algo-assessment |
+| FEAT-051 | 10a406a | PASS | Interactive compliance playbook runtime, 12 statutory playbooks, 4-stage sequential state machine, PlaybookRuntimeView.tsx, /v1/playbooks/*, p95 <= 8ms |
 
 
 
