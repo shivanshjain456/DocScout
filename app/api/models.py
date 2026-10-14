@@ -2346,3 +2346,56 @@ class ChunkingResponse(BaseModel):
     uncovered_characters: int
     strategy: str
     chunks: list[HierarchicalChunkModel]
+
+
+# --- High-Fidelity Table Lineage & Matrix Parser (FEAT-062) ---
+
+
+class ExtractedTable(BaseModel):
+    table_id: str = Field(..., description="Unique table identifier")
+    page_number: int = Field(default=1, ge=1, description="1-indexed PDF or section page number")
+    headers: list[str] = Field(default_factory=list, description="Resolved column headers")
+    matrix: list[list[str]] = Field(
+        default_factory=list, description="2D matrix of cell string values"
+    )
+    markdown_repr: str = Field(..., description="GitHub-flavored Markdown table representation")
+    json_repr: dict[str, Any] = Field(
+        default_factory=dict, description="Structured JSON representation with schema"
+    )
+    cell_coordinates: list[dict[str, Any]] = Field(
+        default_factory=list, description="Optional bounding box coordinates per cell"
+    )
+
+
+class TableParserConfig(BaseModel):
+    strategy: Literal["pdfplumber", "docling", "miner_u"] = Field(
+        default="pdfplumber", description="Underlying table parsing extraction strategy"
+    )
+    min_rows: int = Field(default=2, ge=1, description="Minimum rows required to qualify as table")
+    min_cols: int = Field(
+        default=2, ge=1, description="Minimum columns required to qualify as table"
+    )
+    merge_multi_headers: bool = Field(
+        default=True, description="Whether to merge hierarchical multi-row headers"
+    )
+    snap_tolerance: float = Field(default=3.0, ge=0.0)
+    join_tolerance: float = Field(default=3.0, ge=0.0)
+
+
+class TableExtractionRequest(BaseModel):
+    doc_id: str | None = Field(default=None, description="Optional source document identifier")
+    content_base64: str | None = Field(
+        default=None, description="Base64 encoded PDF or binary stream"
+    )
+    text_content: str | None = Field(
+        default=None, description="Raw text or ASCII table content for parsing"
+    )
+    config: TableParserConfig = Field(default_factory=TableParserConfig)
+
+
+class TableExtractionResponse(BaseModel):
+    tables: list[ExtractedTable]
+    table_count: int
+    total_cells: int
+    strategy: str
+    processing_time_ms: float

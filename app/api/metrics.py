@@ -767,6 +767,19 @@ CHUNK_TOKEN_COUNT = Histogram(
     buckets=(16, 32, 64, 128, 256, 384, 512),
 )
 
+TABLES_EXTRACTED_TOTAL = Counter(
+    "docscout_tables_extracted_total",
+    "Total tables extracted from documents (FEAT-062).",
+    ("strategy", "status"),
+)
+
+TABLE_EXTRACTION_DURATION_SECONDS = Histogram(
+    "docscout_table_extraction_duration_seconds",
+    "Duration of table extraction in seconds (FEAT-062).",
+    ("strategy",),
+    buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

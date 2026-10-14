@@ -47,6 +47,13 @@ from app.ingest.scope_classifier import (
 )
 from app.ingest.source import SourceDocument, iter_manifest_documents
 from app.ingest.store import Action, StoreOutcome, connect, store_document
+from app.ingest.table_parser import (
+    ExtractedTable,
+    TableParser,
+    TableParserConfig,
+    extract_tables_from_pdf,
+    get_default_table_parser,
+)
 
 __all__ = [
     "EMBEDDING_DIM",
@@ -61,6 +68,7 @@ __all__ = [
     "DisallowedHostError",
     "EmbeddingContractError",
     "Embedder",
+    "ExtractedTable",
     "ExtractionError",
     "HierarchicalChunk",
     "HierarchicalChunker",
@@ -73,6 +81,8 @@ __all__ = [
     "ShortExtractionError",
     "SourceDocument",
     "StoreOutcome",
+    "TableParser",
+    "TableParserConfig",
     "assert_extraction_long_enough",
     "assert_no_deploy_credentials",
     "chunk_document",
@@ -83,7 +93,9 @@ __all__ = [
     "connect",
     "extract",
     "extract_regulatory_deadlines",
+    "extract_tables_from_pdf",
     "get_default_hierarchical_chunker",
+    "get_default_table_parser",
     "iter_manifest_documents",
     "run_ingest",
     "store_document",

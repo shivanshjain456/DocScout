@@ -129,6 +129,7 @@ from app.api.models import (
     ExportResponse,
     ExtractDeadlinesRequest,
     ExtractDeadlinesResponse,
+    ExtractedTable,
     ExtractParametersRequest,
     ExtractParametersResponse,
     ExtractStandardMentionsRequest,
@@ -213,6 +214,8 @@ from app.api.models import (
     SuggestionResponse,
     SupersessionChainModel,
     SupersessionNodeModel,
+    TableExtractionRequest,
+    TableExtractionResponse,
     TelemetryBatch,
     TelemetryIngestResponse,
     Timings,
@@ -6074,4 +6077,220 @@ async def chunk_regulatory_document_endpoint(
         uncovered_characters=uncovered,
         strategy=payload.strategy,
         chunks=models,
+    )
+
+
+# --- High-Fidelity Table Lineage & Matrix Parser (FEAT-062) ---
+
+
+@app.post(
+    "/v1/ingest/tables",
+    response_model=TableExtractionResponse,
+    tags=["ingest"],
+    responses={
+        400: {"description": "Invalid table extraction request"},
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "validation error"},
+    },
+)
+async def extract_tables_endpoint(
+    payload: TableExtractionRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> TableExtractionResponse:
+    """Extract complex financial disclosure tables and matrices (FEAT-062)."""
+    import base64
+
+    from app.ingest.table_parser import (
+        TableParser,
+    )
+    from app.ingest.table_parser import (
+        TableParserConfig as CoreConfig,
+    )
+
+    t0 = time.perf_counter()
+    core_config = CoreConfig(
+        strategy=payload.config.strategy,
+        min_rows=payload.config.min_rows,
+        min_cols=payload.config.min_cols,
+        merge_multi_headers=payload.config.merge_multi_headers,
+        snap_tolerance=payload.config.snap_tolerance,
+        join_tolerance=payload.config.join_tolerance,
+    )
+    parser = TableParser(config=core_config)
+
+    if payload.content_base64:
+        try:
+            pdf_bytes = base64.b64decode(payload.content_base64)
+        except Exception as err:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid base64 payload: {err}",
+            ) from err
+        extracted = parser.parse_pdf(pdf_bytes)
+    elif payload.text_content:
+        extracted = parser.parse_text(payload.text_content)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Either content_base64 or text_content must be provided",
+        )
+
+    # If doc_id provided, store in extracted_tables table
+    if payload.doc_id and extracted:
+        try:
+            import json
+
+            pool = getattr(app.state, "pool", None)
+            if pool is not None:
+                with pool.connection() as conn:
+                    with conn.cursor() as cur:
+                        for tbl in extracted:
+                            cur.execute(
+                                """
+                                INSERT INTO extracted_tables (
+                                    table_id, doc_id, page_number, headers, matrix, markdown_repr, json_repr, cell_coordinates
+                                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                                ON CONFLICT (table_id) DO UPDATE SET
+                                    headers = EXCLUDED.headers,
+                                    matrix = EXCLUDED.matrix,
+                                    markdown_repr = EXCLUDED.markdown_repr,
+                                    json_repr = EXCLUDED.json_repr,
+                                    cell_coordinates = EXCLUDED.cell_coordinates
+                                """,
+                                (
+                                    tbl.table_id,
+                                    payload.doc_id,
+                                    tbl.page_number,
+                                    json.dumps(tbl.headers),
+                                    json.dumps(tbl.matrix),
+                                    tbl.markdown_repr,
+                                    json.dumps(tbl.json_repr),
+                                    json.dumps(tbl.cell_coordinates),
+                                ),
+                            )
+                    conn.commit()
+            else:
+                with psycopg.connect(database_url()) as conn:
+                    with conn.cursor() as cur:
+                        for tbl in extracted:
+                            cur.execute(
+                                """
+                                INSERT INTO extracted_tables (
+                                    table_id, doc_id, page_number, headers, matrix, markdown_repr, json_repr, cell_coordinates
+                                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                                ON CONFLICT (table_id) DO UPDATE SET
+                                    headers = EXCLUDED.headers,
+                                    matrix = EXCLUDED.matrix,
+                                    markdown_repr = EXCLUDED.markdown_repr,
+                                    json_repr = EXCLUDED.json_repr,
+                                    cell_coordinates = EXCLUDED.cell_coordinates
+                                """,
+                                (
+                                    tbl.table_id,
+                                    payload.doc_id,
+                                    tbl.page_number,
+                                    json.dumps(tbl.headers),
+                                    json.dumps(tbl.matrix),
+                                    tbl.markdown_repr,
+                                    json.dumps(tbl.json_repr),
+                                    json.dumps(tbl.cell_coordinates),
+                                ),
+                            )
+                    conn.commit()
+        except Exception as store_err:
+            logger.warning("table_endpoint.store_error", error=str(store_err))
+
+    duration_ms = (time.perf_counter() - t0) * 1000.0
+    models = [
+        ExtractedTable(
+            table_id=t.table_id,
+            page_number=t.page_number,
+            headers=t.headers,
+            matrix=t.matrix,
+            markdown_repr=t.markdown_repr,
+            json_repr=t.json_repr,
+            cell_coordinates=t.cell_coordinates,
+        )
+        for t in extracted
+    ]
+    total_cells = sum(len(t.matrix) * len(t.headers) for t in models)
+
+    return TableExtractionResponse(
+        tables=models,
+        table_count=len(models),
+        total_cells=total_cells,
+        strategy=payload.config.strategy,
+        processing_time_ms=round(duration_ms, 2),
+    )
+
+
+@app.get(
+    "/v1/ingest/tables/{table_id}",
+    response_model=ExtractedTable,
+    tags=["ingest"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "table not found"},
+    },
+)
+async def get_extracted_table_endpoint(
+    table_id: Annotated[str, FastApiPath(description="Extracted table ID")],
+    fingerprint: str = Depends(require_api_key),
+) -> ExtractedTable:
+    """Retrieve structured table by ID (FEAT-062)."""
+    import json
+
+    row = None
+    pool = getattr(app.state, "pool", None)
+    if pool is not None:
+        try:
+            with pool.connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        SELECT table_id, page_number, headers, matrix, markdown_repr, json_repr, cell_coordinates
+                        FROM extracted_tables
+                        WHERE table_id = %s
+                        """,
+                        (table_id,),
+                    )
+                    row = cur.fetchone()
+        except Exception as err:
+            logger.debug("table_get.pool_error", error=str(err))
+
+    if row is None:
+        try:
+            with psycopg.connect(database_url()) as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        SELECT table_id, page_number, headers, matrix, markdown_repr, json_repr, cell_coordinates
+                        FROM extracted_tables
+                        WHERE table_id = %s
+                        """,
+                        (table_id,),
+                    )
+                    row = cur.fetchone()
+        except Exception as err:
+            logger.debug("table_get.direct_conn_error", error=str(err))
+
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Table {table_id} not found",
+        )
+
+    headers = row[2] if isinstance(row[2], list) else json.loads(row[2])
+    matrix = row[3] if isinstance(row[3], list) else json.loads(row[3])
+    json_repr = row[5] if isinstance(row[5], dict) else json.loads(row[5])
+    cell_coords = row[6] if isinstance(row[6], list) else json.loads(row[6])
+
+    return ExtractedTable(
+        table_id=row[0],
+        page_number=row[1],
+        headers=headers,
+        matrix=matrix,
+        markdown_repr=row[4],
+        json_repr=json_repr,
+        cell_coordinates=cell_coords,
     )
