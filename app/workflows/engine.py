@@ -1315,6 +1315,7 @@ class PlaybookEngine:
         run_id: str,
         tenant_id: str = "default",
         target_stage: int | None = None,
+        override_justification: str | None = None,
         conn: Any = None,
     ) -> PlaybookRun:
         """Advance a playbook run to the next stage or mark as completed."""
@@ -1338,22 +1339,24 @@ class PlaybookEngine:
                 )
 
         if self.config.auto_verify_exit_criteria:
-            template = self.get_template(run.playbook_id)
-            if template:
-                current_stage_def = next(
-                    (s for s in template.stages if s.stage_number == run.current_stage), None
+            from app.workflows.exit_validator import (
+                ExitCriteriaPreconditionFailedError,
+                ExitCriteriaValidator,
+            )
+
+            validator = ExitCriteriaValidator(engine=self)
+            val_result = validator.validate_stage_exit(
+                run_id=run.run_id,
+                current_stage=run.current_stage,
+                tenant_id=tenant_id,
+                override_justification=override_justification,
+                conn=conn,
+            )
+            if not val_result.can_advance:
+                raise ExitCriteriaPreconditionFailedError(
+                    f"Exit criteria for Stage {run.current_stage} not yet satisfied.",
+                    blocking_issues=val_result.blocking_issues,
                 )
-                if current_stage_def and current_stage_def.milestones:
-                    completed_ids = {
-                        m.get("milestone_id")
-                        for m in run.stage_data.get("completed_milestones", [])
-                        if m.get("stage_number") == run.current_stage
-                    }
-                    required_ids = {m.id for m in current_stage_def.milestones}
-                    if not required_ids.issubset(completed_ids):
-                        raise InvalidStateTransitionError(
-                            f"Exit criteria for Stage {run.current_stage} not yet satisfied."
-                        )
 
         now = datetime.now(UTC)
         stage_history: list[dict[str, Any]] = run.stage_data.get("stage_history", [])

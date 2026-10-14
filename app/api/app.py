@@ -93,6 +93,7 @@ from app.api.models import (
     Confidence,
     ConflictBenchmarkResponse,
     ConsistencyAnomalyModel,
+    CriterionCheck,
     CrosswalkResponse,
     DependencyGraphResponse,
     DeprecationCatalogResponse,
@@ -111,6 +112,7 @@ from app.api.models import (
     EvaluateGraphRequest,
     EvaluateGraphResponse,
     EvaluationTraceStep,
+    ExitValidationResult,
     ExportEvidenceRequest,
     ExportResponse,
     ExtractDeadlinesRequest,
@@ -150,6 +152,7 @@ from app.api.models import (
     PracticeRecommendationModel,
     PrerequisiteCheckRequest,
     PrerequisiteCheckResponse,
+    PromoteStageRequest,
     Provenance,
     QuantityComparisonRequest,
     QuantityComparisonResponse,
@@ -5200,3 +5203,173 @@ async def list_playbook_runs(
         )
         for r in runs
     ]
+
+
+@app.post(
+    "/v1/playbooks/{run_id}/validate-exit",
+    response_model=ExitValidationResult,
+    tags=["Playbooks"],
+    responses={
+        200: {"description": "Exit criteria validation report"},
+        400: {"description": "Invalid stage parameter"},
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "Playbook run not found"},
+    },
+)
+@app.post(
+    "/v1/playbooks/runs/{run_id}/validate-exit",
+    response_model=ExitValidationResult,
+    tags=["Playbooks"],
+    responses={
+        200: {"description": "Exit criteria validation report"},
+        400: {"description": "Invalid stage parameter"},
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "Playbook run not found"},
+    },
+)
+async def validate_stage_exit_endpoint(
+    run_id: str,
+    stage: int | None = Query(
+        default=None, description="Stage to validate (defaults to active stage)"
+    ),
+    override_justification: str | None = Query(
+        default=None, description="Administrative override justification"
+    ),
+    tenant_id: str = Query(default="default", description="Tenant isolation key"),
+    fingerprint: str = Depends(require_api_key),
+) -> ExitValidationResult:
+    """Evaluate stage exit criteria empirically against milestones and telemetry (FEAT-053)."""
+    from app.workflows.engine import get_default_playbook_engine
+    from app.workflows.exit_validator import get_default_exit_validator
+
+    engine = get_default_playbook_engine()
+    run = engine.get_run(run_id, tenant_id=tenant_id)
+    if not run:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Run '{run_id}' not found."
+        )
+
+    target_stage = stage if stage is not None else run.current_stage
+    validator = get_default_exit_validator()
+    try:
+        result = validator.validate_stage_exit(
+            run_id=run.run_id,
+            current_stage=target_stage,
+            tenant_id=tenant_id,
+            override_justification=override_justification,
+        )
+    except ValueError as err:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(err)) from err
+
+    return ExitValidationResult(
+        can_advance=result.can_advance,
+        exit_statement=result.exit_statement,
+        checks_evaluated=[CriterionCheck(**c.to_dict()) for c in result.checks_evaluated],
+        blocking_issues=result.blocking_issues,
+        override_applied=result.override_applied,
+        validation_id=result.validation_id,
+    )
+
+
+@app.post(
+    "/v1/playbooks/{run_id}/promote",
+    response_model=PlaybookRunResponse,
+    tags=["Playbooks"],
+    responses={
+        200: {"description": "Playbook successfully promoted to next stage"},
+        400: {"description": "Invalid stage or parameters"},
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "Playbook run not found"},
+        412: {"description": "Stage exit criteria not satisfied; promotion blocked"},
+    },
+)
+@app.post(
+    "/v1/playbooks/runs/{run_id}/promote",
+    response_model=PlaybookRunResponse,
+    tags=["Playbooks"],
+    responses={
+        200: {"description": "Playbook successfully promoted to next stage"},
+        400: {"description": "Invalid stage or parameters"},
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "Playbook run not found"},
+        412: {"description": "Stage exit criteria not satisfied; promotion blocked"},
+    },
+)
+async def promote_playbook_stage(
+    run_id: str,
+    payload: PromoteStageRequest,
+    tenant_id: str = Query(default="default", description="Tenant isolation key"),
+    fingerprint: str = Depends(require_api_key),
+) -> PlaybookRunResponse:
+    """Empirically validates stage exit criteria and promotes stage if verified (FEAT-053)."""
+    from app.workflows.engine import (
+        InvalidStateTransitionError,
+        PlaybookRunNotFoundError,
+        get_default_playbook_engine,
+    )
+    from app.workflows.exit_validator import (
+        ExitCriteriaPreconditionFailedError,
+        get_default_exit_validator,
+    )
+
+    validator = get_default_exit_validator()
+    try:
+        val_result = validator.validate_stage_exit(
+            run_id=run_id,
+            current_stage=payload.current_stage,
+            tenant_id=tenant_id,
+            override_justification=payload.override_justification,
+        )
+    except ValueError as err:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(err)) from err
+
+    if not val_result.can_advance:
+        raise HTTPException(
+            status_code=status.HTTP_412_PRECONDITION_FAILED,
+            detail=f"Stage exit criteria not satisfied: {'; '.join(val_result.blocking_issues)}",
+        )
+
+    engine = get_default_playbook_engine()
+    try:
+        run = engine.advance_stage(
+            run_id=run_id,
+            tenant_id=tenant_id,
+            override_justification=payload.override_justification,
+        )
+        metrics.PLAYBOOK_STAGE_TRANSITIONS_TOTAL.labels(
+            playbook_id=run.playbook_id,
+            outcome="success",
+        ).inc()
+    except PlaybookRunNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(err),
+        ) from err
+    except (ExitCriteriaPreconditionFailedError, InvalidStateTransitionError) as err:
+        metrics.PLAYBOOK_STAGE_TRANSITIONS_TOTAL.labels(
+            playbook_id="unknown",
+            outcome="failure",
+        ).inc()
+        status_code = (
+            status.HTTP_412_PRECONDITION_FAILED
+            if isinstance(err, ExitCriteriaPreconditionFailedError)
+            else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(
+            status_code=status_code,
+            detail=str(err),
+        ) from err
+
+    return PlaybookRunResponse(
+        run_id=run.run_id,
+        tenant_id=run.tenant_id,
+        playbook_id=run.playbook_id,
+        title=run.title,
+        assigned_lead=run.assigned_lead,
+        current_stage=run.current_stage,
+        total_stages=run.total_stages,
+        status=run.status,
+        stage_data=run.stage_data,
+        created_at=run.created_at,
+        updated_at=run.updated_at,
+    )

@@ -1886,3 +1886,36 @@ class PlaybookRunResponse(BaseModel):
     stage_data: dict[str, Any]
     created_at: datetime
     updated_at: datetime
+
+
+# --- Automated Stage Exit Criteria Validator (FEAT-053) ---
+
+
+class CriterionCheck(BaseModel):
+    criterion: str
+    status: Literal["PASSED", "FAILED"]
+    evidence_ref: str = ""
+
+
+class ExitValidationResult(BaseModel):
+    can_advance: bool
+    exit_statement: str
+    checks_evaluated: list[CriterionCheck]
+    blocking_issues: list[str]
+    override_applied: bool = False
+    validation_id: str | None = None
+
+
+class PromoteStageRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    current_stage: int = Field(
+        ...,
+        ge=1,
+        le=10,
+        description="Current active stage number being promoted from",
+    )
+    override_justification: str | None = Field(
+        default=None,
+        description="Optional administrative exception rationale for bypassing exit criteria (min 15 chars)",
+    )

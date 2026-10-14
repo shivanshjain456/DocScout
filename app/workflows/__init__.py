@@ -14,6 +14,14 @@ from app.workflows.engine import (
     PlaybookTemplate,
     get_default_playbook_engine,
 )
+from app.workflows.exit_validator import (
+    CriterionCheck,
+    ExitCriteriaPreconditionFailedError,
+    ExitCriteriaValidator,
+    ExitValidationResult,
+    ExitValidatorConfig,
+    get_default_exit_validator,
+)
 from app.workflows.milestone_tracker import (
     MilestoneConfig,
     MilestoneRecord,
@@ -24,6 +32,11 @@ from app.workflows.milestone_tracker import (
 
 __all__ = [
     "BUILTIN_PLAYBOOKS",
+    "CriterionCheck",
+    "ExitCriteriaPreconditionFailedError",
+    "ExitCriteriaValidator",
+    "ExitValidationResult",
+    "ExitValidatorConfig",
     "InvalidStateTransitionError",
     "MilestoneConfig",
     "MilestoneRecord",
@@ -36,6 +49,7 @@ __all__ = [
     "PlaybookRunNotFoundError",
     "PlaybookTemplate",
     "StageProgress",
+    "get_default_exit_validator",
     "get_default_milestone_tracker",
     "get_default_playbook_engine",
 ]
