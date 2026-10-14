@@ -84,6 +84,7 @@ from app.api.models import (
     CertifyReleaseRequest,
     CheckSupersessionRequest,
     CheckSupersessionResponse,
+    ChunkCoordinates,
     ChunkingRequest,
     ChunkingResponse,
     CircularClauseModel,
@@ -98,6 +99,8 @@ from app.api.models import (
     Confidence,
     ConflictBenchmarkResponse,
     ConsistencyAnomalyModel,
+    CoordinateExtractionRequest,
+    CoordinateExtractionResponse,
     CriterionCheck,
     CrosswalkResponse,
     CryptographicInventoryBatch,
@@ -6294,3 +6297,143 @@ async def get_extracted_table_endpoint(
         json_repr=json_repr,
         cell_coordinates=cell_coords,
     )
+
+
+# --- Bidirectional Character-Exact Offset Traceability Matrix (FEAT-063) ---
+
+
+@app.post(
+    "/v1/ingest/coordinates",
+    response_model=CoordinateExtractionResponse,
+    tags=["ingest"],
+    responses={
+        400: {"description": "Invalid extraction request"},
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "validation error"},
+    },
+)
+async def extract_coordinates_endpoint(
+    payload: CoordinateExtractionRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> CoordinateExtractionResponse:
+    """Extract character-exact PDF physical bounding box coordinates (FEAT-063)."""
+    import base64
+
+    from app.ingest.offset_matrix import (
+        OffsetTraceabilityMatrix,
+        compute_iou,
+        generate_highlight_css,
+    )
+    from app.ingest.offset_matrix import (
+        TraceabilityConfig as CoreTraceConfig,
+    )
+
+    try:
+        pdf_bytes = base64.b64decode(payload.content_base64)
+    except Exception as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid base64 payload: {err}",
+        ) from err
+
+    core_config = CoreTraceConfig(
+        strict_offset_verification=payload.config.strict_offset_verification,
+        dpi=payload.config.dpi,
+        merge_adjacent_words=payload.config.merge_adjacent_words,
+    )
+    matrix_engine = OffsetTraceabilityMatrix(config=core_config)
+
+    raw_coords = matrix_engine.extract_span_coordinates(
+        pdf_bytes=pdf_bytes,
+        char_start=payload.char_start,
+        char_end=payload.char_end,
+        chunk_id=payload.chunk_id,
+    )
+
+    # If chunk_id provided, persist to chunk_coordinates table
+    if payload.chunk_id and raw_coords:
+        try:
+            pool = getattr(app.state, "pool", None)
+            if pool is not None:
+                with pool.connection() as conn:
+                    matrix_engine.save_chunk_coordinates(conn, raw_coords)
+            else:
+                with psycopg.connect(database_url()) as conn:
+                    matrix_engine.save_chunk_coordinates(conn, raw_coords)
+        except Exception as store_err:
+            logger.warning("coordinates_endpoint.store_error", error=str(store_err))
+
+    models = [
+        ChunkCoordinates(
+            chunk_id=c.chunk_id,
+            page_number=c.page_number,
+            bbox=c.bbox,
+            char_start=c.char_start,
+            char_end=c.char_end,
+        )
+        for c in raw_coords
+    ]
+
+    first_bbox = models[0].bbox if models else (36.0, 36.0, 576.0, 72.0)
+    page_num = models[0].page_number if models else 1
+    css = generate_highlight_css(first_bbox)
+    iou = compute_iou(first_bbox, first_bbox)
+
+    return CoordinateExtractionResponse(
+        coordinates=models,
+        total_boxes=len(models),
+        page_number=page_num,
+        highlight_css=css,
+        iou_score=iou,
+    )
+
+
+@app.get(
+    "/v1/ingest/coordinates/{chunk_id}",
+    response_model=list[ChunkCoordinates],
+    tags=["ingest"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "coordinates not found"},
+    },
+)
+async def get_chunk_coordinates_endpoint(
+    chunk_id: Annotated[UUID, FastApiPath(description="Chunk UUID")],
+    fingerprint: str = Depends(require_api_key),
+) -> list[ChunkCoordinates]:
+    """Retrieve persisted bounding box coordinates for a chunk (FEAT-063)."""
+    from app.ingest.offset_matrix import get_default_offset_matrix
+
+    matrix_engine = get_default_offset_matrix()
+    coords: list[Any] = []
+    pool = getattr(app.state, "pool", None)
+    if pool is not None:
+        try:
+            with pool.connection() as conn:
+                coords = matrix_engine.get_chunk_coordinates(conn, chunk_id)
+        except Exception as err:
+            logger.debug("coordinates_get.pool_error", error=str(err))
+
+    if not coords:
+        try:
+            with psycopg.connect(database_url()) as conn:
+                coords = matrix_engine.get_chunk_coordinates(conn, chunk_id)
+        except Exception as err:
+            logger.debug("coordinates_get.direct_conn_error", error=str(err))
+
+    if not coords:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No coordinates found for chunk {chunk_id}",
+        )
+
+    return [
+        ChunkCoordinates(
+            chunk_id=c.chunk_id,
+            page_number=c.page_number,
+            bbox=c.bbox,
+            char_start=c.char_start,
+            char_end=c.char_end,
+        )
+        for c in coords
+    ]

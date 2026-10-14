@@ -38,6 +38,13 @@ from app.ingest.hierarchical_chunker import (
     HierarchicalChunker,
     get_default_hierarchical_chunker,
 )
+from app.ingest.offset_matrix import (
+    ChunkCoordinates,
+    OffsetTraceabilityMatrix,
+    TraceabilityConfig,
+    extract_span_coordinates,
+    get_default_offset_matrix,
+)
 from app.ingest.pipeline import IngestReport, run_ingest, verify_stored_chunks
 from app.ingest.scope_classifier import (
     ScopeClassification,
@@ -61,6 +68,7 @@ __all__ = [
     "QUERY_PREFIX",
     "Action",
     "Chunk",
+    "ChunkCoordinates",
     "ChunkingConfig",
     "CredentialBleedError",
     "DeadlineAlertConfig",
@@ -74,6 +82,7 @@ __all__ = [
     "HierarchicalChunker",
     "IngestError",
     "IngestReport",
+    "OffsetTraceabilityMatrix",
     "RegulatoryDeadline",
     "ScopeClassification",
     "ScopeClassifier",
@@ -83,6 +92,7 @@ __all__ = [
     "StoreOutcome",
     "TableParser",
     "TableParserConfig",
+    "TraceabilityConfig",
     "assert_extraction_long_enough",
     "assert_no_deploy_credentials",
     "chunk_document",
@@ -93,8 +103,10 @@ __all__ = [
     "connect",
     "extract",
     "extract_regulatory_deadlines",
+    "extract_span_coordinates",
     "extract_tables_from_pdf",
     "get_default_hierarchical_chunker",
+    "get_default_offset_matrix",
     "get_default_table_parser",
     "iter_manifest_documents",
     "run_ingest",

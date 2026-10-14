@@ -2399,3 +2399,42 @@ class TableExtractionResponse(BaseModel):
     total_cells: int
     strategy: str
     processing_time_ms: float
+
+
+# --- Bidirectional Character-Exact Offset Traceability Matrix (FEAT-063) ---
+
+
+class ChunkCoordinates(BaseModel):
+    chunk_id: UUID = Field(..., description="Target chunk UUID")
+    page_number: int = Field(default=1, ge=1, description="1-indexed PDF page number")
+    bbox: tuple[float, float, float, float] = Field(
+        ..., description="(x0, y0, x1, y1) bounding box in standard 72 DPI points"
+    )
+    char_start: int = Field(..., ge=0, description="Inclusive character start index")
+    char_end: int = Field(..., gt=0, description="Exclusive character end index")
+
+
+class TraceabilityConfig(BaseModel):
+    strict_offset_verification: bool = Field(
+        default=True, description="Enforce strict character boundary checks"
+    )
+    dpi: int = Field(default=72, description="Target PDF render DPI")
+    merge_adjacent_words: bool = Field(
+        default=True, description="Merge intra-line word boxes into continuous line highlights"
+    )
+
+
+class CoordinateExtractionRequest(BaseModel):
+    content_base64: str = Field(..., description="Base64 encoded PDF document")
+    char_start: int = Field(..., ge=0, description="Start character offset of highlighted span")
+    char_end: int = Field(..., gt=0, description="End character offset of highlighted span")
+    chunk_id: UUID | None = Field(default=None, description="Optional chunk identifier")
+    config: TraceabilityConfig = Field(default_factory=TraceabilityConfig)
+
+
+class CoordinateExtractionResponse(BaseModel):
+    coordinates: list[ChunkCoordinates]
+    total_boxes: int
+    page_number: int
+    highlight_css: str
+    iou_score: float

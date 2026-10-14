@@ -780,6 +780,12 @@ TABLE_EXTRACTION_DURATION_SECONDS = Histogram(
     buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0),
 )
 
+COORDINATE_MAPPINGS_CREATED_TOTAL = Counter(
+    "docscout_coordinate_mappings_created_total",
+    "Total chunk coordinate mappings created (FEAT-063).",
+    ("status",),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.
