@@ -14,10 +14,20 @@ from app.workflows.engine import (
     PlaybookTemplate,
     get_default_playbook_engine,
 )
+from app.workflows.milestone_tracker import (
+    MilestoneConfig,
+    MilestoneRecord,
+    MilestoneTracker,
+    StageProgress,
+    get_default_milestone_tracker,
+)
 
 __all__ = [
     "BUILTIN_PLAYBOOKS",
     "InvalidStateTransitionError",
+    "MilestoneConfig",
+    "MilestoneRecord",
+    "MilestoneTracker",
     "PlaybookEngine",
     "PlaybookEngineConfig",
     "PlaybookError",
@@ -25,5 +35,7 @@ __all__ = [
     "PlaybookRun",
     "PlaybookRunNotFoundError",
     "PlaybookTemplate",
+    "StageProgress",
+    "get_default_milestone_tracker",
     "get_default_playbook_engine",
 ]

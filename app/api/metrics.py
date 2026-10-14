@@ -691,6 +691,12 @@ PLAYBOOK_STAGE_TRANSITIONS_TOTAL = Counter(
     ("playbook_id", "outcome"),
 )
 
+MILESTONES_COMPLETED_TOTAL = Counter(
+    "docscout_milestones_completed_total",
+    "Total statutory playbook milestones marked complete by playbook_id and stage (FEAT-052).",
+    ("playbook_id", "stage"),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

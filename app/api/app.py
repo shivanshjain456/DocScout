@@ -171,6 +171,7 @@ from app.api.models import (
     SearchResponse,
     SimulationRequest,
     SimulationResponse,
+    StageProgress,
     StageSummaryModel,
     StandardListResponse,
     StandardMentionResponse,
@@ -4984,11 +4985,22 @@ async def advance_playbook_stage(
 
 @app.post(
     "/v1/playbooks/runs/{run_id}/milestones/{milestone_id}",
-    response_model=PlaybookRunResponse,
+    response_model=StageProgress,
     tags=["Playbooks"],
     responses={
-        200: {"description": "Milestone recorded and stage updated"},
-        400: {"description": "Milestone cannot be completed in current stage"},
+        200: {"description": "Milestone recorded and stage progress returned"},
+        400: {"description": "Validation error or invalid stage"},
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "Playbook run or milestone not found"},
+    },
+)
+@app.post(
+    "/v1/playbooks/{run_id}/milestones/{milestone_id}",
+    response_model=StageProgress,
+    tags=["Playbooks"],
+    responses={
+        200: {"description": "Milestone recorded and stage progress returned"},
+        400: {"description": "Validation error or invalid stage"},
         401: {"description": "missing or invalid API key"},
         404: {"description": "Playbook run or milestone not found"},
     },
@@ -4999,47 +5011,151 @@ async def complete_playbook_milestone(
     payload: CompleteMilestoneRequest,
     tenant_id: str = Query(default="default", description="Tenant isolation key"),
     fingerprint: str = Depends(require_api_key),
-) -> PlaybookRunResponse:
-    """Mark a discrete milestone completed with optional grounding evidence (FEAT-051)."""
+) -> StageProgress:
+    """Mark a discrete milestone completed with optional grounding evidence (FEAT-051 & FEAT-052)."""
     from app.workflows.engine import (
         InvalidStateTransitionError,
         PlaybookRunNotFoundError,
-        get_default_playbook_engine,
     )
+    from app.workflows.milestone_tracker import get_default_milestone_tracker
 
-    engine = get_default_playbook_engine()
+    tracker = get_default_milestone_tracker()
     try:
-        run = engine.complete_milestone(
+        res = tracker.record_milestone(
             run_id=run_id,
             milestone_id=milestone_id,
             tenant_id=tenant_id,
             evidence_doc_id=payload.evidence_doc_id,
             notes=payload.notes,
         )
+        return StageProgress(
+            stage_number=res.stage_number,
+            stage_name=res.stage_name,
+            total_milestones=res.total_milestones,
+            completed_milestones=res.completed_milestones,
+            completion_ratio=res.completion_ratio,
+            exit_ready=res.exit_ready,
+        )
     except PlaybookRunNotFoundError as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(err),
         ) from err
-    except InvalidStateTransitionError as err:
+    except (InvalidStateTransitionError, ValueError) as err:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(err),
         ) from err
 
-    return PlaybookRunResponse(
-        run_id=run.run_id,
-        tenant_id=run.tenant_id,
-        playbook_id=run.playbook_id,
-        title=run.title,
-        assigned_lead=run.assigned_lead,
-        current_stage=run.current_stage,
-        total_stages=run.total_stages,
-        status=run.status,
-        stage_data=run.stage_data,
-        created_at=run.created_at,
-        updated_at=run.updated_at,
+
+@app.get(
+    "/v1/playbooks/{run_id}/stages/{stage_number}/progress",
+    response_model=StageProgress,
+    tags=["Playbooks"],
+    responses={
+        200: {"description": "Stage completion metrics and exit readiness"},
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "Playbook run not found"},
+    },
+)
+@app.get(
+    "/v1/playbooks/runs/{run_id}/stages/{stage_number}/progress",
+    response_model=StageProgress,
+    tags=["Playbooks"],
+    responses={
+        200: {"description": "Stage completion metrics and exit readiness"},
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "Playbook run not found"},
+    },
+)
+async def get_stage_progress(
+    run_id: str,
+    stage_number: int,
+    tenant_id: str = Query(default="default", description="Tenant isolation key"),
+    fingerprint: str = Depends(require_api_key),
+) -> StageProgress:
+    """Get granular deliverable progress and exit readiness for a stage (FEAT-052)."""
+    from app.workflows.engine import (
+        InvalidStateTransitionError,
+        PlaybookRunNotFoundError,
     )
+    from app.workflows.milestone_tracker import get_default_milestone_tracker
+
+    tracker = get_default_milestone_tracker()
+    try:
+        p = tracker.get_stage_progress(
+            run_id=run_id,
+            stage_number=stage_number,
+            tenant_id=tenant_id,
+        )
+        return StageProgress(
+            stage_number=p.stage_number,
+            stage_name=p.stage_name,
+            total_milestones=p.total_milestones,
+            completed_milestones=p.completed_milestones,
+            completion_ratio=p.completion_ratio,
+            exit_ready=p.exit_ready,
+        )
+    except PlaybookRunNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(err),
+        ) from err
+    except (InvalidStateTransitionError, ValueError) as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(err),
+        ) from err
+
+
+@app.get(
+    "/v1/playbooks/{run_id}/progress",
+    response_model=list[StageProgress],
+    tags=["Playbooks"],
+    responses={
+        200: {"description": "Overall progression across all 4 stages"},
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "Playbook run not found"},
+    },
+)
+@app.get(
+    "/v1/playbooks/runs/{run_id}/progress",
+    response_model=list[StageProgress],
+    tags=["Playbooks"],
+    responses={
+        200: {"description": "Overall progression across all 4 stages"},
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "Playbook run not found"},
+    },
+)
+async def list_playbook_progress(
+    run_id: str,
+    tenant_id: str = Query(default="default", description="Tenant isolation key"),
+    fingerprint: str = Depends(require_api_key),
+) -> list[StageProgress]:
+    """List progression across all 4 stages for a playbook run (FEAT-052)."""
+    from app.workflows.engine import PlaybookRunNotFoundError
+    from app.workflows.milestone_tracker import get_default_milestone_tracker
+
+    tracker = get_default_milestone_tracker()
+    try:
+        items = tracker.list_stage_progress(run_id=run_id, tenant_id=tenant_id)
+        return [
+            StageProgress(
+                stage_number=p.stage_number,
+                stage_name=p.stage_name,
+                total_milestones=p.total_milestones,
+                completed_milestones=p.completed_milestones,
+                completion_ratio=p.completion_ratio,
+                exit_ready=p.exit_ready,
+            )
+            for p in items
+        ]
+    except PlaybookRunNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(err),
+        ) from err
 
 
 @app.get(

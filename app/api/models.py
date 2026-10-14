@@ -1847,8 +1847,18 @@ class MilestoneSummaryModel(BaseModel):
     notes: str = ""
 
 
+class StageProgress(BaseModel):
+    stage_number: int
+    stage_name: str
+    total_milestones: int
+    completed_milestones: int
+    completion_ratio: float
+    exit_ready: bool
+
+
 class StageSummaryModel(BaseModel):
     number: int
+
     name: str
     objective: str
     exit_criteria: list[str]
