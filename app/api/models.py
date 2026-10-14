@@ -2235,3 +2235,71 @@ class DORASystemsResponse(BaseModel):
     tenant_id: str
     total_count: int
     systems: list[ICTSystemSpec]
+
+
+# --- Custom Enterprise Compliance Playbook Builder (FEAT-060) ---
+
+
+class CustomMilestoneDefinition(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(..., min_length=1, description="Unique milestone identifier within playbook")
+    title: str = Field(
+        ..., min_length=1, description="Milestone title or actionable task description"
+    )
+    role: str = Field(
+        default="compliance-officer",
+        description="Assigned role: sre, developer, compliance-officer, legal, security, risk-lead",
+    )
+    mandatory: bool = Field(
+        default=True, description="Whether milestone is mandatory for stage completion"
+    )
+    estimated_hours: int = Field(default=8, ge=1, le=240, description="Estimated hours to complete")
+
+
+class CustomStageDefinition(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    stage_number: int = Field(..., ge=1, le=6, description="Sequential stage index (1-based)")
+    stage_name: str = Field(..., min_length=1, description="Descriptive stage title")
+    description: str = Field(default="", description="Stage purpose and operational scope")
+    milestones: list[CustomMilestoneDefinition] = Field(
+        ..., min_length=1, description="List of discrete milestones for this stage"
+    )
+    exit_criteria: list[str] = Field(
+        ..., min_length=1, description="List of mandatory exit criteria required to pass stage gate"
+    )
+
+
+class CustomPlaybookDefinition(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(
+        ..., min_length=1, description="Canonical playbook identifier, e.g. playbook.custom-xyz"
+    )
+    name: str = Field(..., min_length=1, description="Human-readable title of custom playbook")
+    goal: str = Field(
+        ..., min_length=1, description="Primary governance objective or regulatory purpose"
+    )
+    domain: str = Field(
+        default="custom", description="Compliance or engineering domain taxonomy tag"
+    )
+    stages: list[CustomStageDefinition] = Field(
+        ..., min_length=2, max_length=6, description="Ordered stages (minimum 2, maximum 6)"
+    )
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Arbitrary authoring and versioning metadata"
+    )
+
+
+class PlaybookTemplateResponse(BaseModel):
+    template_id: str
+    is_valid: bool
+    stages_count: int
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class CustomPlaybookListResponse(BaseModel):
+    tenant_id: str
+    total_count: int
+    playbooks: list[CustomPlaybookDefinition]

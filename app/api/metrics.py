@@ -749,6 +749,12 @@ RESILIENCE_TESTS_RECORDED_TOTAL = Counter(
     ("status",),
 )
 
+CUSTOM_PLAYBOOKS_CREATED_TOTAL = Counter(
+    "docscout_custom_playbooks_created_total",
+    "Total custom compliance playbooks authored and validated (FEAT-060).",
+    ("tenant_id",),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

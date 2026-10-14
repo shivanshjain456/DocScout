@@ -99,6 +99,8 @@ from app.api.models import (
     CriterionCheck,
     CrosswalkResponse,
     CryptographicInventoryBatch,
+    CustomPlaybookDefinition,
+    CustomPlaybookListResponse,
     DeclareIncidentRequest,
     DependencyGraphResponse,
     DeprecationCatalogResponse,
@@ -157,6 +159,7 @@ from app.api.models import (
     PersonaListResponse,
     PersonaProfileResponse,
     PlaybookRunResponse,
+    PlaybookTemplateResponse,
     PlaybookTemplateSummary,
     PQCInventoryResponse,
     PQCReadinessReport,
@@ -5894,3 +5897,124 @@ async def get_dora_systems_endpoint(
             logger.debug("dora.pool_connection_fallback", error=str(err))
 
     return runner.get_systems(tenant_id=tenant_id)
+
+
+# --- Custom Enterprise Compliance Playbook Builder (FEAT-060) ---
+
+
+@app.post(
+    "/v1/playbooks/custom",
+    response_model=PlaybookTemplateResponse,
+    tags=["Playbooks"],
+    responses={
+        200: {"description": "Custom compliance playbook validated and published"},
+        400: {"description": "Invalid template payload"},
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "Custom playbook schema or boundary validation failure"},
+        429: {"description": "Tenant custom playbook quota exceeded"},
+    },
+)
+async def create_custom_playbook_endpoint(
+    payload: CustomPlaybookDefinition,
+    tenant_id: Annotated[str, Query(description="Tenant isolation key")] = "default",
+    fingerprint: str = Depends(require_api_key),
+) -> PlaybookTemplateResponse:
+    """Validate, persist, and register custom compliance playbook in runtime engine (FEAT-060)."""
+    from app.workflows.custom_builder import (
+        CustomPlaybookQuotaExceededError,
+        CustomPlaybookValidationError,
+        get_default_custom_playbook_builder,
+    )
+
+    builder = get_default_custom_playbook_builder()
+    pool = getattr(app.state, "pool", None)
+    try:
+        if pool is not None:
+            try:
+                with pool.connection() as conn:
+                    return builder.save_playbook(playbook=payload, tenant_id=tenant_id, conn=conn)
+            except (CustomPlaybookValidationError, CustomPlaybookQuotaExceededError):
+                raise
+            except Exception as err:
+                logger.debug("playbooks.custom.pool_connection_fallback", error=str(err))
+
+        return builder.save_playbook(playbook=payload, tenant_id=tenant_id, conn=None)
+    except CustomPlaybookValidationError as err:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={"message": str(err), "errors": err.validation_errors},
+        ) from err
+    except CustomPlaybookQuotaExceededError as err:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=str(err),
+        ) from err
+
+
+@app.get(
+    "/v1/playbooks/custom",
+    response_model=CustomPlaybookListResponse,
+    tags=["Playbooks"],
+    responses={
+        200: {"description": "Tenant custom compliance playbooks list"},
+        401: {"description": "missing or invalid API key"},
+    },
+)
+async def list_custom_playbooks_endpoint(
+    tenant_id: Annotated[str, Query(description="Tenant isolation key")] = "default",
+    fingerprint: str = Depends(require_api_key),
+) -> CustomPlaybookListResponse:
+    """List all custom compliance playbooks authored by tenant (FEAT-060)."""
+    from app.workflows.custom_builder import get_default_custom_playbook_builder
+
+    builder = get_default_custom_playbook_builder()
+    pool = getattr(app.state, "pool", None)
+    if pool is not None:
+        try:
+            with pool.connection() as conn:
+                return builder.list_playbooks(tenant_id=tenant_id, conn=conn)
+        except Exception as err:
+            logger.debug("playbooks.custom.pool_connection_fallback", error=str(err))
+
+    return builder.list_playbooks(tenant_id=tenant_id, conn=None)
+
+
+@app.get(
+    "/v1/playbooks/custom/{playbook_id}",
+    response_model=CustomPlaybookDefinition,
+    tags=["Playbooks"],
+    responses={
+        200: {"description": "Custom compliance playbook definition"},
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "Custom playbook not found"},
+    },
+)
+async def get_custom_playbook_endpoint(
+    playbook_id: Annotated[str, FastApiPath(description="Custom playbook template ID")],
+    tenant_id: Annotated[str, Query(description="Tenant isolation key")] = "default",
+    fingerprint: str = Depends(require_api_key),
+) -> CustomPlaybookDefinition:
+    """Retrieve custom compliance playbook definition by ID (FEAT-060)."""
+    from app.workflows.custom_builder import get_default_custom_playbook_builder
+
+    builder = get_default_custom_playbook_builder()
+    pool = getattr(app.state, "pool", None)
+    playbook = None
+    if pool is not None:
+        try:
+            with pool.connection() as conn:
+                playbook = builder.get_playbook(
+                    template_id=playbook_id, tenant_id=tenant_id, conn=conn
+                )
+        except Exception as err:
+            logger.debug("playbooks.custom.pool_connection_fallback", error=str(err))
+
+    if playbook is None:
+        playbook = builder.get_playbook(template_id=playbook_id, tenant_id=tenant_id, conn=None)
+
+    if playbook is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Custom playbook '{playbook_id}' not found for tenant '{tenant_id}'.",
+        )
+    return playbook

@@ -1131,6 +1131,10 @@ class PlaybookEngine:
         """Lookup a playbook template by ID."""
         return self._templates.get(playbook_id)
 
+    def register_template(self, template: PlaybookTemplate) -> None:
+        """Register a custom or dynamic playbook template into the active engine catalog."""
+        self._templates[template.playbook_id] = template
+
     def start_run(
         self,
         playbook_id: str,
@@ -1406,6 +1410,8 @@ class PlaybookEngine:
 
         self._runs[run.run_id] = run
         return run
+
+    promote_stage = advance_stage
 
     def list_runs(
         self,

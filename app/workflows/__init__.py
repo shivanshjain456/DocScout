@@ -2,6 +2,14 @@
 
 from __future__ import annotations
 
+from app.workflows.custom_builder import (
+    CustomBuilderConfig,
+    CustomPlaybookBuilder,
+    CustomPlaybookBuilderError,
+    CustomPlaybookQuotaExceededError,
+    CustomPlaybookValidationError,
+    get_default_custom_playbook_builder,
+)
 from app.workflows.engine import (
     BUILTIN_PLAYBOOKS,
     InvalidStateTransitionError,
@@ -67,6 +75,11 @@ from app.workflows.task_router import (
 __all__ = [
     "BUILTIN_PLAYBOOKS",
     "CriterionCheck",
+    "CustomBuilderConfig",
+    "CustomPlaybookBuilder",
+    "CustomPlaybookBuilderError",
+    "CustomPlaybookQuotaExceededError",
+    "CustomPlaybookValidationError",
     "DEFAULT_SEV1_ACTIONS",
     "DEFAULT_SEV2_ACTIONS",
     "ExitCriteriaPreconditionFailedError",
@@ -103,6 +116,7 @@ __all__ = [
     "compute_safety_case_signature",
     "generate_gsn_safety_case",
     "generate_rbi_disclosure_draft",
+    "get_default_custom_playbook_builder",
     "get_default_exit_validator",
     "get_default_incident_manager",
     "get_default_milestone_tracker",
