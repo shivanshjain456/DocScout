@@ -214,6 +214,9 @@ from app.api.models import (
     StartPlaybookRequest,
     StatutoryDeprecationModel,
     StatutoryParameterModel,
+    StripFurnitureRequest,
+    StripFurnitureResponse,
+    StrippedFurnitureSummary,
     SubgraphResponse,
     SubscriptionCreateRequest,
     SubscriptionResponse,
@@ -6567,4 +6570,49 @@ async def get_ocr_quality_endpoint(
         is_degraded=score.is_degraded,
         preprocessing_applied=score.preprocessing_applied,
         extracted_text=score.extracted_text,
+    )
+
+
+# --- Intelligent Regulatory Furniture & Gazette Stamp Stripper (FEAT-065) ---
+
+
+@app.post(
+    "/v1/ingest/furniture/strip",
+    response_model=StripFurnitureResponse,
+    tags=["ingest"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "validation error"},
+    },
+)
+async def strip_furniture_endpoint(
+    payload: StripFurnitureRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> StripFurnitureResponse:
+    """Strip repetitive gazette furniture while preserving exact character length (FEAT-065)."""
+    from app.ingest.furniture_stripper import (
+        FurnitureConfig as CoreFurnitureConfig,
+    )
+    from app.ingest.furniture_stripper import (
+        strip_furniture,
+    )
+
+    core_config = CoreFurnitureConfig(
+        strip_gazette_stamps=payload.config.strip_gazette_stamps,
+        strip_page_numbers=payload.config.strip_page_numbers,
+        strip_watermarks=payload.config.strip_watermarks,
+        strip_printer_signatures=payload.config.strip_printer_signatures,
+        strip_authority_banners=payload.config.strip_authority_banners,
+    )
+
+    cleaned_text, summary = strip_furniture(payload.text, config=core_config)
+
+    return StripFurnitureResponse(
+        cleaned_text=cleaned_text,
+        summary=StrippedFurnitureSummary(
+            total_characters_stripped=summary.total_characters_stripped,
+            total_tokens_stripped=summary.total_tokens_stripped,
+            categories_matched=summary.categories_matched,
+        ),
+        length_preserved=len(cleaned_text) == len(payload.text),
     )

@@ -109,6 +109,12 @@ def clean_preserving_offsets(text: str) -> str:
     cleaned = blank_invisible(text)
     cleaned = NOISE_PATTERN.sub(" ", cleaned)
     cleaned = PAGE_FURNITURE_PATTERN.sub(_blank, cleaned)
+
+    # Intelligent Regulatory Furniture & Gazette Stamp Stripper (FEAT-065)
+    from app.ingest.furniture_stripper import strip_furniture
+
+    cleaned, _ = strip_furniture(cleaned)
+
     if len(cleaned) != len(text):
         raise RuntimeError(
             "cleaning changed the text length "

@@ -31,6 +31,13 @@ from app.ingest.errors import (
     ShortExtractionError,
 )
 from app.ingest.extract import assert_extraction_long_enough, extract
+from app.ingest.furniture_stripper import (
+    FurnitureConfig,
+    FurnitureStripper,
+    StrippedFurnitureSummary,
+    get_default_furniture_stripper,
+    strip_furniture,
+)
 from app.ingest.guards import assert_no_deploy_credentials
 from app.ingest.hierarchical_chunker import (
     ChunkingConfig,
@@ -87,6 +94,8 @@ __all__ = [
     "Embedder",
     "ExtractedTable",
     "ExtractionError",
+    "FurnitureConfig",
+    "FurnitureStripper",
     "HierarchicalChunk",
     "HierarchicalChunker",
     "ImagePreprocessor",
@@ -103,6 +112,7 @@ __all__ = [
     "ShortExtractionError",
     "SourceDocument",
     "StoreOutcome",
+    "StrippedFurnitureSummary",
     "TableParser",
     "TableParserConfig",
     "TraceabilityConfig",
@@ -120,6 +130,7 @@ __all__ = [
     "extract_regulatory_deadlines",
     "extract_span_coordinates",
     "extract_tables_from_pdf",
+    "get_default_furniture_stripper",
     "get_default_hierarchical_chunker",
     "get_default_offset_matrix",
     "get_default_quality_evaluator",
@@ -127,6 +138,7 @@ __all__ = [
     "iter_manifest_documents",
     "run_ingest",
     "store_document",
+    "strip_furniture",
     "verify_offsets",
     "verify_stored_chunks",
 ]

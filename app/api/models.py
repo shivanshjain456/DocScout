@@ -2479,3 +2479,47 @@ class OCRQualityResponse(BaseModel):
     quality_score: OCRQualityScore
     sha256: str
     processing_time_ms: float
+
+
+# --- Intelligent Regulatory Furniture & Gazette Stamp Stripper (FEAT-065) ---
+
+
+class FurnitureConfig(BaseModel):
+    strip_gazette_stamps: bool = Field(
+        default=True, description="Strip recurring official gazette header stamps"
+    )
+    strip_page_numbers: bool = Field(
+        default=True, description="Strip running page numbers and pagination labels"
+    )
+    strip_watermarks: bool = Field(
+        default=True, description="Strip administrative and confidentiality watermarks"
+    )
+    strip_printer_signatures: bool = Field(
+        default=True, description="Strip government press printer signatures and colophons"
+    )
+    strip_authority_banners: bool = Field(
+        default=True, description="Strip authority publication date lines and registration numbers"
+    )
+
+
+class StrippedFurnitureSummary(BaseModel):
+    total_characters_stripped: int = Field(
+        ..., ge=0, description="Total characters replaced with spaces"
+    )
+    total_tokens_stripped: int = Field(
+        ..., ge=0, description="Total word tokens eliminated from search index"
+    )
+    categories_matched: list[str] = Field(
+        default_factory=list, description="Furniture categories detected and stripped"
+    )
+
+
+class StripFurnitureRequest(BaseModel):
+    text: str = Field(..., description="Raw statutory text extracted from document")
+    config: FurnitureConfig = Field(default_factory=FurnitureConfig)
+
+
+class StripFurnitureResponse(BaseModel):
+    cleaned_text: str = Field(..., description="Cleaned text with exact length preservation")
+    summary: StrippedFurnitureSummary
+    length_preserved: bool = Field(..., description="Whether len(cleaned_text) == len(raw_text)")

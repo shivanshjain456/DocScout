@@ -797,6 +797,11 @@ OCR_DEGRADED_PAGES_ROUTED_TOTAL = Counter(
     ("status",),
 )
 
+FURNITURE_TOKENS_STRIPPED_TOTAL = Counter(
+    "docscout_furniture_tokens_stripped_total",
+    "Total furniture tokens stripped from regulatory texts (FEAT-065).",
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.
