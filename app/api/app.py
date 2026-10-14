@@ -98,6 +98,7 @@ from app.api.models import (
     ConsistencyAnomalyModel,
     CriterionCheck,
     CrosswalkResponse,
+    CryptographicInventoryBatch,
     DeclareIncidentRequest,
     DependencyGraphResponse,
     DeprecationCatalogResponse,
@@ -154,6 +155,9 @@ from app.api.models import (
     PersonaProfileResponse,
     PlaybookRunResponse,
     PlaybookTemplateSummary,
+    PQCInventoryResponse,
+    PQCReadinessReport,
+    PQCScanRequest,
     PracticeRecommendationModel,
     PrerequisiteCheckRequest,
     PrerequisiteCheckResponse,
@@ -5653,3 +5657,107 @@ async def get_release_certificate_endpoint(
             detail=f"Release certificate '{certificate_id}' not found",
         )
     return cert
+
+
+# --- Post-Quantum Cryptographic Migration Tracker (FEAT-057) ---
+
+
+@app.post(
+    "/v1/compliance/pqc/scan",
+    response_model=PQCReadinessReport,
+    tags=["Compliance"],
+    responses={
+        200: {"description": "PQC inventory scan completed and readiness report generated"},
+        400: {"description": "invalid endpoint specifications"},
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "validation error"},
+    },
+)
+async def scan_pqc_inventory_endpoint(
+    payload: PQCScanRequest,
+    tenant_id: Annotated[str, Query(description="Tenant isolation key")] = "default",
+    fingerprint: str = Depends(require_api_key),
+) -> PQCReadinessReport:
+    """Operationalizes playbook.crypto-migration, classifying endpoint crypto profiles (FEAT-057)."""
+    from app.compliance.pqc_tracker import (
+        PQCConfig,
+        get_default_pqc_tracker,
+    )
+
+    tracker = get_default_pqc_tracker()
+    if tracker.config.flag_rsa_under_3072 != payload.flag_rsa_under_3072:
+        from app.compliance.pqc_tracker import PQCTracker
+
+        tracker = PQCTracker(config=PQCConfig(flag_rsa_under_3072=payload.flag_rsa_under_3072))
+
+    batch = CryptographicInventoryBatch(endpoints=payload.endpoints)
+
+    pool = getattr(app.state, "pool", None)
+    if pool is not None:
+        try:
+            with pool.connection() as conn:
+                return tracker.scan_inventory(batch=batch, tenant_id=tenant_id, conn=conn)
+        except Exception as err:
+            logger.debug("pqc.pool_connection_fallback", error=str(err))
+
+    return tracker.scan_inventory(batch=batch, tenant_id=tenant_id, conn=None)
+
+
+@app.get(
+    "/v1/compliance/pqc/inventory",
+    response_model=PQCInventoryResponse,
+    tags=["Compliance"],
+    responses={
+        200: {"description": "Cryptographic asset inventory retrieved"},
+        401: {"description": "missing or invalid API key"},
+    },
+)
+async def get_pqc_inventory_endpoint(
+    tenant_id: Annotated[str, Query(description="Tenant isolation key")] = "default",
+    limit: Annotated[int, Query(ge=1, le=1000, description="Max assets to return")] = 100,
+    offset: Annotated[int, Query(ge=0, description="Pagination offset")] = 0,
+    fingerprint: str = Depends(require_api_key),
+) -> PQCInventoryResponse:
+    """Retrieve paginated cryptographic asset inventory for the tenant (FEAT-057)."""
+    from app.compliance.pqc_tracker import get_default_pqc_tracker
+
+    tracker = get_default_pqc_tracker()
+    pool = getattr(app.state, "pool", None)
+    if pool is not None:
+        try:
+            with pool.connection() as conn:
+                return tracker.get_inventory(
+                    tenant_id=tenant_id, limit=limit, offset=offset, conn=conn
+                )
+        except Exception as err:
+            logger.debug("pqc.pool_connection_fallback", error=str(err))
+
+    return tracker.get_inventory(tenant_id=tenant_id, limit=limit, offset=offset)
+
+
+@app.get(
+    "/v1/compliance/pqc/readiness",
+    response_model=PQCReadinessReport,
+    tags=["Compliance"],
+    responses={
+        200: {"description": "Institutional post-quantum readiness report"},
+        401: {"description": "missing or invalid API key"},
+    },
+)
+async def get_pqc_readiness_endpoint(
+    tenant_id: Annotated[str, Query(description="Tenant isolation key")] = "default",
+    fingerprint: str = Depends(require_api_key),
+) -> PQCReadinessReport:
+    """Retrieve real-time post-quantum cryptographic readiness report and milestone status (FEAT-057)."""
+    from app.compliance.pqc_tracker import get_default_pqc_tracker
+
+    tracker = get_default_pqc_tracker()
+    pool = getattr(app.state, "pool", None)
+    if pool is not None:
+        try:
+            with pool.connection() as conn:
+                return tracker.get_readiness_report(tenant_id=tenant_id, conn=conn)
+        except Exception as err:
+            logger.debug("pqc.pool_connection_fallback", error=str(err))
+
+    return tracker.get_readiness_report(tenant_id=tenant_id)

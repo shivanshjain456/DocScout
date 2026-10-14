@@ -104,6 +104,13 @@ from app.compliance.observation_tracker import (
     ObservationTracker,
     get_default_observation_tracker,
 )
+from app.compliance.pqc_tracker import (
+    PQCConfig,
+    PQCTracker,
+    anonymize_hostname,
+    classify_endpoint_crypto,
+    get_default_pqc_tracker,
+)
 from app.compliance.remediation_engine import (
     PracticeRecommendation,
     PrescriptiveRemediationEngine,
@@ -141,6 +148,7 @@ __all__ = [
     "AlgoImpactConfig",
     "AlgorithmicImpactEngine",
     "AnnotatedFormula",
+    "anonymize_hostname",
     "AnomalyType",
     "AntipatternFinding",
     "AntipatternRule",
@@ -152,6 +160,7 @@ __all__ = [
     "ChangeClassification",
     "CircularClause",
     "CircularDependencyError",
+    "classify_endpoint_crypto",
     "ClauseConflictDetector",
     "ClauseModality",
     "ComplianceDebtAuditEntry",
@@ -192,6 +201,8 @@ __all__ = [
     "ObservationConfig",
     "ObservationStatus",
     "ObservationTracker",
+    "PQCConfig",
+    "PQCTracker",
     "PracticeRecommendation",
     "PrescriptiveRemediationEngine",
     "RegulatorCode",
@@ -228,6 +239,7 @@ __all__ = [
     "get_default_formula_engine",
     "get_default_formula_evolution_manager",
     "get_default_observation_tracker",
+    "get_default_pqc_tracker",
     "get_default_remediation_engine",
     "get_default_standard_annotator",
     "get_default_standards_registry",

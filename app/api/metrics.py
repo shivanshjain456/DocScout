@@ -725,6 +725,18 @@ RELEASES_CERTIFIED_TOTAL = Counter(
     ("status",),
 )
 
+PQC_READINESS_SCORE = Gauge(
+    "docscout_pqc_readiness_score",
+    "Post-quantum cryptographic readiness score percentage (FEAT-057).",
+    ("tenant_id",),
+)
+
+PQC_ASSETS_INVENTORIED_TOTAL = Counter(
+    "docscout_pqc_assets_inventoried_total",
+    "Total cryptographic endpoint assets inventoried by classification (FEAT-057).",
+    ("classification",),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

@@ -2041,3 +2041,84 @@ class ReleaseCertificate(BaseModel):
     signature_sha256: str
     rejection_reasons: list[str] = Field(default_factory=list)
     certified_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+# --- Post-Quantum Cryptographic Migration Tracker (FEAT-057) ---
+
+
+class EndpointCryptoSpec(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    hostname: str = Field(..., min_length=1, description="Target hostname or FQDN")
+    port: int = Field(default=443, ge=1, le=65535, description="TLS service port")
+    tls_version: str = Field(..., description="TLS protocol version, e.g. TLSv1.3, TLSv1.2")
+    cipher_suite: str = Field(
+        ..., min_length=1, description="Negotiated or supported cipher suite string"
+    )
+    key_exchange_group: str | None = Field(
+        default=None, description="Key exchange group or KEM name"
+    )
+    cert_signature_algo: str = Field(..., description="X.509 certificate signature algorithm")
+    cert_key_size: int | None = Field(default=None, description="Public key size in bits")
+    cert_expiry: date | None = Field(default=None, description="Certificate expiration date")
+
+
+class CryptographicInventoryBatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    endpoints: list[EndpointCryptoSpec] = Field(
+        ..., min_length=1, description="List of endpoint cryptographic specifications"
+    )
+
+
+class PQCScanRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    endpoints: list[EndpointCryptoSpec] = Field(
+        ..., min_length=1, description="Batch of endpoint crypto specs to scan"
+    )
+    flag_rsa_under_3072: bool = Field(
+        default=True, description="Flag RSA keys under 3072 bits as deprecated/vulnerable"
+    )
+
+
+class CryptoAssetItem(BaseModel):
+    asset_id: UUID
+    tenant_id: str = "default"
+    hostname: str
+    hostname_hash: str
+    tls_version: str
+    cipher_suite: str
+    cert_signature_algo: str
+    cert_key_size: int | None = None
+    cert_expiry: date | None = None
+    classification: Literal[
+        "PQC_READY", "HYBRID", "CLASSICAL_SAFE", "CLASSICAL_DEPRECATED", "UNKNOWN_AUDIT_REQUIRED"
+    ]
+    hndl_vulnerable: bool
+    quantum_safe_algo: str | None = None
+    warning: str | None = None
+    recommended_action: str
+    scanned_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class PQCReadinessReport(BaseModel):
+    total_assets: int
+    quantum_vulnerable_count: int
+    pqc_ready_count: int
+    hybrid_count: int
+    deprecated_count: int
+    unknown_count: int
+    hndl_exposure_score: float
+    readiness_score: float
+    migration_milestone: Literal[
+        "PHASE_1_INVENTORY", "PHASE_2_HYBRID_TRANSITION", "PHASE_3_QUANTUM_RESILIENT"
+    ]
+    assets: list[CryptoAssetItem] = Field(default_factory=list)
+    evaluated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class PQCInventoryResponse(BaseModel):
+    tenant_id: str
+    total_count: int
+    assets: list[CryptoAssetItem]
