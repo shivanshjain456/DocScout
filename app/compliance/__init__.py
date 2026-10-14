@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+from app.compliance.algo_impact import (
+    AlgoAssessmentResult,
+    AlgoImpactConfig,
+    AlgorithmicImpactEngine,
+    FailedControl,
+    get_default_algorithmic_impact_engine,
+)
 from app.compliance.antipattern_scanner import (
     AntipatternFinding,
     AntipatternRule,
@@ -130,6 +137,9 @@ from app.ingest.standard_linker import (
 )
 
 __all__ = [
+    "AlgoAssessmentResult",
+    "AlgoImpactConfig",
+    "AlgorithmicImpactEngine",
     "AnnotatedFormula",
     "AnomalyType",
     "AntipatternFinding",
@@ -167,6 +177,7 @@ __all__ = [
     "DeprecationStatus",
     "DetectedConflict",
     "DriftConfig",
+    "FailedControl",
     "FormulaDependencyGraph",
     "FormulaEngine",
     "FormulaEvolutionManager",
@@ -203,6 +214,7 @@ __all__ = [
     "VendorRiskConfig",
     "format_indian_number",
     "format_international_number",
+    "get_default_algorithmic_impact_engine",
     "get_default_antipattern_scanner",
     "get_default_boundary_validator",
     "get_default_clause_conflict_detector",

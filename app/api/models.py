@@ -1727,3 +1727,57 @@ class VendorRiskReportResponse(BaseModel):
     contract_char_count: int
     audit_timestamp: datetime
     strict_localization_enforced: bool
+
+
+# --- Algorithmic & AI Impact Assessment Framework (FEAT-050) ---
+
+
+class AlgoAssessmentRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    system_name: str = Field(
+        ...,
+        min_length=1,
+        max_length=150,
+        description="Name or identifier of algorithmic/AI system being assessed",
+    )
+    model_type: Literal[
+        "algorithmic_trading",
+        "credit_scoring",
+        "llm_agent",
+        "fraud_detection",
+        "general_ai",
+    ] = Field(
+        default="algorithmic_trading",
+        description="Domain category of the model under statutory review",
+    )
+    system_spec_text: str = Field(
+        ...,
+        min_length=100,
+        max_length=50000,
+        description="System architecture, risk controls, or model card documentation (100-50,000 chars)",
+    )
+    strict_kill_switch_required: bool = Field(
+        default=True,
+        description="Enforce hard conformity cap if automated kill switch is absent for trading systems",
+    )
+
+
+class FailedControlModel(BaseModel):
+    control_id: str
+    title: str
+    regulation_ref: str
+    remedy: str
+
+
+class AlgoAssessmentResponse(BaseModel):
+    system_name: str
+    model_type: str
+    conformity_score: float
+    status: Literal["CONFORMANT", "CONDITIONAL", "NON_CONFORMANT"]
+    passed_controls: list[str]
+    failed_controls: list[FailedControlModel]
+    negative_flags: list[str]
+    audit_certificate_id: str
+    evaluated_at: datetime
+    summary: str

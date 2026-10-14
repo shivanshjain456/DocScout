@@ -61,6 +61,8 @@ from app.api.cache import (
 )
 from app.api.chat import router as chat_router
 from app.api.models import (
+    AlgoAssessmentRequest,
+    AlgoAssessmentResponse,
     AnnotatedFormulaResponse,
     AnnotateFormulaRequest,
     AntipatternBenchmarkResponse,
@@ -115,6 +117,7 @@ from app.api.models import (
     ExtractParametersResponse,
     ExtractStandardMentionsRequest,
     ExtractStandardMentionsResponse,
+    FailedControlModel,
     FormulaCalcRequest,
     FormulaCalcResult,
     FormulaHistoryResponse,
@@ -4685,3 +4688,70 @@ async def audit_vendor_contract(
         ) from err
 
     return report
+
+
+@app.post(
+    "/v1/compliance/algo-assessment",
+    response_model=AlgoAssessmentResponse,
+    tags=["Compliance"],
+    responses={
+        200: {"description": "Algorithmic and AI impact assessment completed"},
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "validation error or invalid system specification"},
+    },
+)
+async def assess_algorithmic_system(
+    payload: AlgoAssessmentRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> AlgoAssessmentResponse:
+    """Evaluate algorithmic trading and AI systems against SEBI and RBI regulatory checklists (FEAT-050)."""
+    t0 = time.perf_counter()
+    from app.compliance.algo_impact import (
+        AlgoImpactConfig,
+        get_default_algorithmic_impact_engine,
+    )
+
+    engine = get_default_algorithmic_impact_engine()
+    cfg = AlgoImpactConfig(
+        strict_kill_switch_required=payload.strict_kill_switch_required,
+    )
+    try:
+        res = engine.evaluate(
+            system_name=payload.system_name,
+            model_type=payload.model_type,
+            system_spec_text=payload.system_spec_text,
+            config=cfg,
+        )
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(err),
+        ) from err
+
+    latency_sec = time.perf_counter() - t0
+    metrics.ALGO_ASSESSMENT_DURATION_SECONDS.observe(latency_sec)
+    metrics.ALGO_ASSESSMENTS_COMPLETED_TOTAL.labels(
+        model_type=res.model_type,
+        status=res.status,
+    ).inc()
+
+    return AlgoAssessmentResponse(
+        system_name=res.system_name,
+        model_type=res.model_type,
+        conformity_score=res.conformity_score,
+        status=res.status,
+        passed_controls=res.passed_controls,
+        failed_controls=[
+            FailedControlModel(
+                control_id=fc.control_id,
+                title=fc.title,
+                regulation_ref=fc.regulation_ref,
+                remedy=fc.remedy,
+            )
+            for fc in res.failed_controls
+        ],
+        negative_flags=res.negative_flags,
+        audit_certificate_id=res.audit_certificate_id,
+        evaluated_at=res.evaluated_at,
+        summary=res.summary,
+    )

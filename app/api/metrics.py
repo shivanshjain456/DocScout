@@ -661,6 +661,18 @@ VENDOR_AUDIT_DURATION_SECONDS = Histogram(
     buckets=[0.005, 0.01, 0.02, 0.04, 0.06, 0.1, 0.25, 0.5],
 )
 
+ALGO_ASSESSMENTS_COMPLETED_TOTAL = Counter(
+    "docscout_algo_assessments_completed_total",
+    "Total algorithmic and AI impact assessments completed by model type and status (FEAT-050).",
+    ("model_type", "status"),
+)
+
+ALGO_ASSESSMENT_DURATION_SECONDS = Histogram(
+    "docscout_algo_assessment_duration_seconds",
+    "Latency of algorithmic impact assessment evaluation in seconds (FEAT-050).",
+    buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.
