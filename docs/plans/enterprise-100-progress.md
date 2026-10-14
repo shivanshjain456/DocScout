@@ -77,7 +77,7 @@
 - [x] FEAT-055: Regulatory Cyber Incident Response Playbook
 - [x] FEAT-056: Regulated Release Certification Pipeline
 - [x] FEAT-057: Post-Quantum Cryptographic Migration Tracker
-- [ ] FEAT-058: Digital Operational Resilience (DORA) Framework Runner
+- [x] FEAT-058: Digital Operational Resilience (DORA) Framework Runner
 - [ ] FEAT-059: Playbook Progress Dashboard in Console UI
 - [ ] FEAT-060: Custom Enterprise Compliance Playbook Builder
 
@@ -192,6 +192,7 @@
 | FEAT-055 | a20c2ce | PASS | Regulatory cyber incident response playbook, migration 0040, high-availability crisis state machine, statutory 6-hour reporting countdown, RBI Cyber Security Framework Annex II disclosure draft, CrisisConsole.tsx, POST /v1/incidents/declare, GET /v1/incidents/{incident_id}/status, p95 <= 5ms |
 | FEAT-056 | 8b80930 | PASS | Regulated release certification pipeline, migration 0041, formal GSN Safety Case compiler, cryptographic SHA-256 attestation, scripts/certify_release.py CLI, POST /v1/compliance/certify-release, latency <= 1.5s |
 | FEAT-057 | c0fa3cd | PASS | Post-quantum cryptographic migration tracker, migration 0042, NIST FIPS 203/204/205 and SP 800-208 classifier, Harvest-Now-Decrypt-Later (HNDL) exposure scoring, PQCConsole.tsx, POST /v1/compliance/pqc/scan, 1000 evaluations <= 10ms |
+| FEAT-058 | 64d3009 | PASS | Digital operational resilience (DORA) framework runner, migration 0043, EU 2022/2554 Pillars 1-5 scorecards, mandatory TLPT 3-year cadence tracking, CTPP exit strategies, DORAConsole.tsx, POST /v1/compliance/dora/assess, 1000 systems benchmark <= 15.0ms |
 
 
 
