@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime
 from typing import Annotated, Any, Literal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from pydantic import (
     BaseModel,
@@ -2122,3 +2122,116 @@ class PQCInventoryResponse(BaseModel):
     tenant_id: str
     total_count: int
     assets: list[CryptoAssetItem]
+
+
+# --- Digital Operational Resilience Framework (DORA) (FEAT-058) ---
+
+
+class ICTSystemSpec(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    system_id: str = Field(..., min_length=1, description="Unique system identifier")
+    name: str = Field(..., min_length=1, description="System name")
+    criticality: Literal["CRITICAL", "HIGH", "MEDIUM", "LOW"] = Field(
+        default="MEDIUM", description="DORA system criticality tier"
+    )
+    is_third_party: bool = Field(
+        default=False, description="Whether the system is provided by a third-party vendor"
+    )
+    third_party_provider: str | None = Field(
+        default=None, description="Name of third-party vendor if applicable"
+    )
+    is_critical_third_party: bool = Field(
+        default=False,
+        description="Whether vendor is a designated Critical ICT Third-Party Provider (CTPP)",
+    )
+    has_exit_strategy: bool = Field(
+        default=False, description="Whether comprehensive exit and transition strategy exists"
+    )
+    last_tlpt_date: date | None = Field(
+        default=None, description="Date of last Threat-Led Penetration Test (TLPT/TIBER-EU)"
+    )
+    rto_minutes: int | None = Field(
+        default=None, ge=0, description="Recovery Time Objective in minutes"
+    )
+    rpo_minutes: int | None = Field(
+        default=None, ge=0, description="Recovery Point Objective in minutes"
+    )
+    has_incident_plan: bool = Field(
+        default=True,
+        description="Whether documented incident response and reporting playbook exists",
+    )
+    has_threat_intel_sharing: bool = Field(
+        default=False,
+        description="Whether cyber threat intelligence sharing agreement is active",
+    )
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Additional system architecture metadata"
+    )
+
+
+class DORAAssessmentRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str = Field(default="default", description="Tenant isolation identifier")
+    ict_systems: list[ICTSystemSpec] = Field(
+        ..., min_length=1, description="List of enterprise ICT system architecture specs"
+    )
+
+
+class PillarStatus(BaseModel):
+    pillar_name: str
+    compliance_pct: float
+    gaps: list[str] = Field(default_factory=list)
+    articles: list[str] = Field(default_factory=list)
+
+
+class ResilienceTestRecord(BaseModel):
+    test_id: UUID = Field(default_factory=uuid4)
+    tenant_id: str = "default"
+    system_id: str
+    test_type: str = Field(
+        ..., description="Type of resilience test, e.g. TLPT, FAILOVER, DR_SCENARIO"
+    )
+    executed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    passed: bool
+    evidence_hash: str = Field(
+        ..., description="Cryptographic SHA-256 hash of verified test evidence"
+    )
+    findings: list[str] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class RecordResilienceTestRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    system_id: str = Field(..., min_length=1, description="Target ICT system ID")
+    test_type: str = Field(
+        ..., min_length=1, description="Type of resilience test, e.g. TLPT, FAILOVER, DR"
+    )
+    passed: bool = Field(..., description="Whether the test passed successfully")
+    evidence_hash: str = Field(..., min_length=8, description="Cryptographic hash of test evidence")
+    findings: list[str] = Field(default_factory=list, description="Findings or gaps identified")
+    tenant_id: str = Field(default="default", description="Tenant isolation key")
+
+
+class RecordResilienceTestResponse(BaseModel):
+    test_id: UUID
+    status: str
+    recorded_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class DORAComplianceReport(BaseModel):
+    tenant_id: str = "default"
+    total_systems: int
+    critical_systems: int
+    overall_readiness: float
+    pillars: dict[str, PillarStatus]
+    recommendations: list[str] = Field(default_factory=list)
+    evaluated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class DORASystemsResponse(BaseModel):
+    tenant_id: str
+    total_count: int
+    systems: list[ICTSystemSpec]

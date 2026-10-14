@@ -114,6 +114,9 @@ from app.api.models import (
     DocumentParametersResponse,
     DocumentResponse,
     DocumentStandardMentionsResponse,
+    DORAAssessmentRequest,
+    DORAComplianceReport,
+    DORASystemsResponse,
     EvaluateGraphRequest,
     EvaluateGraphResponse,
     EvaluationTraceStep,
@@ -168,6 +171,8 @@ from app.api.models import (
     RatioValidationRequest,
     RatioValidationResponse,
     ReadinessResponse,
+    RecordResilienceTestRequest,
+    RecordResilienceTestResponse,
     RegulatoryDeadlineModel,
     ReleaseCertificate,
     RemediationCatalogResponse,
@@ -5761,3 +5766,131 @@ async def get_pqc_readiness_endpoint(
             logger.debug("pqc.pool_connection_fallback", error=str(err))
 
     return tracker.get_readiness_report(tenant_id=tenant_id)
+
+
+# --- Digital Operational Resilience (DORA) Framework Runner (FEAT-058) ---
+
+
+@app.post(
+    "/v1/compliance/dora/assess",
+    response_model=DORAComplianceReport,
+    tags=["Compliance"],
+    responses={
+        200: {"description": "DORA compliance evaluation across Pillars 1-5 completed"},
+        400: {"description": "Invalid ICT system specifications"},
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "validation error"},
+    },
+)
+async def assess_dora_compliance_endpoint(
+    payload: DORAAssessmentRequest,
+    tenant_id: Annotated[str, Query(description="Tenant isolation key")] = "default",
+    fingerprint: str = Depends(require_api_key),
+) -> DORAComplianceReport:
+    """Operationalizes playbook.resilience, evaluating systems against DORA Pillars 1-5 (FEAT-058)."""
+    from app.compliance.dora_runner import get_default_dora_runner
+
+    runner = get_default_dora_runner()
+    if payload.tenant_id != "default" and tenant_id == "default":
+        tenant_id = payload.tenant_id
+    elif tenant_id != payload.tenant_id:
+        payload = payload.model_copy(update={"tenant_id": tenant_id})
+
+    pool = getattr(app.state, "pool", None)
+    if pool is not None:
+        try:
+            with pool.connection() as conn:
+                return runner.assess_systems(request=payload, conn=conn)
+        except Exception as err:
+            logger.debug("dora.pool_connection_fallback", error=str(err))
+
+    return runner.assess_systems(request=payload, conn=None)
+
+
+@app.get(
+    "/v1/compliance/dora/report",
+    response_model=DORAComplianceReport,
+    tags=["Compliance"],
+    responses={
+        200: {"description": "Institutional DORA readiness report"},
+        401: {"description": "missing or invalid API key"},
+    },
+)
+async def get_dora_report_endpoint(
+    tenant_id: Annotated[str, Query(description="Tenant isolation key")] = "default",
+    fingerprint: str = Depends(require_api_key),
+) -> DORAComplianceReport:
+    """Retrieve real-time DORA operational resilience compliance report and scorecard (FEAT-058)."""
+    from app.compliance.dora_runner import get_default_dora_runner
+
+    runner = get_default_dora_runner()
+    pool = getattr(app.state, "pool", None)
+    if pool is not None:
+        try:
+            with pool.connection() as conn:
+                return runner.get_compliance_report(tenant_id=tenant_id, conn=conn)
+        except Exception as err:
+            logger.debug("dora.pool_connection_fallback", error=str(err))
+
+    return runner.get_compliance_report(tenant_id=tenant_id)
+
+
+@app.post(
+    "/v1/compliance/dora/tests/record",
+    response_model=RecordResilienceTestResponse,
+    tags=["Compliance"],
+    responses={
+        200: {"description": "Resilience stress test evidence verified and recorded"},
+        400: {"description": "Invalid test execution parameters"},
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "validation error"},
+    },
+)
+async def record_resilience_test_endpoint(
+    payload: RecordResilienceTestRequest,
+    tenant_id: Annotated[str, Query(description="Tenant isolation key")] = "default",
+    fingerprint: str = Depends(require_api_key),
+) -> RecordResilienceTestResponse:
+    """Record verified operational resilience stress test or TLPT execution (FEAT-058)."""
+    from app.compliance.dora_runner import get_default_dora_runner
+
+    runner = get_default_dora_runner()
+    eff_tenant = payload.tenant_id if payload.tenant_id != "default" else tenant_id
+
+    pool = getattr(app.state, "pool", None)
+    if pool is not None:
+        try:
+            with pool.connection() as conn:
+                return runner.record_test(request=payload, tenant_id=eff_tenant, conn=conn)
+        except Exception as err:
+            logger.debug("dora.pool_connection_fallback", error=str(err))
+
+    return runner.record_test(request=payload, tenant_id=eff_tenant, conn=None)
+
+
+@app.get(
+    "/v1/compliance/dora/systems",
+    response_model=DORASystemsResponse,
+    tags=["Compliance"],
+    responses={
+        200: {"description": "Registered ICT systems retrieved"},
+        401: {"description": "missing or invalid API key"},
+    },
+)
+async def get_dora_systems_endpoint(
+    tenant_id: Annotated[str, Query(description="Tenant isolation key")] = "default",
+    fingerprint: str = Depends(require_api_key),
+) -> DORASystemsResponse:
+    """Retrieve registered ICT systems for the tenant under DORA (FEAT-058)."""
+    from app.compliance.dora_runner import get_default_dora_runner
+
+    runner = get_default_dora_runner()
+    pool = getattr(app.state, "pool", None)
+    if pool is not None:
+        try:
+            with pool.connection() as conn:
+                return runner.get_systems(tenant_id=tenant_id, conn=conn)
+        except Exception as err:
+            logger.debug("dora.pool_connection_fallback", error=str(err))
+
+    return runner.get_systems(tenant_id=tenant_id)

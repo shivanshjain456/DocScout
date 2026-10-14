@@ -78,6 +78,12 @@ from app.compliance.deprecation_engine import (
     SupersessionNode,
     get_default_deprecation_engine,
 )
+from app.compliance.dora_runner import (
+    DORAConfig,
+    DORARunner,
+    evaluate_dora_pillars,
+    get_default_dora_runner,
+)
 from app.compliance.drift_tracker import (
     DriftConfig,
     HistoricalDef,
@@ -185,7 +191,10 @@ __all__ = [
     "DeprecationSeverity",
     "DeprecationStatus",
     "DetectedConflict",
+    "DORAConfig",
+    "DORARunner",
     "DriftConfig",
+    "evaluate_dora_pillars",
     "FailedControl",
     "FormulaDependencyGraph",
     "FormulaEngine",
@@ -235,6 +244,7 @@ __all__ = [
     "get_default_control_mapper",
     "get_default_debt_register",
     "get_default_deprecation_engine",
+    "get_default_dora_runner",
     "get_default_drift_tracker",
     "get_default_formula_engine",
     "get_default_formula_evolution_manager",

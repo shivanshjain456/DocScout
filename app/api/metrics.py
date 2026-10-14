@@ -737,6 +737,18 @@ PQC_ASSETS_INVENTORIED_TOTAL = Counter(
     ("classification",),
 )
 
+DORA_ASSESSMENTS_COMPLETED_TOTAL = Counter(
+    "docscout_dora_assessments_completed_total",
+    "Total DORA operational resilience assessments executed (FEAT-058).",
+    ("tenant_id",),
+)
+
+RESILIENCE_TESTS_RECORDED_TOTAL = Counter(
+    "docscout_resilience_tests_recorded_total",
+    "Total operational resilience stress tests logged by outcome (FEAT-058).",
+    ("status",),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.
