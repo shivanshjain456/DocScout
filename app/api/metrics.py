@@ -673,6 +673,24 @@ ALGO_ASSESSMENT_DURATION_SECONDS = Histogram(
     buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5],
 )
 
+PLAYBOOK_RUNS_STARTED_TOTAL = Counter(
+    "docscout_playbook_runs_started_total",
+    "Total playbook workflow runs instantiated by playbook_id (FEAT-051).",
+    ("playbook_id",),
+)
+
+ACTIVE_PLAYBOOKS_COUNT = Gauge(
+    "docscout_active_playbooks_count",
+    "Total currently active compliance playbooks by domain (FEAT-051).",
+    ("domain",),
+)
+
+PLAYBOOK_STAGE_TRANSITIONS_TOTAL = Counter(
+    "docscout_playbook_stage_transitions_total",
+    "Total playbook stage promotions by outcome (FEAT-051).",
+    ("playbook_id", "outcome"),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

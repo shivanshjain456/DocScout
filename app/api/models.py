@@ -1781,3 +1781,98 @@ class AlgoAssessmentResponse(BaseModel):
     audit_certificate_id: str
     evaluated_at: datetime
     summary: str
+
+
+# --- Interactive Compliance Playbook Runtime (FEAT-051 & FEAT-052) ---
+
+
+class StartPlaybookRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    playbook_id: str = Field(
+        ...,
+        description="Taxonomy playbook ID (e.g., 'playbook.foundations-30d')",
+    )
+    tenant_id: str = Field(
+        default="default",
+        description="Multi-tenant identifier for playbook execution isolation",
+    )
+    assigned_lead: str = Field(
+        default="Compliance Team",
+        min_length=1,
+        max_length=150,
+        description="Name or role of the compliance lead in charge",
+    )
+
+
+class AdvanceStageRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    target_stage: int | None = Field(
+        default=None,
+        ge=1,
+        le=10,
+        description="Target stage number to transition to (defaults to current_stage + 1)",
+    )
+
+
+class CompleteMilestoneRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    milestone_id: str = Field(
+        ...,
+        min_length=1,
+        description="ID of the milestone within the active stage to complete",
+    )
+    evidence_doc_id: str | None = Field(
+        default=None,
+        description="Optional reference ID to grounding evidence artifact or document",
+    )
+    notes: str = Field(
+        default="",
+        max_length=2000,
+        description="Compliance audit notes or verification remarks",
+    )
+
+
+class MilestoneSummaryModel(BaseModel):
+    id: str
+    title: str
+    role: str
+    mandatory: bool = True
+    estimated_hours: int = 8
+    completed: bool = False
+    completed_at: str | None = None
+    evidence_doc_id: str | None = None
+    notes: str = ""
+
+
+class StageSummaryModel(BaseModel):
+    number: int
+    name: str
+    objective: str
+    exit_criteria: list[str]
+    milestones: list[MilestoneSummaryModel]
+
+
+class PlaybookTemplateSummary(BaseModel):
+    playbook_id: str
+    title: str
+    description: str
+    domain: str
+    total_stages: int
+    stages: list[StageSummaryModel]
+
+
+class PlaybookRunResponse(BaseModel):
+    run_id: str
+    tenant_id: str
+    playbook_id: str
+    title: str
+    assigned_lead: str
+    current_stage: int
+    total_stages: int
+    status: Literal["ACTIVE", "BLOCKED", "COMPLETED"]
+    stage_data: dict[str, Any]
+    created_at: datetime
+    updated_at: datetime

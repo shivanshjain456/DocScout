@@ -61,6 +61,7 @@ from app.api.cache import (
 )
 from app.api.chat import router as chat_router
 from app.api.models import (
+    AdvanceStageRequest,
     AlgoAssessmentRequest,
     AlgoAssessmentResponse,
     AnnotatedFormulaResponse,
@@ -88,6 +89,7 @@ from app.api.models import (
     CompareClausePairResponse,
     CompareFormulaVersionsRequest,
     CompareFormulaVersionsResponse,
+    CompleteMilestoneRequest,
     Confidence,
     ConflictBenchmarkResponse,
     ConsistencyAnomalyModel,
@@ -134,6 +136,7 @@ from app.api.models import (
     IntentClassification,
     LivenessResponse,
     MappedControl,
+    MilestoneSummaryModel,
     NormalizedQuantityModel,
     NormalizeUnitsRequest,
     NormalizeUnitsResponse,
@@ -142,6 +145,8 @@ from app.api.models import (
     Passage,
     PersonaListResponse,
     PersonaProfileResponse,
+    PlaybookRunResponse,
+    PlaybookTemplateSummary,
     PracticeRecommendationModel,
     PrerequisiteCheckRequest,
     PrerequisiteCheckResponse,
@@ -166,11 +171,13 @@ from app.api.models import (
     SearchResponse,
     SimulationRequest,
     SimulationResponse,
+    StageSummaryModel,
     StandardListResponse,
     StandardMentionResponse,
     StandardMetadata,
     StandardResponse,
     StandardsListResponse,
+    StartPlaybookRequest,
     StatutoryDeprecationModel,
     StatutoryParameterModel,
     SubgraphResponse,
@@ -4755,3 +4762,325 @@ async def assess_algorithmic_system(
         evaluated_at=res.evaluated_at,
         summary=res.summary,
     )
+
+
+# --- Interactive Compliance Playbook Runtime (FEAT-051 & FEAT-052) ---
+
+
+@app.get(
+    "/v1/playbooks/templates",
+    response_model=list[PlaybookTemplateSummary],
+    tags=["Playbooks"],
+    responses={
+        200: {"description": "List all 12 statutory compliance playbooks"},
+        401: {"description": "missing or invalid API key"},
+    },
+)
+async def list_playbook_templates(
+    fingerprint: str = Depends(require_api_key),
+) -> list[PlaybookTemplateSummary]:
+    """List the catalog of 12 statutory compliance playbook templates (FEAT-051)."""
+    from app.workflows.engine import get_default_playbook_engine
+
+    engine = get_default_playbook_engine()
+    templates = engine.list_templates()
+    return [
+        PlaybookTemplateSummary(
+            playbook_id=t.playbook_id,
+            title=t.title,
+            description=t.description,
+            domain=t.domain,
+            total_stages=t.total_stages,
+            stages=[
+                StageSummaryModel(
+                    number=s.stage_number,
+                    name=s.stage_name,
+                    objective=s.description,
+                    exit_criteria=s.exit_criteria,
+                    milestones=[
+                        MilestoneSummaryModel(
+                            id=m.id,
+                            title=m.title,
+                            role=m.role,
+                            mandatory=m.mandatory,
+                            estimated_hours=m.estimated_hours,
+                            completed=False,
+                            notes="",
+                        )
+                        for m in s.milestones
+                    ],
+                )
+                for s in t.stages
+            ],
+        )
+        for t in templates
+    ]
+
+
+@app.post(
+    "/v1/playbooks/start",
+    response_model=PlaybookRunResponse,
+    tags=["Playbooks"],
+    responses={
+        200: {"description": "Playbook workflow run successfully instantiated"},
+        400: {"description": "Invalid playbook ID or configuration"},
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "Playbook template not found"},
+    },
+)
+async def start_playbook_run(
+    payload: StartPlaybookRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> PlaybookRunResponse:
+    """Instantiate a new interactive compliance playbook run for a tenant (FEAT-051)."""
+    from app.workflows.engine import (
+        PlaybookNotFoundError,
+        get_default_playbook_engine,
+    )
+
+    engine = get_default_playbook_engine()
+    try:
+        run = engine.start_playbook(
+            playbook_id=payload.playbook_id,
+            tenant_id=payload.tenant_id,
+            assigned_lead=payload.assigned_lead,
+        )
+    except PlaybookNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(err),
+        ) from err
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(err),
+        ) from err
+
+    metrics.PLAYBOOK_RUNS_STARTED_TOTAL.labels(playbook_id=payload.playbook_id).inc()
+    tmpl = engine.get_template(payload.playbook_id)
+    if tmpl:
+        metrics.ACTIVE_PLAYBOOKS_COUNT.labels(domain=tmpl.domain).inc()
+
+    return PlaybookRunResponse(
+        run_id=run.run_id,
+        tenant_id=run.tenant_id,
+        playbook_id=run.playbook_id,
+        title=run.title,
+        assigned_lead=run.assigned_lead,
+        current_stage=run.current_stage,
+        total_stages=run.total_stages,
+        status=run.status,
+        stage_data=run.stage_data,
+        created_at=run.created_at,
+        updated_at=run.updated_at,
+    )
+
+
+@app.get(
+    "/v1/playbooks/runs/{run_id}",
+    response_model=PlaybookRunResponse,
+    tags=["Playbooks"],
+    responses={
+        200: {"description": "Playbook execution run status and stage details"},
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "Playbook run not found"},
+    },
+)
+async def get_playbook_run(
+    run_id: str,
+    tenant_id: str = Query(default="default", description="Tenant isolation key"),
+    fingerprint: str = Depends(require_api_key),
+) -> PlaybookRunResponse:
+    """Retrieve the active state, current stage, and milestones of a playbook run (FEAT-051)."""
+    from app.workflows.engine import get_default_playbook_engine
+
+    engine = get_default_playbook_engine()
+    run = engine.get_run(run_id=run_id, tenant_id=tenant_id)
+    if not run:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Playbook run {run_id} not found for tenant {tenant_id}",
+        )
+
+    return PlaybookRunResponse(
+        run_id=run.run_id,
+        tenant_id=run.tenant_id,
+        playbook_id=run.playbook_id,
+        title=run.title,
+        assigned_lead=run.assigned_lead,
+        current_stage=run.current_stage,
+        total_stages=run.total_stages,
+        status=run.status,
+        stage_data=run.stage_data,
+        created_at=run.created_at,
+        updated_at=run.updated_at,
+    )
+
+
+@app.post(
+    "/v1/playbooks/runs/{run_id}/advance",
+    response_model=PlaybookRunResponse,
+    tags=["Playbooks"],
+    responses={
+        200: {"description": "Playbook successfully advanced to next stage"},
+        400: {"description": "Invalid state transition or unsatisfied exit criteria"},
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "Playbook run not found"},
+    },
+)
+async def advance_playbook_stage(
+    run_id: str,
+    payload: AdvanceStageRequest,
+    tenant_id: str = Query(default="default", description="Tenant isolation key"),
+    fingerprint: str = Depends(require_api_key),
+) -> PlaybookRunResponse:
+    """Promote playbook execution to the next sequential stage (FEAT-051)."""
+    from app.workflows.engine import (
+        InvalidStateTransitionError,
+        PlaybookRunNotFoundError,
+        get_default_playbook_engine,
+    )
+
+    engine = get_default_playbook_engine()
+    try:
+        run = engine.advance_stage(
+            run_id=run_id,
+            tenant_id=tenant_id,
+            target_stage=payload.target_stage,
+        )
+        metrics.PLAYBOOK_STAGE_TRANSITIONS_TOTAL.labels(
+            playbook_id=run.playbook_id,
+            outcome="success",
+        ).inc()
+    except PlaybookRunNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(err),
+        ) from err
+    except InvalidStateTransitionError as err:
+        metrics.PLAYBOOK_STAGE_TRANSITIONS_TOTAL.labels(
+            playbook_id="unknown",
+            outcome="failure",
+        ).inc()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(err),
+        ) from err
+
+    return PlaybookRunResponse(
+        run_id=run.run_id,
+        tenant_id=run.tenant_id,
+        playbook_id=run.playbook_id,
+        title=run.title,
+        assigned_lead=run.assigned_lead,
+        current_stage=run.current_stage,
+        total_stages=run.total_stages,
+        status=run.status,
+        stage_data=run.stage_data,
+        created_at=run.created_at,
+        updated_at=run.updated_at,
+    )
+
+
+@app.post(
+    "/v1/playbooks/runs/{run_id}/milestones/{milestone_id}",
+    response_model=PlaybookRunResponse,
+    tags=["Playbooks"],
+    responses={
+        200: {"description": "Milestone recorded and stage updated"},
+        400: {"description": "Milestone cannot be completed in current stage"},
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "Playbook run or milestone not found"},
+    },
+)
+async def complete_playbook_milestone(
+    run_id: str,
+    milestone_id: str,
+    payload: CompleteMilestoneRequest,
+    tenant_id: str = Query(default="default", description="Tenant isolation key"),
+    fingerprint: str = Depends(require_api_key),
+) -> PlaybookRunResponse:
+    """Mark a discrete milestone completed with optional grounding evidence (FEAT-051)."""
+    from app.workflows.engine import (
+        InvalidStateTransitionError,
+        PlaybookRunNotFoundError,
+        get_default_playbook_engine,
+    )
+
+    engine = get_default_playbook_engine()
+    try:
+        run = engine.complete_milestone(
+            run_id=run_id,
+            milestone_id=milestone_id,
+            tenant_id=tenant_id,
+            evidence_doc_id=payload.evidence_doc_id,
+            notes=payload.notes,
+        )
+    except PlaybookRunNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(err),
+        ) from err
+    except InvalidStateTransitionError as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(err),
+        ) from err
+
+    return PlaybookRunResponse(
+        run_id=run.run_id,
+        tenant_id=run.tenant_id,
+        playbook_id=run.playbook_id,
+        title=run.title,
+        assigned_lead=run.assigned_lead,
+        current_stage=run.current_stage,
+        total_stages=run.total_stages,
+        status=run.status,
+        stage_data=run.stage_data,
+        created_at=run.created_at,
+        updated_at=run.updated_at,
+    )
+
+
+@app.get(
+    "/v1/playbooks/runs",
+    response_model=list[PlaybookRunResponse],
+    tags=["Playbooks"],
+    responses={
+        200: {"description": "List all active and completed playbook runs"},
+        401: {"description": "missing or invalid API key"},
+    },
+)
+async def list_playbook_runs(
+    tenant_id: str = Query(default="default", description="Tenant isolation key"),
+    status_filter: str | None = Query(default=None, alias="status", description="Filter by status"),
+    fingerprint: str = Depends(require_api_key),
+) -> list[PlaybookRunResponse]:
+    """List all playbook runs for a tenant (FEAT-051)."""
+    from typing import cast
+
+    from app.workflows.engine import RunStatus, get_default_playbook_engine
+
+    engine = get_default_playbook_engine()
+    validated_status = (
+        cast(RunStatus, status_filter)
+        if status_filter in ("ACTIVE", "BLOCKED", "COMPLETED")
+        else None
+    )
+    runs = engine.list_runs(tenant_id=tenant_id, status=validated_status)
+    return [
+        PlaybookRunResponse(
+            run_id=r.run_id,
+            tenant_id=r.tenant_id,
+            playbook_id=r.playbook_id,
+            title=r.title,
+            assigned_lead=r.assigned_lead,
+            current_stage=r.current_stage,
+            total_stages=r.total_stages,
+            status=r.status,
+            stage_data=r.stage_data,
+            created_at=r.created_at,
+            updated_at=r.updated_at,
+        )
+        for r in runs
+    ]
