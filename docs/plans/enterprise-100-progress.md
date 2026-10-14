@@ -75,7 +75,7 @@
 - [x] FEAT-053: Automated Stage Exit Criteria Validator
 - [x] FEAT-054: Role-Based Compliance Task Routing
 - [x] FEAT-055: Regulatory Cyber Incident Response Playbook
-- [ ] FEAT-056: Regulated Release Certification Pipeline
+- [x] FEAT-056: Regulated Release Certification Pipeline
 - [ ] FEAT-057: Post-Quantum Cryptographic Migration Tracker
 - [ ] FEAT-058: Digital Operational Resilience (DORA) Framework Runner
 - [ ] FEAT-059: Playbook Progress Dashboard in Console UI
@@ -190,6 +190,7 @@
 | FEAT-053 | 885bd6e | PASS | Automated stage exit criteria validator, migration 0038, empirical precondition checks, HTTP 412 blocking gate, admin overrides with audit trail, StageExitGateModal.tsx, POST /v1/playbooks/{run_id}/promote, p95 <= 6ms |
 | FEAT-054 | bfd725e | PASS | Role-based compliance task routing, migration 0039, 5 canonical taxonomy roles, zero unassigned tasks across 12 playbooks, HTTP 422 validation, RoleTaskView.tsx, GET /v1/playbooks/{run_id}/tasks, p95 <= 2ms |
 | FEAT-055 | a20c2ce | PASS | Regulatory cyber incident response playbook, migration 0040, high-availability crisis state machine, statutory 6-hour reporting countdown, RBI Cyber Security Framework Annex II disclosure draft, CrisisConsole.tsx, POST /v1/incidents/declare, GET /v1/incidents/{incident_id}/status, p95 <= 5ms |
+| FEAT-056 | 8b80930 | PASS | Regulated release certification pipeline, migration 0041, formal GSN Safety Case compiler, cryptographic SHA-256 attestation, scripts/certify_release.py CLI, POST /v1/compliance/certify-release, latency <= 1.5s |
 
 
 
