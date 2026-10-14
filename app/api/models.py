@@ -2683,3 +2683,56 @@ class RegulatoryMetadataExtractResponse(BaseModel):
         default=0,
         description="Total non-null metadata fields extracted.",
     )
+
+
+# --- Duplicate & Reprint Deduplication Engine (FEAT-070) ---
+
+
+class DeduplicationConfigModel(BaseModel):
+    min_similarity_threshold: float = Field(
+        default=0.98,
+        ge=0.5,
+        le=1.0,
+        description="Minimum MinHash Jaccard similarity threshold for duplicate classification.",
+    )
+
+
+class DeduplicationCheckRequest(BaseModel):
+    text: str = Field(
+        ...,
+        min_length=10,
+        description="Document extracted text to inspect for duplicate or reprint status.",
+    )
+    sha256: str | None = Field(
+        default=None,
+        description="Optional content payload SHA-256 for exact binary matching.",
+    )
+    config: DeduplicationConfigModel | None = Field(
+        default=None,
+        description="Optional deduplication configuration parameters.",
+    )
+
+
+class DeduplicationCheckResponse(BaseModel):
+    is_duplicate: bool = Field(
+        ...,
+        description="True if document is an exact reprint or near-duplicate above threshold.",
+    )
+    canonical_doc_id: str | None = Field(
+        default=None,
+        description="UUID of the canonical document if duplicate is detected.",
+    )
+    similarity_score: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Similarity score relative to the closest candidate (1.0 for exact matches).",
+    )
+    match_type: str = Field(
+        default="none",
+        description="Match classification: exact_content, exact_text, minhash_lsh, or none.",
+    )
+    detail: str = Field(
+        default="",
+        description="Diagnostic explanation of the deduplication decision.",
+    )

@@ -824,6 +824,12 @@ METADATA_FIELDS_EXTRACTED_TOTAL = Counter(
     ["field_name"],
 )
 
+DUPLICATE_DOCUMENTS_DETECTED_TOTAL = Counter(
+    "docscout_duplicate_documents_detected_total",
+    "Total duplicate documents and circular reprints detected during ingestion (FEAT-070).",
+    ["match_type"],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

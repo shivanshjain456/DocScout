@@ -34,8 +34,13 @@ import psycopg
 from pgvector.psycopg import register_vector
 
 from app.api.cache import trigger_corpus_invalidation
-from app.api.metrics import CHUNKS_REUSED_TOTAL
+from app.api.metrics import CHUNKS_REUSED_TOTAL, DUPLICATE_DOCUMENTS_DETECTED_TOTAL
 from app.ingest.chunk import Chunk
+from app.ingest.deduplicator import (
+    RegulatoryDeduplicator,
+    compute_minhash_signature,
+    compute_text_sha256,
+)
 from app.ingest.ids import chunk_id
 from app.ingest.source import SourceDocument
 from app.rowtypes import as_int, as_str
@@ -274,6 +279,8 @@ def store_document(conn: psycopg.Connection[Any], prepared: PreparedDocument) ->
                 version_id, document_id, canonical_url = existing
                 same_url = canonical_url == doc.url
                 CHUNKS_REUSED_TOTAL.inc(len(prepared.chunks))
+                if not same_url:
+                    DUPLICATE_DOCUMENTS_DETECTED_TOTAL.labels(match_type="exact_content").inc()
                 return StoreOutcome(
                     url=doc.url,
                     action=(
@@ -289,6 +296,11 @@ def store_document(conn: psycopg.Connection[Any], prepared: PreparedDocument) ->
                     ),
                 )
 
+            # FEAT-070: Deduplication & reprint check (Text SHA-256 and MinHash LSH)
+            text_sha = compute_text_sha256(prepared.text)
+            minhash_sig = compute_minhash_signature(prepared.text)
+            dedup = RegulatoryDeduplicator().check_duplicate_in_db(conn, prepared.text, doc.sha256)
+
             # FR-5, URL half.
             row = conn.execute(
                 "SELECT document_id FROM documents WHERE canonical_url = %s", (doc.url,)
@@ -300,14 +312,21 @@ def store_document(conn: psycopg.Connection[Any], prepared: PreparedDocument) ->
             subj = getattr(meta, "subject", None) if meta else None
             signoff = getattr(meta, "signoff_officer", None) if meta else None
 
+            canonical_doc_id = (
+                UUID(dedup.canonical_doc_id)
+                if (dedup.is_duplicate and dedup.canonical_doc_id)
+                else None
+            )
+
             if row is None:
                 inserted = conn.execute(
                     """
                     INSERT INTO documents (
                         canonical_url, source, authority, detail_page, title, published_date,
-                        is_synthetic, circular_no, issuing_department, subject, signoff_authority
+                        is_synthetic, circular_no, issuing_department, subject, signoff_authority,
+                        canonical_document_id, text_sha256, minhash_signature
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING document_id
                     """,
                     (
@@ -322,6 +341,9 @@ def store_document(conn: psycopg.Connection[Any], prepared: PreparedDocument) ->
                         dept,
                         subj,
                         signoff,
+                        canonical_doc_id,
+                        text_sha,
+                        minhash_sig,
                     ),
                 ).fetchone()
                 if inserted is None:  # pragma: no cover - RETURNING always yields a row
@@ -339,7 +361,10 @@ def store_document(conn: psycopg.Connection[Any], prepared: PreparedDocument) ->
                            circular_no = COALESCE(%s, documents.circular_no),
                            issuing_department = COALESCE(%s, documents.issuing_department),
                            subject = COALESCE(%s, documents.subject),
-                           signoff_authority = COALESCE(%s, documents.signoff_authority)
+                           signoff_authority = COALESCE(%s, documents.signoff_authority),
+                           canonical_document_id = COALESCE(%s, documents.canonical_document_id),
+                           text_sha256 = COALESCE(%s, documents.text_sha256),
+                           minhash_signature = COALESCE(%s, documents.minhash_signature)
                      WHERE document_id = %s
                     """,
                     (
@@ -350,6 +375,9 @@ def store_document(conn: psycopg.Connection[Any], prepared: PreparedDocument) ->
                         dept,
                         subj,
                         signoff,
+                        canonical_doc_id,
+                        text_sha,
+                        minhash_sig,
                         document_id,
                     ),
                 )
@@ -386,6 +414,20 @@ def store_document(conn: psycopg.Connection[Any], prepared: PreparedDocument) ->
             if version_row is None:  # pragma: no cover - RETURNING always yields a row
                 raise RuntimeError("version insert returned no id")
             version_id = UUID(str(version_row[0]))
+
+            if dedup.is_duplicate and canonical_doc_id is not None:
+                CHUNKS_REUSED_TOTAL.inc(len(prepared.chunks))
+                return StoreOutcome(
+                    url=doc.url,
+                    action=Action.SKIPPED_DUPLICATE_CONTENT,
+                    document_id=document_id,
+                    version_id=version_id,
+                    chunks_written=0,
+                    detail=(
+                        f"{dedup.match_type} duplicate (similarity {dedup.similarity_score:.4f}) "
+                        f"of canonical document {canonical_doc_id}"
+                    ),
+                )
 
             rows = [
                 (

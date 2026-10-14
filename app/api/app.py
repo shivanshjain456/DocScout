@@ -108,6 +108,8 @@ from app.api.models import (
     CustomPlaybookDefinition,
     CustomPlaybookListResponse,
     DeclareIncidentRequest,
+    DeduplicationCheckRequest,
+    DeduplicationCheckResponse,
     DependencyGraphResponse,
     DeprecationCatalogResponse,
     DeprecationDetectionModel,
@@ -6887,4 +6889,43 @@ async def extract_metadata_endpoint(
         date_issued=meta.date_issued,
         signoff_officer=meta.signoff_officer,
         extracted_fields_count=fields_count,
+    )
+
+
+@app.post(
+    "/v1/ingest/dedup/check",
+    response_model=DeduplicationCheckResponse,
+    tags=["ingest"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "validation error"},
+    },
+)
+async def check_deduplication_endpoint(
+    payload: DeduplicationCheckRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> DeduplicationCheckResponse:
+    """Inspect document text for duplicate or reprint status against corpus (FEAT-070)."""
+    from app.ingest.deduplicator import DeduplicationConfig as CoreDedupConfig
+    from app.ingest.deduplicator import RegulatoryDeduplicator
+
+    core_config = (
+        CoreDedupConfig(min_similarity_threshold=payload.config.min_similarity_threshold)
+        if payload.config
+        else CoreDedupConfig()
+    )
+    dedup = RegulatoryDeduplicator(config=core_config)
+
+    db_conn = getattr(app.state, "db", None)
+    if db_conn is not None:
+        result = dedup.check_duplicate_in_db(db_conn, payload.text, content_sha256=payload.sha256)
+    else:
+        result = dedup.find_duplicate(payload.text, content_sha256=payload.sha256)
+
+    return DeduplicationCheckResponse(
+        is_duplicate=result.is_duplicate,
+        canonical_doc_id=result.canonical_doc_id,
+        similarity_score=result.similarity_score,
+        match_type=result.match_type,
+        detail=result.detail,
     )
