@@ -204,6 +204,7 @@
 | FEAT-067 | 99dbacd | PASS | Incremental deterministic chunk hashing (UUIDv5), ADR-0058, DOCSCOUT_CHUNK_NAMESPACE, pre-hashed SHA-1 prefix batch generation (throughput >= 400,000 IDs/sec), zero-churn circular re-ingestion, fail-closed span validation, CHUNKS_REUSED_TOTAL metric, tests/test_chunk_ids.py |
 | FEAT-068 | eac8aea | PASS | Bilingual Devanagari / Hindi normalization and parsing, ADR-0059, DevanagariNormalizer with canonical Unicode NFC, stacked combining mark preservation, bilingual column and section separation, clean_preserving_offsets integration, POST /v1/ingest/devanagari/normalize, throughput >= 1,000,000 chars/sec |
 | FEAT-069 | 2f3b952 | PASS | Automated regulatory metadata and notification id extraction, ADR-0060, migration 0050 (circular_no, issuing_department, subject, signoff_authority), RegulatoryMetadataExtractor with 100% precision on circular numbers & departments, p95 <= 0.69ms (budget <= 1.5ms), METADATA_FIELDS_EXTRACTED_TOTAL metric, POST /v1/ingest/metadata/extract |
+| FEAT-070 | b3d00f6 | PASS | Duplicate & reprint deduplication engine, ADR-0061, migration 0051 (canonical_document_id, text_sha256, minhash_signature), RegulatoryDeduplicator with exact content/text SHA-256 and 128-permutation MinHash LSH, >=99% precision & >=95% recall, query p95 <= 1.82ms (budget <= 2.0ms), DUPLICATE_DOCUMENTS_DETECTED_TOTAL metric, store_document() canonical linking, POST /v1/ingest/dedup/check |
 
 ---
 
