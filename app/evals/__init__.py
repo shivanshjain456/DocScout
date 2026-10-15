@@ -6,6 +6,13 @@ importing its conclusions -- it reuses the chunker (so citations resolve to real
 nothing else.
 """
 
+from app.evals.abstention import (
+    AbstentionGateConfig,
+    AbstentionGateResult,
+    AbstentionScore,
+    evaluate_abstention_gate,
+    evaluate_query_subset_abstention,
+)
 from app.evals.calibration import (
     CalibrationConfig,
     ECEReport,
@@ -40,6 +47,9 @@ from app.evals.faithfulness import (
 from app.evals.scorers import faithfulness_score
 
 __all__ = [
+    "AbstentionGateConfig",
+    "AbstentionGateResult",
+    "AbstentionScore",
     "CalibrationConfig",
     "CanaryAuditReport",
     "CanaryConfig",
@@ -59,6 +69,8 @@ __all__ = [
     "FaithfulnessEvaluator",
     "PredictionPair",
     "compute_ece",
+    "evaluate_abstention_gate",
+    "evaluate_query_subset_abstention",
     "faithfulness_score",
     "get_default_calibration_config",
     "get_default_canary_manager",

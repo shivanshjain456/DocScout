@@ -43,6 +43,7 @@ from pathlib import Path
 from typing import Any
 
 from app.evals import stats
+from app.evals.abstention import AbstentionGateConfig, evaluate_abstention_gate
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 REPORTS_DIR = REPO_ROOT / "evals" / "reports"
@@ -329,6 +330,53 @@ def check_regression(
     return findings, comparison
 
 
+def check_abstention_gate(
+    current: dict[str, Any],
+    config: AbstentionGateConfig | None = None,
+) -> list[Finding]:
+    """Check refusal precision and selective accuracy against FEAT-086 gates."""
+    findings: list[Finding] = []
+    abstention_data = current.get("abstention")
+    if not abstention_data:
+        return findings
+
+    cfg = config or AbstentionGateConfig()
+    result = evaluate_abstention_gate(abstention_data, cfg)
+
+    # Legacy baseline detection: if report is from historical run before FEAT-086
+    is_legacy = "abstention_gate" not in current and current.get("run_utc", "").startswith(
+        "2026-10-10"
+    )
+
+    if not result.gate_passed:
+        # If this is a historical report without calibrated selective abstention, log warning
+        severity = "warn" if is_legacy or result.details.get("legacy_baseline") else "fail"
+        findings.append(
+            Finding(
+                "abstention",
+                severity,
+                f"Abstention gate: selective accuracy {result.selective_accuracy:.4f} "
+                f"(min {cfg.min_selective_accuracy:.2f}), "
+                f"refusal precision {result.refusal_precision:.4f} "
+                f"(min {cfg.min_refusal_precision:.2f}), "
+                f"false rejection rate {result.false_rejection_rate:.4f} "
+                f"(max {cfg.max_false_rejection_rate:.2f})",
+                result.as_dict(),
+            )
+        )
+    else:
+        findings.append(
+            Finding(
+                "abstention",
+                "info",
+                f"Abstention gate passed: selective accuracy {result.selective_accuracy:.4f}, "
+                f"refusal precision {result.refusal_precision:.4f}",
+                result.as_dict(),
+            )
+        )
+    return findings
+
+
 def noise_floor(current: dict[str, Any], baselines: list[dict[str, Any]]) -> dict[str, Any]:
     """Half-width of the paired bootstrap CI for recall against the newest baseline.
 
@@ -409,6 +457,7 @@ def evaluate(current: dict[str, Any], baselines: list[dict[str, Any]]) -> GateRe
     findings = check_invariants(current, baselines)
     regression_findings, comparison = check_regression(current, baselines)
     findings.extend(regression_findings)
+    findings.extend(check_abstention_gate(current))
     noise = noise_floor(current, baselines)
 
     if noise.get("threshold_is_below_noise"):

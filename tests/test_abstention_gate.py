@@ -22,6 +22,14 @@ import pytest
 from app.api.metrics import ABSTENTION_EVENTS_TOTAL
 from app.api.models import Confidence as ModelConfidence
 from app.api.models import Passage
+from app.evals.abstention import (
+    AbstentionGateConfig,
+    AbstentionGateResult,
+    AbstentionScore,
+    evaluate_abstention_gate,
+    evaluate_query_subset_abstention,
+)
+from app.evals.gate import check_abstention_gate
 from app.retrieval.confidence import (
     ConfidenceConfig,
     assess,
@@ -302,3 +310,191 @@ def test_separation_auc_and_selective_accuracy_benchmarks() -> None:
     assert false_rejection_rate <= 0.02
     # Selective accuracy >= 0.980
     assert selective_accuracy >= 0.980
+
+
+# ============================================================================
+# FEAT-086: Refusal Precision & Selective Accuracy Gate Tests
+# ============================================================================
+
+
+def test_abstention_gate_config_validation() -> None:
+    """Verify default parameters and boundary validation in AbstentionGateConfig."""
+    cfg = AbstentionGateConfig()
+    assert cfg.min_selective_accuracy == 0.95
+    assert cfg.min_refusal_precision == 0.98
+    assert cfg.max_false_rejection_rate == 0.03
+
+    # Invalid min_selective_accuracy
+    with pytest.raises(ValueError, match="min_selective_accuracy must be in"):
+        AbstentionGateConfig(min_selective_accuracy=-0.1)
+    with pytest.raises(ValueError, match="min_selective_accuracy must be in"):
+        AbstentionGateConfig(min_selective_accuracy=1.1)
+
+    # Invalid min_refusal_precision
+    with pytest.raises(ValueError, match="min_refusal_precision must be in"):
+        AbstentionGateConfig(min_refusal_precision=-0.1)
+    with pytest.raises(ValueError, match="min_refusal_precision must be in"):
+        AbstentionGateConfig(min_refusal_precision=1.1)
+
+    # Invalid max_false_rejection_rate
+    with pytest.raises(ValueError, match="max_false_rejection_rate must be in"):
+        AbstentionGateConfig(max_false_rejection_rate=-0.1)
+    with pytest.raises(ValueError, match="max_false_rejection_rate must be in"):
+        AbstentionGateConfig(max_false_rejection_rate=1.1)
+
+
+def test_abstention_gate_result_schema_and_serialization() -> None:
+    """Verify AbstentionGateResult schema and serialization dictionary."""
+    res = AbstentionGateResult(
+        selective_accuracy=0.966,
+        refusal_precision=0.985,
+        false_rejection_rate=0.015,
+        gate_passed=True,
+        details={"evaluated": 425},
+    )
+    data = res.as_dict()
+    assert data["selective_accuracy"] == 0.966
+    assert data["refusal_precision"] == 0.985
+    assert data["false_rejection_rate"] == 0.015
+    assert data["gate_passed"] is True
+    assert data["details"]["evaluated"] == 425
+
+
+def test_evaluate_query_subset_abstention_passing_benchmark() -> None:
+    """Verify benchmark suite passes: selective accuracy >= 0.965, refusal precision >= 0.980."""
+    # Synthesize 365 answerable and 60 unanswerable evaluation items
+    items: list[dict[str, bool]] = []
+
+    # 60 unanswerable queries: 59 refused, 1 missed (correct refusal = 59)
+    for _ in range(59):
+        items.append({"is_unanswerable": True, "is_refused": True, "is_correct": False})
+    items.append({"is_unanswerable": True, "is_refused": False, "is_correct": False})
+
+    # 365 answerable queries: 1 false refusal, 355 correct answered, 9 incorrect answered
+    items.append({"is_unanswerable": False, "is_refused": True, "is_correct": False})
+    for _ in range(355):
+        items.append({"is_unanswerable": False, "is_refused": False, "is_correct": True})
+    for _ in range(9):
+        items.append({"is_unanswerable": False, "is_refused": False, "is_correct": False})
+
+    result = evaluate_query_subset_abstention(items)
+    # Refusal precision: 59 / (59 + 1) = 0.9833 >= 0.980
+    assert result.refusal_precision >= 0.980
+    # Selective accuracy: 355 / 364 = 0.9753 >= 0.965
+    assert result.selective_accuracy >= 0.965
+    # False rejection rate: 1 / 365 = 0.0027 <= 0.03
+    assert result.false_rejection_rate <= 0.03
+    assert result.gate_passed is True
+
+
+def test_evaluate_abstention_gate_fail_closed_thresholds() -> None:
+    """Verify gate fails closed if selective accuracy, refusal precision, or FRR are violated."""
+    cfg = AbstentionGateConfig(
+        min_selective_accuracy=0.95,
+        min_refusal_precision=0.98,
+        max_false_rejection_rate=0.03,
+    )
+
+    # 1. Low selective accuracy (e.g. 0.90) fails gate
+    low_acc = evaluate_abstention_gate(
+        {
+            "at_shipped_threshold": {
+                "selective_accuracy": 0.90,
+                "refusal_precision": 0.99,
+                "false_rejection_rate": 0.01,
+            }
+        },
+        cfg,
+    )
+    assert low_acc.gate_passed is False
+
+    # 2. Low refusal precision (e.g. 0.85) fails gate
+    low_prec = evaluate_abstention_gate(
+        {
+            "at_shipped_threshold": {
+                "selective_accuracy": 0.97,
+                "refusal_precision": 0.85,
+                "false_rejection_rate": 0.01,
+            }
+        },
+        cfg,
+    )
+    assert low_prec.gate_passed is False
+
+    # 3. High false rejection rate (e.g. 0.08) fails gate
+    high_frr = evaluate_abstention_gate(
+        {
+            "at_shipped_threshold": {
+                "selective_accuracy": 0.97,
+                "refusal_precision": 0.99,
+                "false_rejection_rate": 0.08,
+            }
+        },
+        cfg,
+    )
+    assert high_frr.gate_passed is False
+
+    # 4. Valid AbstentionScore object evaluation passes
+    score = AbstentionScore(
+        threshold=0.65,
+        answerable=365,
+        unanswerable=60,
+        correct_refusals=59,
+        false_refusals=1,
+    )
+    score_res = evaluate_abstention_gate(
+        score,
+        AbstentionGateConfig(min_selective_accuracy=0.95, min_refusal_precision=0.95),
+    )
+    assert score_res.gate_passed is True
+
+
+def test_check_abstention_gate_integration_with_gate_runner() -> None:
+    """Verify check_abstention_gate generates proper Finding records."""
+    # Test passed gate report
+    passed_report = {
+        "abstention": {
+            "at_shipped_threshold": {
+                "selective_accuracy": 0.97,
+                "refusal_precision": 0.99,
+                "false_rejection_rate": 0.01,
+            }
+        }
+    }
+    findings = check_abstention_gate(passed_report)
+    assert len(findings) == 1
+    assert findings[0].severity == "info"
+    assert "Abstention gate passed" in findings[0].message
+
+    # Test failed gate report with non-legacy status
+    failed_report = {
+        "abstention": {
+            "items": [],
+            "at_shipped_threshold": {
+                "selective_accuracy": 0.80,
+                "refusal_precision": 0.50,
+                "false_rejection_rate": 0.10,
+            },
+        }
+    }
+    findings_fail = check_abstention_gate(failed_report)
+    assert len(findings_fail) == 1
+    assert findings_fail[0].severity == "fail"
+
+
+def test_abstention_gate_execution_latency_performance() -> None:
+    """Verify gate evaluation executes in <= 100 ms."""
+    items = [
+        {
+            "is_unanswerable": i % 6 == 0,
+            "is_refused": i % 6 == 0,
+            "is_correct": i % 6 != 0,
+        }
+        for i in range(1000)
+    ]
+    start = time.perf_counter()
+    res = evaluate_query_subset_abstention(items)
+    elapsed_ms = (time.perf_counter() - start) * 1000.0
+
+    assert res.gate_passed is True
+    assert elapsed_ms <= 100.0
