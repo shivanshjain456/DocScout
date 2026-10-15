@@ -114,7 +114,7 @@
 - [x] FEAT-086: Refusal Precision & Selective Accuracy Gate
 - [x] FEAT-087: Counterfactual Robustness Testing Suite
 - [x] FEAT-088: Data Contamination & Lexical Leakage Stratifier
-- [ ] FEAT-089: Real-Time Hallucination Telemetry & Prometheus Alarms
+- [x] FEAT-089: Real-Time Hallucination Telemetry & Prometheus Alarms
 - [ ] FEAT-090: Automated LLM Judge Calibration with Cohen's Kappa
 
 ### Pillar 10: Enterprise Reliability, Security, Observability & Continuous Compliance
@@ -223,6 +223,7 @@
 | FEAT-086 | cac5813 | PASS | Refusal precision & selective accuracy gate, ADR-0077, AbstentionGateConfig, evaluate_abstention_gate, check_abstention_gate in CI, tests/test_abstention_gate.py |
 | FEAT-087 | d76ba16 | PASS | Counterfactual robustness testing suite, ADR-0078, CounterfactualGenerator with 50 canonical perturbations across 5 categories, CounterfactualEvaluator, 100% adherence & 0% parametric leakage, scripts/generate_counterfactuals.py CLI, make test-counterfactual, tests/test_counterfactual.py |
 | FEAT-088 | 2438737 | PASS | Data contamination & lexical leakage stratifier, ADR-0079, LeakageConfig, MetricSlice, LeakageStratificationReport, fast regex tokenizer in < 5ms for 425 items, check_leakage_gate in gate.py, goldset leakage CLI, tests/test_leakage_stratifier.py |
+| FEAT-089 | 6d5723f | PASS | Real-time hallucination telemetry & Prometheus alarms, ADR-0080, HallucinationTelemetryTracker (5-min rolling window, O(1) running totals, overhead < 0.02ms), docscout_claim_support_ratio gauge, docscout_unsupported_claim_alerts gauge (triggers < 0.98), docscout_unsupported_claim_alarm_events_total counter, POST /v1/telemetry/claims endpoint, tests/test_metrics.py |
 
 ---
 
