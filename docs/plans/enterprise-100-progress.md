@@ -101,7 +101,7 @@
 - [x] FEAT-075: Section-Aware Context Window Expansion
 - [x] FEAT-076: Cross-Lingual Semantic Regulatory Search
 - [x] FEAT-077: Confidence-Calibrated Selective Refusal (Abstention Gate)
-- [ ] FEAT-078: Sub-Sentence Evidence Highlighting & Span Pinpointing
+- [x] FEAT-078: Sub-Sentence Evidence Highlighting & Span Pinpointing
 - [ ] FEAT-079: Hard Negative Mining & Discriminative Indexing
 - [ ] FEAT-080: Multi-Tiered Semantic Caching with Invalidation Webhooks
 
@@ -212,6 +212,7 @@
 | FEAT-075 | ca02b08 | PASS | Section-aware context window expansion, ADR-0066, SectionExpander with adjacent preceding/following sibling clause pulling, strict section boundary protection via clause hierarchy, proviso operative rule context restoration, SiblingChunk & ExpandedPassage schemas, docscout_section_expansions_total and docscout_section_expansion_duration_seconds metrics, p95 latency <= 2.5ms (measured < 0.1ms), format_evidence_context integration, tests/test_section_expander.py |
 | FEAT-076 | 2540c91 | PASS | Cross-lingual semantic regulatory search, ADR-0067, MultilingualDenseStore adapter, CrossLingualProjector with Devanagari Unicode NFC normalization, shared 384-d unit-norm vector space, VectorStore Protocol conformance and registry integration, docscout_cross_lingual_queries_total metric, 25 paired bilingual regulatory queries benchmark (100% recall vs <=0.10 baseline), latency <= 18.0ms (measured < 5.0ms), tests/test_cross_lingual_retrieval.py |
 | FEAT-077 | 46b8282 | PASS | Confidence-calibrated selective refusal gate, ADR-0068, ConfidenceConfig (threshold 0.65, depth 5), assess & assess_passages, fail-closed conservative refusal, answer suppression in /v1/search, docscout_abstention_events_total & docscout_confidence_scores metrics, 100% precision on gold unanswerable canaries, latency p95 <= 0.20ms, tests/test_abstention_gate.py |
+| FEAT-078 | 88cfbc2 | PASS | Sub-sentence evidence highlighting & span pinpointing, ADR-0069, HighlightConfig (max 2 spans, min score 0.60), SpanPinpointer, QueryFeatures lru_cache, exact character slice text[start:end] == span.text, 100% precision on gold quotes (IoU >= 0.90), p95 latency <= 0.35ms (budget <= 2.0ms), docscout_spans_highlighted_total metric, tests/test_span_pinpoint.py |
 
 ---
 
