@@ -100,7 +100,7 @@
 - [x] FEAT-074: Arm-Anchored Fusion with Provenance Guarantees
 - [x] FEAT-075: Section-Aware Context Window Expansion
 - [x] FEAT-076: Cross-Lingual Semantic Regulatory Search
-- [ ] FEAT-077: Confidence-Calibrated Selective Refusal (Abstention Gate)
+- [x] FEAT-077: Confidence-Calibrated Selective Refusal (Abstention Gate)
 - [ ] FEAT-078: Sub-Sentence Evidence Highlighting & Span Pinpointing
 - [ ] FEAT-079: Hard Negative Mining & Discriminative Indexing
 - [ ] FEAT-080: Multi-Tiered Semantic Caching with Invalidation Webhooks
@@ -211,6 +211,7 @@
 | FEAT-074 | 4cf73c6 | PASS | Arm-anchored fusion with provenance guarantees, ADR-0065, exact circular ID 100% recall retention against dense semantic noise, post-reranking seat reservation at tail of top-k, is_arm_anchor and anchored_arm provenance metadata on Retrieved and Passage models, anchor_arm_leaders config sync, docscout_arm_leaders_anchored_total counter metric, sub-0.05ms execution latency (measured < 0.005ms), tests/test_arm_anchoring.py |
 | FEAT-075 | ca02b08 | PASS | Section-aware context window expansion, ADR-0066, SectionExpander with adjacent preceding/following sibling clause pulling, strict section boundary protection via clause hierarchy, proviso operative rule context restoration, SiblingChunk & ExpandedPassage schemas, docscout_section_expansions_total and docscout_section_expansion_duration_seconds metrics, p95 latency <= 2.5ms (measured < 0.1ms), format_evidence_context integration, tests/test_section_expander.py |
 | FEAT-076 | 2540c91 | PASS | Cross-lingual semantic regulatory search, ADR-0067, MultilingualDenseStore adapter, CrossLingualProjector with Devanagari Unicode NFC normalization, shared 384-d unit-norm vector space, VectorStore Protocol conformance and registry integration, docscout_cross_lingual_queries_total metric, 25 paired bilingual regulatory queries benchmark (100% recall vs <=0.10 baseline), latency <= 18.0ms (measured < 5.0ms), tests/test_cross_lingual_retrieval.py |
+| FEAT-077 | 46b8282 | PASS | Confidence-calibrated selective refusal gate, ADR-0068, ConfidenceConfig (threshold 0.65, depth 5), assess & assess_passages, fail-closed conservative refusal, answer suppression in /v1/search, docscout_abstention_events_total & docscout_confidence_scores metrics, 100% precision on gold unanswerable canaries, latency p95 <= 0.20ms, tests/test_abstention_gate.py |
 
 ---
 
