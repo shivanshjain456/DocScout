@@ -894,6 +894,7 @@ def search(
             clause_hierarchy=hit.clause_hierarchy,
             is_proviso=hit.is_proviso,
             expanded_text=hit.expanded_text,
+            highlights=hit.highlights,
         )
         for hit in hits
     ]

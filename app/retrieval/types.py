@@ -319,6 +319,7 @@ class Retrieved:
     clause_hierarchy: list[str] = field(default_factory=list)
     is_proviso: bool = False
     expanded_text: str | None = None
+    highlights: list[Any] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

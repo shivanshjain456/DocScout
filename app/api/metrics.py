@@ -888,6 +888,12 @@ CONFIDENCE_SCORES = Histogram(
     buckets=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.65, 0.7, 0.8, 0.85, 0.9, 1.0],
 )
 
+SPANS_HIGHLIGHTED_TOTAL = Counter(
+    "docscout_spans_highlighted_total",
+    "Total count of sub-sentence evidence spans highlighted (FEAT-078).",
+    ["source"],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

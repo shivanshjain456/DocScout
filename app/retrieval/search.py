@@ -620,6 +620,14 @@ class Retriever:
             except Exception as exc:
                 logger.warning("context_reorder_failed", error=str(exc))
 
+        # Decorate sub-sentence evidence highlights (FEAT-078)
+        try:
+            from app.retrieval.span_pinpoint import decorate_retrieved_highlights
+
+            results = decorate_retrieved_highlights(query, results)
+        except Exception as exc:
+            logger.warning("span_pinpoint_decoration_failed", error=str(exc))
+
         return results
 
 

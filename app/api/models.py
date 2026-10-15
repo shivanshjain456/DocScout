@@ -105,6 +105,15 @@ class SearchRequest(BaseModel):
         return v
 
 
+class HighlightSpan(BaseModel):
+    """Sub-sentence character span pinpointing key statutory evidence (FEAT-078)."""
+
+    start: int = Field(..., ge=0, description="Start character offset in passage text")
+    end: int = Field(..., ge=0, description="End character offset in passage text")
+    text: str = Field(..., description="Exact substring corresponding to text[start:end]")
+    score: float = Field(..., ge=0.0, le=1.0, description="Relevance score of sentence span")
+
+
 class Passage(BaseModel):
     """One retrieved chunk, with everything needed to verify it."""
 
@@ -132,6 +141,10 @@ class Passage(BaseModel):
     clause_hierarchy: list[str] = Field(default_factory=list)
     is_proviso: bool = False
     expanded_text: str | None = None
+    highlights: list[HighlightSpan] = Field(
+        default_factory=list,
+        description="Sub-sentence highlighted spans (FEAT-078)",
+    )
 
     @model_validator(mode="after")
     def _adapt_difficulty_window(self) -> Passage:

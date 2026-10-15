@@ -18,6 +18,12 @@ from app.retrieval.section_expander import (
     SiblingChunk,
     expand_section_context,
 )
+from app.retrieval.span_pinpoint import (
+    HighlightConfig,
+    SpanPinpointer,
+    decorate_retrieved_highlights,
+    pinpoint_highlights,
+)
 from app.retrieval.types import (
     DEFAULT_RRF_K,
     SERVING_CONFIG,
@@ -34,6 +40,7 @@ __all__ = [
     "CrossLingualProjector",
     "DEFAULT_RRF_K",
     "ExpandedPassage",
+    "HighlightConfig",
     "MultilingualDenseStore",
     "PackedContext",
     "RetrievalConfig",
@@ -42,8 +49,11 @@ __all__ = [
     "SERVING_CONFIG",
     "SectionExpander",
     "SiblingChunk",
+    "SpanPinpointer",
     "anchor_arm_leaders",
     "assess_passages",
+    "decorate_retrieved_highlights",
     "expand_section_context",
     "pack_context",
+    "pinpoint_highlights",
 ]

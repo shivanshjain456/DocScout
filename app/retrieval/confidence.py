@@ -199,7 +199,13 @@ def extract_terms(text: str) -> list[str]:
         if tok in COMMON_STOPWORDS or len(tok) <= 1:
             continue
         norm = tok
-        if norm.endswith("s") and len(norm) > 3 and not norm.endswith("ss"):
+        if norm.endswith("ing") and len(norm) > 5:
+            norm = norm[:-3]
+        elif norm.endswith("ed") and len(norm) > 4:
+            norm = norm[:-2]
+        elif norm.endswith("tion") and len(norm) > 6:
+            norm = norm[:-4]
+        elif norm.endswith("s") and len(norm) > 3 and not norm.endswith("ss"):
             norm = norm[:-1]
         terms.append(norm)
     return terms
