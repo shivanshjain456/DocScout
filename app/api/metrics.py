@@ -876,6 +876,18 @@ CROSS_LINGUAL_QUERIES_TOTAL = Counter(
     ["lang"],
 )
 
+ABSTENTION_EVENTS_TOTAL = Counter(
+    "docscout_abstention_events_total",
+    "Total abstention gate events by confidence level (FEAT-077).",
+    ["level"],
+)
+
+CONFIDENCE_SCORES = Histogram(
+    "docscout_confidence_scores",
+    "Distribution of evidence coverage confidence scores (FEAT-077).",
+    buckets=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.65, 0.7, 0.8, 0.85, 0.9, 1.0],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

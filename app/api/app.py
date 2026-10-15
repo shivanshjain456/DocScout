@@ -916,10 +916,19 @@ def search(
     generated_answer: GeneratedAnswer | None = None
     generation_ms = 0.0
     if payload.generate_answer:
-        gen_start = time.perf_counter()
-        generator = getattr(state, "generator", None) or get_generator()
-        generated_answer = generator.generate(payload.query, passages)
-        generation_ms = (time.perf_counter() - gen_start) * 1000.0
+        if confidence.is_refusal:
+            logger.info(
+                "search.abstention_gate_triggered",
+                query=payload.query,
+                score=confidence.score,
+                reason=confidence.refusal_reason,
+            )
+            generated_answer = None
+        else:
+            gen_start = time.perf_counter()
+            generator = getattr(state, "generator", None) or get_generator()
+            generated_answer = generator.generate(payload.query, passages)
+            generation_ms = (time.perf_counter() - gen_start) * 1000.0
 
     intent_classification: IntentClassification | None = None
     if payload.enable_intent_routing:

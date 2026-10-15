@@ -156,17 +156,51 @@ class Provenance(BaseModel):
 
 
 class Confidence(BaseModel):
-    """Whether the retrieved evidence actually covers the question.
+    """Whether the retrieved evidence actually covers the question (FEAT-077).
 
-    Reported, never acted on. The signal is real but weak -- it catches roughly a quarter
-    of unanswerable questions and mislabels about 3% of answerable ones -- so withholding
-    results on it would trade a known failure for a worse one. The caller decides.
+    Evaluates evidence density and triggers selective refusal when confidence falls
+    below the calibrated threshold (0.65). "Every answer cites its source or it refuses to answer."
     """
 
-    evidence_coverage: float
-    missing_terms: list[str]
-    low_evidence: bool
-    passages_considered: int
+    score: float = 0.0
+    level: Literal["HIGH", "MEDIUM", "LOW"] = "HIGH"
+    is_refusal: bool = False
+    refusal_reason: str | None = None
+    evidence_coverage: float = 0.0
+    missing_terms: list[str] = Field(default_factory=list)
+    low_evidence: bool = False
+    passages_considered: int = 5
+
+    @model_validator(mode="before")
+    @classmethod
+    def sync_confidence_fields(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            # Sync score <-> evidence_coverage
+            if "score" not in data and "evidence_coverage" in data:
+                data["score"] = data["evidence_coverage"]
+            elif "evidence_coverage" not in data and "score" in data:
+                data["evidence_coverage"] = data["score"]
+            # Sync is_refusal <-> low_evidence
+            if "is_refusal" not in data and "low_evidence" in data:
+                data["is_refusal"] = data["low_evidence"]
+            elif "low_evidence" not in data and "is_refusal" in data:
+                data["low_evidence"] = data["is_refusal"]
+            # Derive level if missing
+            if "level" not in data:
+                score = data.get("score", 0.0)
+                if score >= 0.85:
+                    data["level"] = "HIGH"
+                elif score >= 0.65:
+                    data["level"] = "MEDIUM"
+                else:
+                    data["level"] = "LOW"
+            if data.get("is_refusal") and "refusal_reason" not in data:
+                missing = data.get("missing_terms", [])
+                missing_str = f" Missing terms: {', '.join(missing[:3])}" if missing else ""
+                data["refusal_reason"] = (
+                    f"Insufficient regulatory evidence in corpus (coverage {data.get('score', 0.0):.2f} < 0.65).{missing_str}"
+                )
+        return data
 
 
 class Timings(BaseModel):

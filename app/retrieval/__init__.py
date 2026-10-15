@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from app.retrieval.confidence import (
+    ConfidenceConfig,
+    assess_passages,
+)
 from app.retrieval.context_packer import ContextPacker, pack_context
 from app.retrieval.multilingual_dense import (
     CrossLingualProjector,
@@ -24,6 +28,7 @@ from app.retrieval.types import (
 )
 
 __all__ = [
+    "ConfidenceConfig",
     "ContextPacker",
     "ContextPackerConfig",
     "CrossLingualProjector",
@@ -38,6 +43,7 @@ __all__ = [
     "SectionExpander",
     "SiblingChunk",
     "anchor_arm_leaders",
+    "assess_passages",
     "expand_section_context",
     "pack_context",
 ]
