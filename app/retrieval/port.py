@@ -8,7 +8,7 @@ engines, or test doubles can be plugged in without modifying retrieval, fusion, 
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
 import numpy as np
@@ -33,6 +33,8 @@ class ChunkRow:
     published_date: str | None = None
     document_class: str | None = None
     authority_tier: int | None = None
+    clause_hierarchy: list[str] = field(default_factory=list)
+    is_proviso: bool = False
 
 
 @runtime_checkable
@@ -89,7 +91,8 @@ class PgVectorStore:
             SELECT c.chunk_id::text, c.document_id::text, d.source, c.text,
                    d.canonical_url, c.char_start, c.char_end,
                    d.title, d.published_date::text,
-                   d.document_class, d.authority_tier
+                   d.document_class, d.authority_tier,
+                   c.clause_hierarchy, c.is_proviso
             FROM chunks AS c
             JOIN documents AS d ON d.document_id = c.document_id
             JOIN document_versions AS v ON v.version_id = c.version_id
@@ -110,6 +113,8 @@ class PgVectorStore:
             pub_date,
             doc_cls,
             auth_tier,
+            c_hier,
+            c_proviso,
         ) in rows:
             result[as_str(chunk_id)] = ChunkRow(
                 document_id=as_str(document_id),
@@ -122,6 +127,10 @@ class PgVectorStore:
                 published_date=as_str(pub_date) if pub_date is not None else None,
                 document_class=as_str(doc_cls) if doc_cls is not None else None,
                 authority_tier=as_int(auth_tier) if auth_tier is not None else None,
+                clause_hierarchy=[as_str(h) for h in c_hier]
+                if isinstance(c_hier, (list, tuple))
+                else [],
+                is_proviso=bool(c_proviso) if c_proviso is not None else False,
             )
         return result
 

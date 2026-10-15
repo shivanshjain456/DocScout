@@ -858,6 +858,18 @@ ARM_LEADERS_ANCHORED_TOTAL = Counter(
     ["arm_name"],
 )
 
+SECTION_EXPANSIONS_TOTAL = Counter(
+    "docscout_section_expansions_total",
+    "Total section-aware context window expansions performed (FEAT-075).",
+    ["status"],
+)
+
+SECTION_EXPANSION_DURATION_SECONDS = Histogram(
+    "docscout_section_expansion_duration_seconds",
+    "Duration of section-aware context window expansion in seconds (FEAT-075).",
+    buckets=[0.0005, 0.001, 0.002, 0.0025, 0.005, 0.01, 0.025],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

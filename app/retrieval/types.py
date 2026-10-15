@@ -316,6 +316,9 @@ class Retrieved:
     presentation_rank: int | None = None
     is_arm_anchor: bool = False
     anchored_arm: str | None = None
+    clause_hierarchy: list[str] = field(default_factory=list)
+    is_proviso: bool = False
+    expanded_text: str | None = None
 
 
 @dataclass(frozen=True)
@@ -374,8 +377,14 @@ class RetrievalConfig:
     authority_multipliers: dict[str, float] | None = None
     enable_lost_in_middle_reordering: bool = False
     anchor_arm_leaders: bool | None = None
+    expand_section_context: bool = True
+    max_sibling_clauses: int = 2
 
     def __post_init__(self) -> None:
+        if not (1 <= self.max_sibling_clauses <= 4):
+            raise ValueError(
+                f"max_sibling_clauses must be in [1, 4], got {self.max_sibling_clauses}"
+            )
         if self.anchor_arm_leaders is None:
             object.__setattr__(self, "anchor_arm_leaders", self.anchor_arm_top1)
         elif self.anchor_arm_top1 != self.anchor_arm_leaders:
@@ -451,6 +460,8 @@ class RetrievalConfig:
             "enable_authority_hierarchy": self.enable_authority_hierarchy,
             "enable_lost_in_middle_reordering": self.enable_lost_in_middle_reordering,
             "anchor_arm_leaders": self.anchor_arm_leaders,
+            "expand_section_context": self.expand_section_context,
+            "max_sibling_clauses": self.max_sibling_clauses,
         }
 
 

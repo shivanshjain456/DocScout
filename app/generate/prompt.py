@@ -51,8 +51,9 @@ def format_evidence_context(
         pres_attr = (
             f' presentation_rank="{p.presentation_rank}"' if p.presentation_rank is not None else ""
         )
+        content_text = getattr(p, "expanded_text", None) or p.text
         # Sanitize any closing tag attempts within the chunk text to prevent delimiter breakout
-        safe_text = p.text.replace("</retrieved_evidence>", "[ESCAPED_CLOSING_TAG]").replace(
+        safe_text = content_text.replace("</retrieved_evidence>", "[ESCAPED_CLOSING_TAG]").replace(
             "</document_chunk>", "[ESCAPED_CHUNK_TAG]"
         )
         chunks_xml.append(

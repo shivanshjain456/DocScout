@@ -572,8 +572,35 @@ class Retriever:
                     document_class=doc_cls_val,
                     is_arm_anchor=chunk_id in anchored_provenance,
                     anchored_arm=anchored_provenance.get(chunk_id),
+                    clause_hierarchy=row.clause_hierarchy if row else [],
+                    is_proviso=row.is_proviso if row else False,
                 )
             )
+
+        if getattr(config, "expand_section_context", False) and self._conn is not None and results:
+            try:
+                import dataclasses
+
+                from app.retrieval.section_expander import SectionExpander
+
+                expander = SectionExpander(self._conn)
+                top_cand = results[0]
+                expanded_env = expander.expand(
+                    top_cand.chunk_id,
+                    max_sibling_clauses=getattr(config, "max_sibling_clauses", 2),
+                )
+                if expanded_env.sibling_chunks:
+                    results[0] = dataclasses.replace(
+                        top_cand, expanded_text=expanded_env.expanded_text
+                    )
+                    logger.info(
+                        "section_expansion_applied",
+                        core_chunk_id=top_cand.chunk_id,
+                        siblings_count=len(expanded_env.sibling_chunks),
+                        total_chars=expanded_env.total_chars,
+                    )
+            except Exception as exc:
+                logger.warning("section_expansion_in_retrieval_failed", error=str(exc))
 
         if getattr(config, "enable_lost_in_middle_reordering", False):
             try:

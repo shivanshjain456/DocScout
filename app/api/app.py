@@ -891,6 +891,9 @@ def search(
             presentation_rank=hit.presentation_rank,
             is_arm_anchor=hit.is_arm_anchor,
             anchored_arm=hit.anchored_arm,
+            clause_hierarchy=hit.clause_hierarchy,
+            is_proviso=hit.is_proviso,
+            expanded_text=hit.expanded_text,
         )
         for hit in hits
     ]

@@ -129,6 +129,9 @@ class Passage(BaseModel):
     presentation_rank: int | None = None
     is_arm_anchor: bool = False
     anchored_arm: str | None = None
+    clause_hierarchy: list[str] = Field(default_factory=list)
+    is_proviso: bool = False
+    expanded_text: str | None = None
 
     @model_validator(mode="after")
     def _adapt_difficulty_window(self) -> Passage:

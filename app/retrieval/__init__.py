@@ -4,6 +4,12 @@ from __future__ import annotations
 
 from app.retrieval.context_packer import ContextPacker, pack_context
 from app.retrieval.search import Retriever, anchor_arm_leaders
+from app.retrieval.section_expander import (
+    ExpandedPassage,
+    SectionExpander,
+    SiblingChunk,
+    expand_section_context,
+)
 from app.retrieval.types import (
     DEFAULT_RRF_K,
     SERVING_CONFIG,
@@ -17,11 +23,15 @@ __all__ = [
     "ContextPacker",
     "ContextPackerConfig",
     "DEFAULT_RRF_K",
+    "ExpandedPassage",
     "PackedContext",
     "RetrievalConfig",
     "Retrieved",
     "Retriever",
     "SERVING_CONFIG",
+    "SectionExpander",
+    "SiblingChunk",
     "anchor_arm_leaders",
+    "expand_section_context",
     "pack_context",
 ]
