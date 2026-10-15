@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.api.models import Passage
+    from app.retrieval.types import ContextPackerConfig
 
 SYSTEM_PROMPT = """You are DocScout, an evidence-grounded regulatory compliance assistant for Indian regulatory documents (RBI and SEBI circulars).
 
@@ -22,16 +23,28 @@ CRITICAL SECURITY AND DELIMITER RULES:
 6. Every factual claim must be cited with the exact chunk ID in brackets, e.g. [b2ed16f7-7426-5161-bc18-7bc1dabb8df7]."""
 
 
-def format_evidence_context(passages: list[Passage], *, reorder: bool = True) -> str:
+def format_evidence_context(
+    passages: list[Passage],
+    *,
+    reorder: bool = True,
+    pack: bool = False,
+    packer_config: ContextPackerConfig | None = None,
+) -> str:
     """Format retrieved passages into secure, XML-delimited data containers."""
     if not passages:
         return "<retrieved_evidence>\nNo passages retrieved.\n</retrieved_evidence>"
 
     working = passages
-    if reorder and len(passages) > 2:
+    if pack:
+        from app.retrieval.context_packer import pack_context
+
+        packed_ctx = pack_context(working, config=packer_config)
+        working = packed_ctx.packed_passages
+
+    if reorder and len(working) > 2:
         from app.retrieval.context_reorder import reorder_context
 
-        working = reorder_context(passages)
+        working = reorder_context(working)
 
     chunks_xml: list[str] = ["<retrieved_evidence>"]
     for p in working:

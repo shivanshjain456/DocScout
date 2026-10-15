@@ -146,9 +146,12 @@ def test_reordering_execution_latency_under_50_microseconds() -> None:
     for _ in range(50):
         reorder_context(passages)
 
+    import gc
+
+    gc.collect()
     iterations = 500
     trials: list[float] = []
-    for _ in range(3):
+    for _ in range(5):
         t0 = time.perf_counter()
         for _ in range(iterations):
             reorder_context(passages)

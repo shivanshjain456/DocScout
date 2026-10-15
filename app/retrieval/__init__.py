@@ -2,18 +2,25 @@
 
 from __future__ import annotations
 
+from app.retrieval.context_packer import ContextPacker, pack_context
 from app.retrieval.search import Retriever
 from app.retrieval.types import (
     DEFAULT_RRF_K,
     SERVING_CONFIG,
+    ContextPackerConfig,
+    PackedContext,
     RetrievalConfig,
     Retrieved,
 )
 
 __all__ = [
+    "ContextPacker",
+    "ContextPackerConfig",
     "DEFAULT_RRF_K",
-    "SERVING_CONFIG",
+    "PackedContext",
     "RetrievalConfig",
     "Retrieved",
     "Retriever",
+    "SERVING_CONFIG",
+    "pack_context",
 ]

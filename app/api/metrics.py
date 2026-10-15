@@ -841,6 +841,17 @@ RERANK_CIRCUIT_BREAKER_TRIPS_TOTAL = Counter(
     "Total times the cross-encoder rerank circuit breaker tripped due to timeout or error (FEAT-071).",
 )
 
+CONTEXT_TOKEN_UTILIZATION_RATIO = Gauge(
+    "docscout_context_token_utilization_ratio",
+    "Ratio of packed context tokens to maximum budget ceiling (FEAT-073).",
+)
+
+CONTEXT_PACKS_COMPLETED_TOTAL = Counter(
+    "docscout_context_packs_completed_total",
+    "Total context packing runs completed (FEAT-073).",
+    ["status"],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

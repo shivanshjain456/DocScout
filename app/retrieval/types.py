@@ -257,6 +257,34 @@ class MetadataFilter(BaseModel):
 
 
 @dataclass(frozen=True)
+class PackedContext:
+    """Dynamically packed context fitting a specified token budget (FEAT-073)."""
+
+    packed_passages: list[Any]
+    total_tokens: int
+    utilization_ratio: float
+    truncated_boundary_chunk: bool
+
+
+@dataclass(frozen=True)
+class ContextPackerConfig:
+    """Configuration for token-budget dynamic context packing (FEAT-073)."""
+
+    max_tokens: int = 2048
+    target_utilization: float = 0.95
+    sentence_boundary_trim: bool = True
+    min_sentence_chars: int = 20
+
+    def __post_init__(self) -> None:
+        if self.max_tokens < 256:
+            raise ValueError(f"max_tokens must be >= 256, got {self.max_tokens}")
+        if not (0.5 <= self.target_utilization <= 1.0):
+            raise ValueError(
+                f"target_utilization must be in [0.5, 1.0], got {self.target_utilization}"
+            )
+
+
+@dataclass(frozen=True)
 class Retrieved:
     """One chunk returned by a retriever, with the provenance needed to explain its rank."""
 
