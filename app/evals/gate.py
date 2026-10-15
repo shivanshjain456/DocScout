@@ -377,6 +377,82 @@ def check_abstention_gate(
     return findings
 
 
+def check_leakage_gate(
+    current: dict[str, Any],
+    baselines: list[dict[str, Any]],
+    min_low_leakage_recall: float = 0.900,
+) -> list[Finding]:
+    """Check low-leakage recall meets threshold and does not regress > 1pp (FEAT-088)."""
+    findings: list[Finding] = []
+
+    # Extract current low-leakage recall
+    current_low: float | None = None
+    if "leakage_stratification" in current and current["leakage_stratification"]:
+        current_low = float(
+            current["leakage_stratification"].get("low_leakage", {}).get("recall", 0.0)
+        )
+    elif "by_lexical_overlap_recall" in current:
+        by_overlap = current["by_lexical_overlap_recall"]
+        serving_data = by_overlap.get("low <0.5", {}).get(SERVING_CONFIG, {})
+        if "recall" in serving_data:
+            current_low = float(serving_data["recall"])
+
+    if current_low is None:
+        return findings
+
+    # Compare against baselines for regression > 1pp
+    baseline_lows: list[float] = []
+    for b in baselines:
+        b_low: float | None = None
+        if "leakage_stratification" in b and b["leakage_stratification"]:
+            b_low = float(b["leakage_stratification"].get("low_leakage", {}).get("recall", 0.0))
+        elif "by_lexical_overlap_recall" in b:
+            b_overlap = b["by_lexical_overlap_recall"]
+            b_serving = b_overlap.get("low <0.5", {}).get(SERVING_CONFIG, {})
+            if "recall" in b_serving:
+                b_low = float(b_serving["recall"])
+        if b_low is not None:
+            baseline_lows.append(b_low)
+
+    if baseline_lows:
+        avg_base = statistics.fmean(baseline_lows)
+        delta = round(current_low - avg_base, _DELTA_PRECISION)
+        if delta < -THRESHOLD:
+            findings.append(
+                Finding(
+                    "leakage",
+                    "fail",
+                    f"Low-leakage recall fell {abs(delta) * 100:.2f}pp against baseline "
+                    f"({current_low:.4f} vs {avg_base:.4f}); threshold is {THRESHOLD * 100:.0f}pp",
+                    {"current": current_low, "baseline": avg_base, "delta": delta},
+                )
+            )
+
+    # Threshold check: target >= 0.900
+    is_legacy = current.get("run_utc", "").startswith("2026-10-10")
+    if current_low < min_low_leakage_recall:
+        severity = "warn" if is_legacy else "fail"
+        findings.append(
+            Finding(
+                "leakage",
+                severity,
+                f"Low-leakage Recall@5 is {current_low:.4f} (target >= {min_low_leakage_recall:.3f})",
+                {"current": current_low, "target": min_low_leakage_recall},
+            )
+        )
+    else:
+        findings.append(
+            Finding(
+                "leakage",
+                "info",
+                f"Low-leakage Recall@5 verified >= {min_low_leakage_recall:.3f} ({current_low:.4f})",
+                {"current": current_low, "target": min_low_leakage_recall},
+            )
+        )
+
+    return findings
+
+
 def noise_floor(current: dict[str, Any], baselines: list[dict[str, Any]]) -> dict[str, Any]:
     """Half-width of the paired bootstrap CI for recall against the newest baseline.
 
@@ -458,6 +534,7 @@ def evaluate(current: dict[str, Any], baselines: list[dict[str, Any]]) -> GateRe
     regression_findings, comparison = check_regression(current, baselines)
     findings.extend(regression_findings)
     findings.extend(check_abstention_gate(current))
+    findings.extend(check_leakage_gate(current, baselines))
     noise = noise_floor(current, baselines)
 
     if noise.get("threshold_is_below_noise"):

@@ -54,6 +54,14 @@ from app.evals.faithfulness import (
     FaithfulnessEvaluator,
     get_default_faithfulness_evaluator,
 )
+from app.evals.leakage import (
+    LeakageConfig,
+    LeakageStratificationReport,
+    MetricSlice,
+    build_stratification_report,
+    compute_quote_lexical_overlap,
+    stratify_goldset_items,
+)
 from app.evals.scorers import faithfulness_score
 
 __all__ = [
@@ -83,9 +91,14 @@ __all__ = [
     "FaithfulnessConfig",
     "FaithfulnessEvaluation",
     "FaithfulnessEvaluator",
+    "LeakageConfig",
+    "LeakageStratificationReport",
+    "MetricSlice",
     "PerturbationRule",
     "PredictionPair",
+    "build_stratification_report",
     "compute_ece",
+    "compute_quote_lexical_overlap",
     "evaluate_abstention_gate",
     "evaluate_query_subset_abstention",
     "faithfulness_score",
@@ -94,4 +107,5 @@ __all__ = [
     "get_default_citation_validator",
     "get_default_counterfactual_evaluator",
     "get_default_faithfulness_evaluator",
+    "stratify_goldset_items",
 ]

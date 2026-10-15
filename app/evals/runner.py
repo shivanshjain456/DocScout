@@ -39,6 +39,7 @@ from app.evals.goldset import (
     load_goldset,
     resolve_groups,
 )
+from app.evals.leakage import build_stratification_report
 from app.ingest.chunk import CHUNK_OVERLAP, CHUNK_SIZE, MAX_TOKENS
 from app.ingest.embed import EMBEDDING_DIM, MODEL_ID, QUERY_PREFIX, Embedder
 from app.retrieval import SERVING_CONFIG, RetrievalConfig, Retriever
@@ -440,6 +441,20 @@ def write_report(
     run_utc = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     items_scored = runs[0].by_cutoff[CUTOFFS[0]].n if runs else 0
 
+    serving_run = next(
+        (r for r in runs if r.config.name == SERVING_CONFIG.name),
+        runs[0] if runs else None,
+    )
+    leakage_stratification = (
+        build_stratification_report(
+            serving_run.item_rows,
+            config_name=serving_run.config.name,
+            cutoff=AB_CUTOFF,
+        ).as_dict()
+        if serving_run and serving_run.item_rows
+        else None
+    )
+
     results = {
         "schema": "docscout.eval.retrieval/1",
         "run_utc": run_utc,
@@ -453,6 +468,7 @@ def write_report(
         "calibration": calibration_report,
         "comparisons": comparisons,
         "by_lexical_overlap_recall": bands,
+        "leakage_stratification": leakage_stratification,
         "configs": [
             {
                 "config": run.config.as_dict(),

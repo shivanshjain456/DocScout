@@ -502,7 +502,7 @@ def summarise(items: list[dict[str, Any]]) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.evals.goldset")
-    parser.add_argument("command", choices=["pin", "lint", "stats", "review"])
+    parser.add_argument("command", choices=["pin", "lint", "stats", "review", "leakage"])
     parser.add_argument("--path", type=Path, default=DEFAULT_GOLDSET)
     parser.add_argument(
         "--no-resolve",
@@ -512,6 +512,28 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     items = load_goldset(args.path)
+
+    if args.command == "leakage":
+        from app.evals.leakage import LeakageConfig, stratify_goldset_items
+
+        cfg = LeakageConfig()
+        stratified = stratify_goldset_items(items, cfg)
+        answerable = [i for i in items if not is_unanswerable(i)]
+        n_ans = len(answerable)
+        print(f"Lexical Leakage Stratification across {n_ans} answerable items:")
+        print(
+            f"  Low (< {cfg.low_threshold:.2f}):    {len(stratified['low']):3d} items "
+            f"({len(stratified['low']) / max(n_ans, 1):.1%})"
+        )
+        print(
+            f"  Medium ({cfg.low_threshold:.2f}-{cfg.high_threshold:.2f}): {len(stratified['medium']):3d} items "
+            f"({len(stratified['medium']) / max(n_ans, 1):.1%})"
+        )
+        print(
+            f"  High (>= {cfg.high_threshold:.2f}):  {len(stratified['high']):3d} items "
+            f"({len(stratified['high']) / max(n_ans, 1):.1%})"
+        )
+        return 0
 
     if args.command == "stats":
         print(summarise(items))
