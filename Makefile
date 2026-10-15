@@ -7,7 +7,7 @@ TS := $(shell date -u +%Y%m%dT%H%M%SZ)
 	mutation mutation-clean audit-deps \
 	serve bench \
         migrate migrate-status migrate-down ingest ingest-dry ingest-status ingest-verify \
-        refresh refresh-check
+        refresh refresh-check mine-negatives
 
 help:  ## show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-14s\033[0m %s\n",$$1,$$2}'
@@ -86,6 +86,9 @@ serve:  ## run the API on :8000 (loads the model once at startup)
 
 bench:  ## measure e2e latency, cache effect and cost per 1k against a running API
 	uv run python scripts/bench_api.py --n 200 --concurrency 4
+
+mine-negatives:  ## mine hard negative triplets for discriminative indexing (FEAT-079)
+	uv run python scripts/mine_hard_negatives.py --evaluate
 
 audit-deps:  ## scan locked dependencies for advisories + regenerate the SBOM
 	uv run python scripts/audit_dependencies.py

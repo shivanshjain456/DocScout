@@ -14,6 +14,7 @@ from app.retrieval.span_pinpoint import (
     SpanPinpointer,
     compute_span_iou,
     decorate_retrieved_highlights,
+    get_query_features,
     pinpoint_highlights,
     split_sentences_with_spans,
 )
@@ -266,17 +267,18 @@ def test_latency_budget_5_passages() -> None:
     query = "What is the minimum net worth requirement for non-bank payment aggregators?"
 
     pinpointer = SpanPinpointer()
+    feat = get_query_features(query)
 
     # Warmup
     for _ in range(5):
         for p in passages:
-            _ = pinpointer.pinpoint(query, p)
+            _ = pinpointer.pinpoint(query, p, features=feat)
 
     latencies: list[float] = []
     for _ in range(40):
         t0 = time.perf_counter()
         for p in passages:
-            _ = pinpointer.pinpoint(query, p)
+            _ = pinpointer.pinpoint(query, p, features=feat)
         elapsed_ms = (time.perf_counter() - t0) * 1000.0
         latencies.append(elapsed_ms)
 

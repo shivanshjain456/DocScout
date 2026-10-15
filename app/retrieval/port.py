@@ -63,8 +63,13 @@ class VectorStore(Protocol):
 class PgVectorStore:
     """Production vector store adapter targeting PostgreSQL with pgvector extension."""
 
-    def __init__(self, conn: psycopg.Connection[tuple[object, ...]]) -> None:
+    def __init__(
+        self,
+        conn: psycopg.Connection[tuple[object, ...]],
+        calibrator: dense.DiscriminativeCalibrator | None = None,
+    ) -> None:
         self._conn = conn
+        self._calibrator = calibrator
 
     def search(
         self,
@@ -73,7 +78,14 @@ class PgVectorStore:
         filter: MetadataFilter | None = None,
         query_text: str | None = None,
     ) -> list[tuple[str, float]]:
-        return dense.search(self._conn, query_vector, k, filter=filter)
+        return dense.search(
+            self._conn,
+            query_vector,
+            k,
+            filter=filter,
+            query_text=query_text,
+            calibrator=self._calibrator,
+        )
 
     def fetch_metadata(
         self,

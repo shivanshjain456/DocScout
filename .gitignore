@@ -41,6 +41,8 @@ evals/experiments/*
 !evals/experiments/u10-rerank-20261002T062322Z/
 evals/bench/*
 !evals/bench/20261002T054058Z/
+!evals/bench/hard_negatives_report.json
+!evals/bench/hard_negatives_triplets.json
 !evals/reports/20261001T192924Z/
 !evals/reports/20261001T204628Z/
 !evals/reports/20261002T124408Z/

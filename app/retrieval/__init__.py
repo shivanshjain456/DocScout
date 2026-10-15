@@ -7,6 +7,14 @@ from app.retrieval.confidence import (
     assess_passages,
 )
 from app.retrieval.context_packer import ContextPacker, pack_context
+from app.retrieval.dense import (
+    DiscriminativeCalibrator,
+    DiscriminativeConfig,
+    DiscriminativeProjector,
+    HardNegativeDataset,
+    NegativeMiningConfig,
+    get_default_calibrator,
+)
 from app.retrieval.multilingual_dense import (
     CrossLingualProjector,
     MultilingualDenseStore,
@@ -39,9 +47,14 @@ __all__ = [
     "ContextPackerConfig",
     "CrossLingualProjector",
     "DEFAULT_RRF_K",
+    "DiscriminativeCalibrator",
+    "DiscriminativeConfig",
+    "DiscriminativeProjector",
     "ExpandedPassage",
+    "HardNegativeDataset",
     "HighlightConfig",
     "MultilingualDenseStore",
+    "NegativeMiningConfig",
     "PackedContext",
     "RetrievalConfig",
     "Retrieved",
@@ -54,6 +67,7 @@ __all__ = [
     "assess_passages",
     "decorate_retrieved_highlights",
     "expand_section_context",
+    "get_default_calibrator",
     "pack_context",
     "pinpoint_highlights",
 ]
