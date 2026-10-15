@@ -429,6 +429,7 @@ class FaithfulnessEvaluator:
         is_faithful = final_score >= self.config.min_score_threshold
 
         metrics.MEAN_ANSWER_FAITHFULNESS_SCORE.set(final_score)
+        metrics.record_claim_telemetry(supported_count, total_claims)
         if not is_faithful:
             metrics.UNFAITHFUL_ANSWERS_REJECTED_TOTAL.inc()
             logger.info(

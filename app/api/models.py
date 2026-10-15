@@ -2789,3 +2789,25 @@ class DeduplicationCheckResponse(BaseModel):
         default="",
         description="Diagnostic explanation of the deduplication decision.",
     )
+
+
+# --- Real-Time Hallucination Telemetry & Prometheus Alarms (FEAT-089) ---
+
+
+class ClaimTelemetryRequest(BaseModel):
+    supported_claims: int = Field(ge=0, description="Count of supported factual claims")
+    total_claims: int = Field(ge=0, description="Total count of claims evaluated")
+    source: str = Field(default="serving", description="Source pipeline of evaluation")
+
+
+class ClaimTelemetryResponse(BaseModel):
+    recorded: bool = Field(description="Whether the claim telemetry was successfully recorded")
+    current_claim_support_ratio: float = Field(
+        ge=0.0, le=1.0, description="Current rolling claim support ratio"
+    )
+    is_alert_active: bool = Field(
+        description="Whether the unsupported claims alarm is currently firing"
+    )
+    alarm_threshold: float = Field(
+        description="Configured alarm threshold below which alarms trigger"
+    )

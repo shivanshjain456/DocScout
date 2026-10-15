@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+from dataclasses import dataclass
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -278,3 +279,32 @@ def docscout_unsubscribe_secret() -> str:
     # Fallback to key derived from database password or API key to preserve stability across restarts
     raw = os.environ.get("DOCSCOUT_API_KEY", "docscout-default-secret")
     return hashlib.sha256(f"unsubscribe:{raw}".encode()).hexdigest()
+
+
+# --- Real-Time Telemetry & Prometheus Alarms (FEAT-089) ---
+
+
+@dataclass(frozen=True)
+class MetricsConfig:
+    """Configuration for Prometheus telemetry and AI assurance alarms (FEAT-089)."""
+
+    enable_ai_assurance_metrics: bool = True
+    hallucination_alarm_threshold: float = 0.98
+    hallucination_alarm_window_seconds: float = 300.0  # 5 minutes
+    alert_channel: str = "sre-pagerduty"
+
+
+def metrics_config() -> MetricsConfig:
+    """Return runtime MetricsConfig parsed from environment variables."""
+    load_dotenv()
+    enable_raw = os.environ.get("DOCSCOUT_ENABLE_AI_ASSURANCE_METRICS", "").strip().lower()
+    enable = enable_raw not in {"0", "false", "no", "off"}
+    thresh_raw = os.environ.get("DOCSCOUT_HALLUCINATION_ALARM_THRESHOLD", "").strip()
+    try:
+        threshold = float(thresh_raw) if thresh_raw else 0.98
+    except ValueError:
+        threshold = 0.98
+    return MetricsConfig(
+        enable_ai_assurance_metrics=enable,
+        hallucination_alarm_threshold=threshold,
+    )

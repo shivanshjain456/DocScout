@@ -92,6 +92,8 @@ from app.api.models import (
     ChunkingRequest,
     ChunkingResponse,
     CircularClauseModel,
+    ClaimTelemetryRequest,
+    ClaimTelemetryResponse,
     ClassifyScopeRequest,
     ClassifyScopeResponse,
     CompareClausePairRequest,
@@ -7047,4 +7049,37 @@ async def check_deduplication_endpoint(
         similarity_score=result.similarity_score,
         match_type=result.match_type,
         detail=result.detail,
+    )
+
+
+@app.post(
+    "/v1/telemetry/claims",
+    response_model=ClaimTelemetryResponse,
+    tags=["ops"],
+    summary="Record operational claim evaluation outcomes into Prometheus telemetry (FEAT-089)",
+    responses={
+        401: {"description": "missing or invalid API key"},
+        422: {"description": "validation error"},
+    },
+)
+async def record_claim_telemetry_endpoint(
+    payload: ClaimTelemetryRequest,
+    fingerprint: str = Depends(require_api_key),
+) -> ClaimTelemetryResponse:
+    """Record operational claim evaluation outcomes into Prometheus telemetry (FEAT-089)."""
+    if payload.supported_claims > payload.total_claims:
+        raise HTTPException(
+            status_code=422,
+            detail="supported_claims cannot exceed total_claims",
+        )
+    ratio = metrics.record_claim_telemetry(
+        payload.supported_claims,
+        payload.total_claims,
+    )
+    tracker = metrics.get_telemetry_tracker()
+    return ClaimTelemetryResponse(
+        recorded=True,
+        current_claim_support_ratio=ratio,
+        is_alert_active=tracker.is_alerting(),
+        alarm_threshold=tracker.alarm_threshold,
     )

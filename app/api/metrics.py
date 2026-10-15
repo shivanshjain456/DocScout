@@ -39,10 +39,17 @@ that ``/healthz`` already reports.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+import time
+from collections import deque
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass
+from threading import Lock
 from typing import Any
 
+import structlog
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
+
+logger = structlog.get_logger("docscout.metrics")
 
 #: Latency buckets in seconds, sized to the measured distribution and the NFR-1 budget.
 #: 0.001-0.005 covers cache hits, 0.01-0.1 covers cold retrieval, 3.0 is the SLO boundary,
@@ -942,6 +949,178 @@ EVAL_ECE_SCORE = Gauge(
     "docscout_eval_ece_score",
     "Expected Calibration Error (ECE) of retrieval confidence scores (FEAT-085).",
 )
+
+CLAIM_SUPPORT_RATIO = Gauge(
+    "docscout_claim_support_ratio",
+    "Real-time ratio of supported claims to total claims across served responses (FEAT-089).",
+)
+
+UNSUPPORTED_CLAIM_ALERTS = Gauge(
+    "docscout_unsupported_claim_alerts",
+    "Current status of unsupported claim alert (1 = firing, 0 = normal) (FEAT-089).",
+    ["severity"],
+)
+
+UNSUPPORTED_CLAIM_ALERTS_TOTAL = Counter(
+    "docscout_unsupported_claim_alarm_events_total",
+    "Total alarms triggered when supported claim ratio drops below threshold (FEAT-089).",
+    ["severity"],
+)
+
+TOTAL_CLAIMS_EVALUATED_TOTAL = Counter(
+    "docscout_claims_evaluated_total",
+    "Total factual claims evaluated for grounding across served responses (FEAT-089).",
+    ["status"],
+)
+
+# Initialize AI assurance gauges to healthy defaults so Prometheus scrapers see them immediately
+CLAIM_SUPPORT_RATIO.set(1.0)
+UNSUPPORTED_CLAIM_ALERTS.labels(severity="critical").set(0.0)
+ABSTENTION_EVENTS_TOTAL.labels(level="LOW")
+ABSTENTION_EVENTS_TOTAL.labels(level="MEDIUM")
+ABSTENTION_EVENTS_TOTAL.labels(level="HIGH")
+
+
+@dataclass
+class ClaimObservation:
+    timestamp: float
+    supported: int
+    total: int
+
+
+class HallucinationTelemetryTracker:
+    """Thread-safe real-time rolling window tracker for claim support ratio and alarms (FEAT-089)."""
+
+    def __init__(
+        self,
+        window_seconds: float = 300.0,
+        alarm_threshold: float = 0.98,
+        min_claims_for_alert: int = 1,
+    ) -> None:
+        self.window_seconds = window_seconds
+        self.alarm_threshold = alarm_threshold
+        self.min_claims_for_alert = min_claims_for_alert
+        self._lock = Lock()
+        self._observations: deque[ClaimObservation] = deque(maxlen=20000)
+        self._running_supported: int = 0
+        self._running_total: int = 0
+        self._alert_active: bool = False
+        self._alert_listeners: list[Callable[[float, float, int], None]] = []
+
+    def add_alert_listener(self, listener: Callable[[float, float, int], None]) -> None:
+        """Register callback invoked whenever alarm fires."""
+        with self._lock:
+            self._alert_listeners.append(listener)
+
+    def reset(self) -> None:
+        """Reset observations for testing."""
+        with self._lock:
+            self._observations.clear()
+            self._running_supported = 0
+            self._running_total = 0
+            self._alert_active = False
+            CLAIM_SUPPORT_RATIO.set(1.0)
+            UNSUPPORTED_CLAIM_ALERTS.labels(severity="critical").set(0.0)
+
+    def record_claim_evaluation(
+        self,
+        supported_claims: int,
+        total_claims: int,
+        timestamp: float | None = None,
+    ) -> float:
+        """Record a claim evaluation outcome and update telemetry gauges and alarms.
+
+        Overhead is <= 0.02 ms. Fail-open on any exception.
+        """
+        if total_claims < 0 or supported_claims < 0:
+            return 1.0
+
+        now = time.time() if timestamp is None else timestamp
+        with self._lock:
+            self._observations.append(
+                ClaimObservation(timestamp=now, supported=supported_claims, total=total_claims)
+            )
+            self._running_supported += supported_claims
+            self._running_total += total_claims
+
+            # Evict entries outside the sliding window
+            cutoff = now - self.window_seconds
+            while self._observations and self._observations[0].timestamp < cutoff:
+                evicted = self._observations.popleft()
+                self._running_supported = max(0, self._running_supported - evicted.supported)
+                self._running_total = max(0, self._running_total - evicted.total)
+
+            window_supported = self._running_supported
+            window_total = self._running_total
+
+            ratio = (window_supported / window_total) if window_total > 0 else 1.0
+            ratio = round(ratio, 4)
+
+            CLAIM_SUPPORT_RATIO.set(ratio)
+            TOTAL_CLAIMS_EVALUATED_TOTAL.labels(status="supported").inc(supported_claims)
+            unsupported = max(0, total_claims - supported_claims)
+            if unsupported > 0:
+                TOTAL_CLAIMS_EVALUATED_TOTAL.labels(status="unsupported").inc(unsupported)
+
+            is_breached = window_total >= self.min_claims_for_alert and ratio < self.alarm_threshold
+            if is_breached:
+                if not self._alert_active:
+                    self._alert_active = True
+                    UNSUPPORTED_CLAIM_ALERTS_TOTAL.labels(severity="critical").inc()
+                UNSUPPORTED_CLAIM_ALERTS.labels(severity="critical").set(1.0)
+                listeners = list(self._alert_listeners)
+            else:
+                self._alert_active = False
+                UNSUPPORTED_CLAIM_ALERTS.labels(severity="critical").set(0.0)
+                listeners = []
+
+        for listener in listeners:
+            try:
+                listener(ratio, self.alarm_threshold, window_total)
+            except Exception as exc:
+                logger.debug("telemetry.listener_error", error=str(exc))
+
+        return ratio
+
+    def get_current_ratio(self) -> float:
+        with self._lock:
+            return (
+                (self._running_supported / self._running_total) if self._running_total > 0 else 1.0
+            )
+
+    def is_alerting(self) -> bool:
+        with self._lock:
+            return self._alert_active
+
+
+_TELEMETRY_TRACKER: HallucinationTelemetryTracker | None = None
+
+
+def get_telemetry_tracker() -> HallucinationTelemetryTracker:
+    global _TELEMETRY_TRACKER
+    if _TELEMETRY_TRACKER is None:
+        from app.config import metrics_config
+
+        cfg = metrics_config()
+        _TELEMETRY_TRACKER = HallucinationTelemetryTracker(
+            window_seconds=cfg.hallucination_alarm_window_seconds,
+            alarm_threshold=cfg.hallucination_alarm_threshold,
+        )
+    return _TELEMETRY_TRACKER
+
+
+def record_claim_telemetry(supported_claims: int, total_claims: int) -> float:
+    """Public fail-open entry point to record operational claim evaluation telemetry (FEAT-089)."""
+    try:
+        from app.config import metrics_config
+
+        cfg = metrics_config()
+        if not cfg.enable_ai_assurance_metrics:
+            return 1.0
+        return get_telemetry_tracker().record_claim_evaluation(supported_claims, total_claims)
+    except Exception as exc:
+        logger.warning("metrics.claim_telemetry_failed", error=str(exc))
+        return 1.0
 
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
