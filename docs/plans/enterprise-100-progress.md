@@ -112,7 +112,7 @@
 - [x] FEAT-084: Canary Token Provenance & Leakage Assertions
 - [x] FEAT-085: Expected Calibration Error (ECE) Evaluator
 - [x] FEAT-086: Refusal Precision & Selective Accuracy Gate
-- [ ] FEAT-087: Counterfactual Robustness Testing Suite
+- [x] FEAT-087: Counterfactual Robustness Testing Suite
 - [ ] FEAT-088: Data Contamination & Lexical Leakage Stratifier
 - [ ] FEAT-089: Real-Time Hallucination Telemetry & Prometheus Alarms
 - [ ] FEAT-090: Automated LLM Judge Calibration with Cohen's Kappa
@@ -221,6 +221,7 @@
 | FEAT-084 | 3b1fcc3 | PASS | Canary token provenance & leakage assertions, ADR-0075, migration 0052, CanaryManager with planting/verification, scripts/verify_canaries.py CLI, docscout_canary_audit_runs_total metric, tests/test_canary.py |
 | FEAT-085 | 6576692 | PASS | Expected Calibration Error (ECE) evaluator, ADR-0076, compute_ece with 10 bins & MCE, EmpiricalCalibrator, docscout_eval_ece_score gauge, tests/test_calibration.py |
 | FEAT-086 | cac5813 | PASS | Refusal precision & selective accuracy gate, ADR-0077, AbstentionGateConfig, evaluate_abstention_gate, check_abstention_gate in CI, tests/test_abstention_gate.py |
+| FEAT-087 | d76ba16 | PASS | Counterfactual robustness testing suite, ADR-0078, CounterfactualGenerator with 50 canonical perturbations across 5 categories, CounterfactualEvaluator, 100% adherence & 0% parametric leakage, scripts/generate_counterfactuals.py CLI, make test-counterfactual, tests/test_counterfactual.py |
 
 ---
 
