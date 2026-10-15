@@ -109,7 +109,7 @@
 - [x] FEAT-081: Supported-Claim Faithfulness Evaluator
 - [x] FEAT-082: Deterministic Citation Provenance Grounding Validator
 - [x] FEAT-083: Adversarial Red-Teaming & Prompt Injection Shield
-- [ ] FEAT-084: Canary Token Provenance & Leakage Assertions
+- [x] FEAT-084: Canary Token Provenance & Leakage Assertions
 - [ ] FEAT-085: Expected Calibration Error (ECE) Evaluator
 - [ ] FEAT-086: Refusal Precision & Selective Accuracy Gate
 - [ ] FEAT-087: Counterfactual Robustness Testing Suite
@@ -218,6 +218,7 @@
 | FEAT-081 | ba11e77 | PASS | Supported-claim faithfulness evaluator, ADR-0072, Faithfulness = Supported / Total, ClaimDecomposer & ClaimEntailmentEvaluator, fail-closed unfaithful answer rejection gate in /v1/search, 100-answer benchmark (100% detection accuracy), latency <= 35.0ms (measured < 2ms), tests/test_faithfulness.py |
 | FEAT-082 | a49bfd1 | PASS | Deterministic citation provenance grounding validator, ADR-0073, CitationValidator with [ID:N] & chunk ID verification, out-of-bounds & ungrounded claim stripping, docscout_citations_validated_total metric, tests/test_citation_validator.py |
 | FEAT-083 | bf1d337 | PASS | Adversarial red-teaming & prompt injection shield, ADR-0074, SecurityShield pre-retrieval query screening, 6 threat categories, HTTP 400 rejection, 200-query benchmark (100% attack detection, 0% FPR), docscout_security_threats_blocked_total metric, tests/test_security_shield.py |
+| FEAT-084 | 3b1fcc3 | PASS | Canary token provenance & leakage assertions, ADR-0075, migration 0052, CanaryManager with planting/verification, scripts/verify_canaries.py CLI, docscout_canary_audit_runs_total metric, tests/test_canary.py |
 
 ---
 
