@@ -91,11 +91,11 @@
 - [x] FEAT-067: Incremental Deterministic Chunk Hashing (UUIDv5)
 - [x] FEAT-068: Bilingual Devanagari / Hindi Normalization & Parsing
 - [x] FEAT-069: Automated Regulatory Metadata & Notification ID Extraction
-- [ ] FEAT-070: Duplicate & Reprint Deduplication Engine
+- [x] FEAT-070: Duplicate & Reprint Deduplication Engine
 
 ### Pillar 8: Advanced Retrieval, Reranking & Evidence Synthesis
-- [ ] FEAT-071: Cross-Encoder Candidate Rerank Ladder
-- [ ] FEAT-072: Lost-in-the-Middle Context Reordering
+- [x] FEAT-071: Cross-Encoder Candidate Rerank Ladder
+- [x] FEAT-072: Lost-in-the-Middle Context Reordering
 - [ ] FEAT-073: Token-Budget Dynamic Context Packing
 - [ ] FEAT-074: Arm-Anchored Fusion with Provenance Guarantees
 - [ ] FEAT-075: Section-Aware Context Window Expansion
@@ -206,6 +206,7 @@
 | FEAT-069 | 2f3b952 | PASS | Automated regulatory metadata and notification id extraction, ADR-0060, migration 0050 (circular_no, issuing_department, subject, signoff_authority), RegulatoryMetadataExtractor with 100% precision on circular numbers & departments, p95 <= 0.69ms (budget <= 1.5ms), METADATA_FIELDS_EXTRACTED_TOTAL metric, POST /v1/ingest/metadata/extract |
 | FEAT-070 | b3d00f6 | PASS | Duplicate & reprint deduplication engine, ADR-0061, migration 0051 (canonical_document_id, text_sha256, minhash_signature), RegulatoryDeduplicator with exact content/text SHA-256 and 128-permutation MinHash LSH, >=99% precision & >=95% recall, query p95 <= 1.82ms (budget <= 2.0ms), DUPLICATE_DOCUMENTS_DETECTED_TOTAL metric, store_document() canonical linking, POST /v1/ingest/dedup/check |
 | FEAT-071 | 0eb6843 | PASS | Cross-encoder candidate rerank ladder, ADR-0062, bounded candidate pool ceiling (max 64), 16-pair batched inference with 512 token ceiling, fail-closed 40ms timeout circuit breaker, deterministic tiebreak on chunk UUID, RERANK_DURATION_SECONDS and RERANK_CIRCUIT_BREAKER_TRIPS_TOTAL metrics, Retriever._rerank integration, tests/test_rerank.py |
+| FEAT-072 | 9967c23 | PASS | Lost-in-the-middle context reordering, ADR-0063, alternating boundary placement (Rank 1 at pos 0, Rank 2 at pos N-1, Rank 3 at pos 1, Rank 4 at pos N-2), presentation_rank 1..N metadata, monotonic provenance & chunk score preservation, sub-0.05ms execution latency (measured 0.021ms), Retriever.retrieve() integration with enable_lost_in_middle_reordering flag, format_evidence_context generation prompt integration, tests/test_context_reorder.py |
 
 ---
 
