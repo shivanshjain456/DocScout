@@ -103,7 +103,7 @@
 - [x] FEAT-077: Confidence-Calibrated Selective Refusal (Abstention Gate)
 - [x] FEAT-078: Sub-Sentence Evidence Highlighting & Span Pinpointing
 - [x] FEAT-079: Hard Negative Mining & Discriminative Indexing
-- [ ] FEAT-080: Multi-Tiered Semantic Caching with Invalidation Webhooks
+- [x] FEAT-080: Multi-Tiered Semantic Caching with Invalidation Webhooks
 
 ### Pillar 9: AI Assurance, Hallucination Prevention & Faithfulness Scoring
 - [ ] FEAT-081: Supported-Claim Faithfulness Evaluator
@@ -214,6 +214,7 @@
 | FEAT-077 | 46b8282 | PASS | Confidence-calibrated selective refusal gate, ADR-0068, ConfidenceConfig (threshold 0.65, depth 5), assess & assess_passages, fail-closed conservative refusal, answer suppression in /v1/search, docscout_abstention_events_total & docscout_confidence_scores metrics, 100% precision on gold unanswerable canaries, latency p95 <= 0.20ms, tests/test_abstention_gate.py |
 | FEAT-078 | 88cfbc2 | PASS | Sub-sentence evidence highlighting & span pinpointing, ADR-0069, HighlightConfig (max 2 spans, min score 0.60), SpanPinpointer, QueryFeatures lru_cache, exact character slice text[start:end] == span.text, 100% precision on gold quotes (IoU >= 0.90), p95 latency <= 0.35ms (budget <= 2.0ms), docscout_spans_highlighted_total metric, tests/test_span_pinpoint.py |
 | FEAT-079 | fb5ab51 | PASS | Hard negative mining & discriminative indexing, ADR-0070, HardNegativeDataset & NegativeMiningConfig (max 5, min sim 0.60), DiscriminativeCalibrator & DiscriminativeProjector in app/retrieval/dense.py, make mine-negatives, 40 cross-entity confusion queries benchmark (FPR dropped from 27.5% baseline to 5.0%, 81.8% reduction vs >=35% target), zero gold Recall@5 regression, evals/bench/hard_negatives_report.json, tests/test_hard_negatives.py |
+| FEAT-080 | 2f2b99f | PASS | Multi-tiered semantic caching with invalidation webhooks, ADR-0071, CacheConfig, TieredSemanticCache (Tier 1 LRU + Tier 2 Redis fallback), cosine similarity >0.98, POST /v1/admin/cache/invalidate, warm p95 <= 2.11ms, evals/bench/bench.json, tests/test_semantic_cache.py |
 
 ---
 
