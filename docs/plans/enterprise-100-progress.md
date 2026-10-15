@@ -97,7 +97,7 @@
 - [x] FEAT-071: Cross-Encoder Candidate Rerank Ladder
 - [x] FEAT-072: Lost-in-the-Middle Context Reordering
 - [x] FEAT-073: Token-Budget Dynamic Context Packing
-- [ ] FEAT-074: Arm-Anchored Fusion with Provenance Guarantees
+- [x] FEAT-074: Arm-Anchored Fusion with Provenance Guarantees
 - [ ] FEAT-075: Section-Aware Context Window Expansion
 - [ ] FEAT-076: Cross-Lingual Semantic Regulatory Search
 - [ ] FEAT-077: Confidence-Calibrated Selective Refusal (Abstention Gate)
@@ -208,6 +208,7 @@
 | FEAT-071 | 0eb6843 | PASS | Cross-encoder candidate rerank ladder, ADR-0062, bounded candidate pool ceiling (max 64), 16-pair batched inference with 512 token ceiling, fail-closed 40ms timeout circuit breaker, deterministic tiebreak on chunk UUID, RERANK_DURATION_SECONDS and RERANK_CIRCUIT_BREAKER_TRIPS_TOTAL metrics, Retriever._rerank integration, tests/test_rerank.py |
 | FEAT-072 | 9967c23 | PASS | Lost-in-the-middle context reordering, ADR-0063, alternating boundary placement (Rank 1 at pos 0, Rank 2 at pos N-1, Rank 3 at pos 1, Rank 4 at pos N-2), presentation_rank 1..N metadata, monotonic provenance & chunk score preservation, sub-0.05ms execution latency (measured 0.021ms), Retriever.retrieve() integration with enable_lost_in_middle_reordering flag, format_evidence_context generation prompt integration, tests/test_context_reorder.py |
 | FEAT-073 | d7aa5c3 | PASS | Token-budget dynamic context packing, ADR-0064, greedy context packing targeting 95% token budget ceiling, sentence-boundary trimming preserving complete statutory clauses and terminal punctuation (., !, ?, ;), >=90% utilization across 1024/2048/4096 token budgets, fast sequential tokenization p95 <= 0.26ms (budget <= 0.8ms), CONTEXT_TOKEN_UTILIZATION_RATIO gauge and CONTEXT_PACKS_COMPLETED_TOTAL counter, format_evidence_context pack integration, tests/test_context_packer.py |
+| FEAT-074 | 4cf73c6 | PASS | Arm-anchored fusion with provenance guarantees, ADR-0065, exact circular ID 100% recall retention against dense semantic noise, post-reranking seat reservation at tail of top-k, is_arm_anchor and anchored_arm provenance metadata on Retrieved and Passage models, anchor_arm_leaders config sync, docscout_arm_leaders_anchored_total counter metric, sub-0.05ms execution latency (measured < 0.005ms), tests/test_arm_anchoring.py |
 
 ---
 
