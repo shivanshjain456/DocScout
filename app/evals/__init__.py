@@ -6,6 +6,12 @@ importing its conclusions -- it reuses the chunker (so citations resolve to real
 nothing else.
 """
 
+from app.evals.citation_validator import (
+    CitationValidationResult,
+    CitationValidator,
+    CitationValidatorConfig,
+    get_default_citation_validator,
+)
 from app.evals.faithfulness import (
     ClaimDecomposer,
     ClaimEntailmentEvaluator,
@@ -18,6 +24,9 @@ from app.evals.faithfulness import (
 from app.evals.scorers import faithfulness_score
 
 __all__ = [
+    "CitationValidationResult",
+    "CitationValidator",
+    "CitationValidatorConfig",
     "ClaimDecomposer",
     "ClaimEntailmentEvaluator",
     "ClaimEvaluation",
@@ -25,5 +34,6 @@ __all__ = [
     "FaithfulnessEvaluation",
     "FaithfulnessEvaluator",
     "faithfulness_score",
+    "get_default_citation_validator",
     "get_default_faithfulness_evaluator",
 ]

@@ -916,6 +916,12 @@ UNFAITHFUL_ANSWERS_REJECTED_TOTAL = Counter(
     "Total generated answers rejected due to unfaithful or hallucinated claims (FEAT-081).",
 )
 
+CITATIONS_VALIDATED_TOTAL = Counter(
+    "docscout_citations_validated_total",
+    "Total citations validated by status (valid, invalid, ungrounded, sanitized) (FEAT-082).",
+    ("status",),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

@@ -986,6 +986,26 @@ def search(
                     # Fail-closed: fallback to raw passage citations (ADR-0008 mode)
                     generated_answer = None
 
+            # Post-generation citation provenance grounding validator gate (FEAT-082)
+            if generated_answer is not None and not generated_answer.abstained and passages:
+                from app.evals.citation_validator import get_default_citation_validator
+
+                citation_eval = get_default_citation_validator().validate(
+                    generated_answer.text, passages
+                )
+                if not citation_eval.is_grounded:
+                    logger.warning(
+                        "search.ungrounded_citations_detected",
+                        query=payload.query,
+                        invalid_citations=citation_eval.invalid_citations,
+                        ungrounded_sentences=citation_eval.ungrounded_sentences,
+                    )
+                    if citation_eval.sanitized_answer:
+                        generated_answer.text = citation_eval.sanitized_answer
+                    else:
+                        # Fail-closed: fallback to raw passage citations (ADR-0008 mode)
+                        generated_answer = None
+
     intent_classification: IntentClassification | None = None
     if payload.enable_intent_routing:
         intent_router = getattr(state, "intent_router", None)
