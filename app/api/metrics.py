@@ -97,6 +97,17 @@ CACHE_EVENTS = Counter(
     ("result",),
 )
 
+CACHE_HITS_TOTAL = Counter(
+    "docscout_cache_hits_total",
+    "Total search cache hits by tier (tier1, tier2, semantic).",
+    ("tier",),
+)
+
+CACHE_MISSES_TOTAL = Counter(
+    "docscout_cache_misses_total",
+    "Total search cache misses across all tiers.",
+)
+
 RATE_LIMITED = Counter(
     "docscout_rate_limited_total",
     "Requests rejected by the per-key rate limiter.",
@@ -169,6 +180,7 @@ CACHE_INVALIDATIONS = Counter(
     "Count of cache invalidation events triggered on supersession or admin action.",
     ("reason",),
 )
+CACHE_INVALIDATIONS_TOTAL = CACHE_INVALIDATIONS
 
 AGENT_RESEARCH_TOTAL = Counter(
     "docscout_agent_research_total",

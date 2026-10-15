@@ -24,6 +24,7 @@ Three things are load-bearing in the design:
 
 from __future__ import annotations
 
+import os
 import re
 import time
 import uuid
@@ -55,6 +56,8 @@ from app.api.auth0 import (
 )
 from app.api.cache import (
     DEFAULT_RESULT_TTL_SECONDS,
+    CacheConfig,
+    TieredSemanticCache,
     TTLCache,
     register_invalidation_listener,
     trigger_corpus_invalidation,
@@ -338,9 +341,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         row = conn.execute("SELECT count(*) FROM chunks").fetchone()
         app.state.corpus_chunks = as_int(row[0]) if row else 0
 
-    app.state.result_cache = TTLCache[tuple[str, str, int, bool], CachedResult](
-        maxsize=RESULT_CACHE_SIZE, ttl=DEFAULT_RESULT_TTL_SECONDS
+    cache_config = CacheConfig(
+        lru_maxsize=RESULT_CACHE_SIZE,
+        ttl_seconds=int(DEFAULT_RESULT_TTL_SECONDS),
+        enable_semantic_matching=os.environ.get("DOCSCOUT_ENABLE_SEMANTIC_CACHE", "false").lower()
+        in ("1", "true", "yes"),
+        semantic_similarity_threshold=float(
+            os.environ.get("DOCSCOUT_SEMANTIC_CACHE_THRESHOLD", "0.98")
+        ),
+        redis_url=os.environ.get("REDIS_URL"),
     )
+    app.state.result_cache = TieredSemanticCache[CachedResult](config=cache_config)
     app.state.embedding_cache = TTLCache[str, Any](maxsize=EMBEDDING_CACHE_SIZE, ttl=None)
     app.state.manifest_digest = sha256_file(REPO_ROOT / "corpus" / "raw" / "manifest.json")
     app.state.generator = get_generator()
@@ -349,12 +360,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     metrics.CORPUS_CHUNKS.set(app.state.corpus_chunks)
 
     def _on_corpus_invalidated(reason: str | None = None) -> None:
-        cleared = len(app.state.result_cache)
-        app.state.result_cache.clear()
+        cleared = app.state.result_cache.clear()
         app.state.corpus_generation += 1
         app.state.bm25_needs_reload = True
         metrics.CORPUS_GENERATION.set(app.state.corpus_generation)
-        metrics.CACHE_INVALIDATIONS.labels(reason or "unknown").inc()
+        metrics.CACHE_INVALIDATIONS_TOTAL.labels(reason or "unknown").inc()
         logger.info(
             "cache.invalidated",
             reason=reason,
@@ -780,8 +790,35 @@ def search(
             query=payload.query,
         )
 
-    cached: CachedResult | None = state.result_cache.get(cache_key) if payload.use_cache else None
+    search_params = cache_key[1:]
+    cached: CachedResult | None = None
+    hit_tier: str | None = None
+
+    if payload.use_cache:
+        if hasattr(state.result_cache, "get_with_tier"):
+            cached, hit_tier = state.result_cache.get_with_tier(cache_key)
+            if cached is None and getattr(
+                getattr(state.result_cache, "config", None),
+                "enable_semantic_matching",
+                False,
+            ):
+                q_vec = state.embedding_cache.get(payload.query)
+                if q_vec is None and getattr(state, "embedder", None) is not None:
+                    q_vec = state.embedder.encode_query(payload.query)
+                    state.embedding_cache.put(payload.query, q_vec)
+                if q_vec is not None:
+                    cached, hit_tier = state.result_cache.get_with_tier(
+                        cache_key,
+                        query_text=payload.query,
+                        query_vector=q_vec,
+                        search_params=search_params,
+                    )
+        else:
+            cached = state.result_cache.get(cache_key)
+            hit_tier = "tier1" if cached is not None else None
+
     if cached is not None:
+        metrics.CACHE_HITS_TOTAL.labels(tier=hit_tier or "tier1").inc()
         metrics.CACHE_EVENTS.labels("hit").inc()
         total_ms = (time.perf_counter() - started) * 1000.0
         try:
@@ -839,6 +876,7 @@ def search(
     # A bypassed cache is not a miss: counting it as one would make the hit ratio depend
     # on how often the benchmark runs rather than on how well the cache works.
     if payload.use_cache:
+        metrics.CACHE_MISSES_TOTAL.inc()
         metrics.CACHE_EVENTS.labels("miss").inc()
 
     config, persona_applied = _config_for(payload)
@@ -981,7 +1019,17 @@ def search(
     if payload.use_cache:
         # Check that generation hasn't moved while request was in flight
         if getattr(state, "corpus_generation", 1) == req_generation:
-            state.result_cache.put(cache_key, result)
+            q_vec = state.embedding_cache.get(payload.query)
+            try:
+                state.result_cache.put(
+                    cache_key,
+                    result,
+                    query_text=payload.query,
+                    query_vector=q_vec,
+                    search_params=search_params,
+                )
+            except TypeError:
+                state.result_cache.put(cache_key, result)
         else:
             logger.info(
                 "search.cache_skip_stale_generation",
@@ -3310,12 +3358,11 @@ def admin_invalidate_cache(
     """
     state = request.app.state
     prev_gen = getattr(state, "corpus_generation", 1)
-    cleared = len(state.result_cache)
-    state.result_cache.clear()
+    cleared = state.result_cache.clear()
     state.corpus_generation = prev_gen + 1
     state.bm25_needs_reload = True
     metrics.CORPUS_GENERATION.set(state.corpus_generation)
-    metrics.CACHE_INVALIDATIONS.labels(payload.reason).inc()
+    metrics.CACHE_INVALIDATIONS_TOTAL.labels(payload.reason).inc()
 
     with state.pool.connection() as conn:
         with getattr(state, "bm25_lock", Lock()):
