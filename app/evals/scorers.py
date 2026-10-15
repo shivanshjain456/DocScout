@@ -162,3 +162,13 @@ def aggregate(scores: Sequence[ItemScore]) -> Aggregate:
         mrr=sum(s.mrr for s in scores) / n,
         ndcg=sum(s.ndcg for s in scores) / n,
     )
+
+
+def faithfulness_score(supported_claims: int, total_claims: int) -> float:
+    """Exact formula: Faithfulness = Supported Claims / Total Claims.
+
+    Derived from term-taxonomy.json.formulas. Returns 1.0 when total_claims == 0.
+    """
+    if total_claims <= 0:
+        return 1.0
+    return max(0.0, min(1.0, supported_claims / total_claims))

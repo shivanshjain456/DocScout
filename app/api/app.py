@@ -969,6 +969,23 @@ def search(
             generated_answer = generator.generate(payload.query, passages)
             generation_ms = (time.perf_counter() - gen_start) * 1000.0
 
+            # Post-generation faithfulness verification gate (FEAT-081)
+            if generated_answer is not None and not generated_answer.abstained and passages:
+                from app.evals.faithfulness import get_default_faithfulness_evaluator
+
+                faithfulness_eval = get_default_faithfulness_evaluator().evaluate(
+                    generated_answer.text, passages
+                )
+                if not faithfulness_eval.is_faithful:
+                    logger.warning(
+                        "search.unfaithful_answer_suppressed",
+                        query=payload.query,
+                        score=faithfulness_eval.score,
+                        unsupported_claims=faithfulness_eval.unsupported_claims,
+                    )
+                    # Fail-closed: fallback to raw passage citations (ADR-0008 mode)
+                    generated_answer = None
+
     intent_classification: IntentClassification | None = None
     if payload.enable_intent_routing:
         intent_router = getattr(state, "intent_router", None)

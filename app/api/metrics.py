@@ -906,6 +906,16 @@ SPANS_HIGHLIGHTED_TOTAL = Counter(
     ["source"],
 )
 
+MEAN_ANSWER_FAITHFULNESS_SCORE = Gauge(
+    "docscout_mean_answer_faithfulness_score",
+    "Running mean faithfulness score of generated regulatory answers (FEAT-081).",
+)
+
+UNFAITHFUL_ANSWERS_REJECTED_TOTAL = Counter(
+    "docscout_unfaithful_answers_rejected_total",
+    "Total generated answers rejected due to unfaithful or hallucinated claims (FEAT-081).",
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.
