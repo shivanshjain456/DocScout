@@ -46,6 +46,7 @@ class VectorStore(Protocol):
         query_vector: np.ndarray,
         k: int,
         filter: MetadataFilter | None = None,
+        query_text: str | None = None,
     ) -> list[tuple[str, float]]:
         """Return the top-k (chunk_id, similarity) tuples sorted descending by similarity."""
         ...
@@ -70,6 +71,7 @@ class PgVectorStore:
         query_vector: np.ndarray,
         k: int,
         filter: MetadataFilter | None = None,
+        query_text: str | None = None,
     ) -> list[tuple[str, float]]:
         return dense.search(self._conn, query_vector, k, filter=filter)
 
@@ -145,12 +147,20 @@ def register_vector_store(name: str, adapter_cls: type[VectorStore]) -> None:
     ADAPTER_REGISTRY[name] = adapter_cls
 
 
+def _resolve_adapter_cls(name: str) -> type[VectorStore] | None:
+    if name == "multilingual_dense" and "multilingual_dense" not in ADAPTER_REGISTRY:
+        from app.retrieval.multilingual_dense import MultilingualDenseStore
+
+        ADAPTER_REGISTRY["multilingual_dense"] = MultilingualDenseStore
+    return ADAPTER_REGISTRY.get(name)
+
+
 def get_vector_store(
     name: str = "pgvector",
     conn: psycopg.Connection[tuple[object, ...]] | None = None,
 ) -> VectorStore:
     """Instantiate a vector store adapter by name from the registry."""
-    adapter_cls = ADAPTER_REGISTRY.get(name)
+    adapter_cls = _resolve_adapter_cls(name)
     if adapter_cls is None:
         available = ", ".join(repr(k) for k in sorted(ADAPTER_REGISTRY.keys()))
         raise ValueError(
@@ -162,6 +172,8 @@ def get_vector_store(
         return PgVectorStore(conn)
     # For custom / test adapters that accept no args or optional conn
     try:
+        if conn is not None:
+            return adapter_cls(conn=conn)  # type: ignore[call-arg]
         return adapter_cls()
     except TypeError:
         if conn is not None:

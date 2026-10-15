@@ -1,6 +1,6 @@
 {
   "schema": "docscout.eval.gate/1",
-  "checked_utc": "2026-10-15T17:45:44Z",
+  "checked_utc": "2026-10-15T18:11:38Z",
   "passed": true,
   "serving_config": "hybrid-rrf",
   "cutoff": "5",

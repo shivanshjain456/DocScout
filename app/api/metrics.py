@@ -870,6 +870,12 @@ SECTION_EXPANSION_DURATION_SECONDS = Histogram(
     buckets=[0.0005, 0.001, 0.002, 0.0025, 0.005, 0.01, 0.025],
 )
 
+CROSS_LINGUAL_QUERIES_TOTAL = Counter(
+    "docscout_cross_lingual_queries_total",
+    "Total cross-lingual queries processed by language (FEAT-076).",
+    ["lang"],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

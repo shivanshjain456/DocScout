@@ -318,7 +318,12 @@ class Retriever:
 
         if config.mode in ("dense", "hybrid", "graph-hybrid"):
             vector = self._embedder.encode_query(dense_query)
-            hits = store.search(vector, config.k_dense, filter=filter_spec)
+            try:
+                hits = store.search(
+                    vector, config.k_dense, filter=filter_spec, query_text=dense_query
+                )
+            except TypeError:
+                hits = store.search(vector, config.k_dense, filter=filter_spec)
             arms["dense"] = [cid for cid, _ in hits]
             raw_scores.update({cid: score for cid, score in hits})
 
