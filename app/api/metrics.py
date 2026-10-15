@@ -938,6 +938,11 @@ CANARY_LEAKAGE_DETECTED = Gauge(
     "Binary indicator of canary leakage detection in production responses (FEAT-084).",
 )
 
+EVAL_ECE_SCORE = Gauge(
+    "docscout_eval_ece_score",
+    "Expected Calibration Error (ECE) of retrieval confidence scores (FEAT-085).",
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.
