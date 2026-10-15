@@ -922,6 +922,12 @@ CITATIONS_VALIDATED_TOTAL = Counter(
     ("status",),
 )
 
+SECURITY_THREATS_BLOCKED_TOTAL = Counter(
+    "docscout_security_threats_blocked_total",
+    "Total adversarial security threats and prompt injections blocked (FEAT-083).",
+    ("threat_type",),
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

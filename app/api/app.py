@@ -743,6 +743,25 @@ def search(
     and optional citation-grounded answer generation sitting behind them."""
     started = time.perf_counter()
     state = request.app.state
+
+    # Pre-retrieval Security Shield against prompt injections and adversarial tampering (FEAT-083)
+    from app.api.security_shield import get_default_security_shield
+
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    shield_decision = get_default_security_shield().screen(payload.query, client_ip=client_ip)
+    if shield_decision.action == "BLOCK":
+        logger.warning(
+            "search.threat_blocked",
+            client_ip=client_ip,
+            threat_type=shield_decision.threat_type,
+            threat_score=shield_decision.threat_score,
+            query=payload.query,
+        )
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid search query syntax",
+        )
+
     req_generation = getattr(state, "corpus_generation", 1)
     filter_key = payload.filter.canonical_tuple() if payload.filter else None
     cache_key = (
