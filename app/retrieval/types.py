@@ -285,6 +285,7 @@ class Retrieved:
     authority_tier: int | None = None
     applied_authority_multiplier: float = 1.0
     document_class: str | None = None
+    presentation_rank: int | None = None
 
 
 @dataclass(frozen=True)
@@ -341,6 +342,7 @@ class RetrievalConfig:
     enable_normalization: bool = True
     enable_authority_hierarchy: bool = True
     authority_multipliers: dict[str, float] | None = None
+    enable_lost_in_middle_reordering: bool = False
 
     def __post_init__(self) -> None:
         if self.rerank and self.rerank_top_n < self.k_final:
@@ -412,6 +414,7 @@ class RetrievalConfig:
             "difficulty_band": self.difficulty_band,
             "auto_constrain_tags": self.auto_constrain_tags,
             "enable_authority_hierarchy": self.enable_authority_hierarchy,
+            "enable_lost_in_middle_reordering": self.enable_lost_in_middle_reordering,
         }
 
 

@@ -560,6 +560,20 @@ class Retriever:
                     document_class=doc_cls_val,
                 )
             )
+
+        if getattr(config, "enable_lost_in_middle_reordering", False):
+            try:
+                from app.retrieval.context_reorder import reorder_context
+
+                results = reorder_context(results)
+                logger.info(
+                    "context_reordering_applied",
+                    context_reordering_applied=True,
+                    count=len(results),
+                )
+            except Exception as exc:
+                logger.warning("context_reorder_failed", error=str(exc))
+
         return results
 
 

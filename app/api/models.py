@@ -126,6 +126,7 @@ class Passage(BaseModel):
     matching_relationships: list[str] = Field(default_factory=list)
     centrality_boost: float = 0.0
     difficulty_level: str | None = None
+    presentation_rank: int | None = None
 
     @model_validator(mode="after")
     def _adapt_difficulty_window(self) -> Passage:

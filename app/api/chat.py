@@ -194,6 +194,7 @@ def chat_turn(
                         ),
                         matching_relationships=hit.matching_relationships,
                         centrality_boost=round(hit.centrality_boost, 6),
+                        presentation_rank=hit.presentation_rank,
                     )
                     for hit in hits
                 ]
