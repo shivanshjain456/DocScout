@@ -35,6 +35,16 @@ from app.evals.citation_validator import (
     CitationValidatorConfig,
     get_default_citation_validator,
 )
+from app.evals.counterfactual import (
+    CounterfactualConfig,
+    CounterfactualEvaluator,
+    CounterfactualGenerator,
+    CounterfactualItem,
+    CounterfactualItemResult,
+    CounterfactualTestResult,
+    PerturbationRule,
+    get_default_counterfactual_evaluator,
+)
 from app.evals.faithfulness import (
     ClaimDecomposer,
     ClaimEntailmentEvaluator,
@@ -61,12 +71,19 @@ __all__ = [
     "ClaimDecomposer",
     "ClaimEntailmentEvaluator",
     "ClaimEvaluation",
+    "CounterfactualConfig",
+    "CounterfactualEvaluator",
+    "CounterfactualGenerator",
+    "CounterfactualItem",
+    "CounterfactualItemResult",
+    "CounterfactualTestResult",
     "ECEReport",
     "ECERunner",
     "EmpiricalCalibrator",
     "FaithfulnessConfig",
     "FaithfulnessEvaluation",
     "FaithfulnessEvaluator",
+    "PerturbationRule",
     "PredictionPair",
     "compute_ece",
     "evaluate_abstention_gate",
@@ -75,5 +92,6 @@ __all__ = [
     "get_default_calibration_config",
     "get_default_canary_manager",
     "get_default_citation_validator",
+    "get_default_counterfactual_evaluator",
     "get_default_faithfulness_evaluator",
 ]

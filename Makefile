@@ -2,7 +2,7 @@
 SHELL := /bin/bash
 TS := $(shell date -u +%Y%m%dT%H%M%SZ)
 
-.PHONY: help setup dev test lint typecheck secret-scan eval load deploy destroy verify-setup down \
+.PHONY: help setup dev test test-counterfactual lint typecheck secret-scan eval load deploy destroy verify-setup down \
 	gold-lint gold-pin gold-review gold-stats eval-quick eval-gate eval-baseline \
 	mutation mutation-clean audit-deps \
 	serve bench \
@@ -64,6 +64,9 @@ refresh-check:  ## check corpus freshness without writing to database (dry run)
 
 test:  ## run the test suite
 	uv run pytest -q
+
+test-counterfactual:  ## run counterfactual robustness tests (FEAT-087)
+	uv run pytest tests/test_counterfactual.py
 
 lint:  ## ruff check + format check
 	uv run ruff check .
