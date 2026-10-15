@@ -852,6 +852,12 @@ CONTEXT_PACKS_COMPLETED_TOTAL = Counter(
     ["status"],
 )
 
+ARM_LEADERS_ANCHORED_TOTAL = Counter(
+    "docscout_arm_leaders_anchored_total",
+    "Total times an arm top-1 leader was anchored into final results (FEAT-074).",
+    ["arm_name"],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

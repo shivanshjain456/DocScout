@@ -314,6 +314,8 @@ class Retrieved:
     applied_authority_multiplier: float = 1.0
     document_class: str | None = None
     presentation_rank: int | None = None
+    is_arm_anchor: bool = False
+    anchored_arm: str | None = None
 
 
 @dataclass(frozen=True)
@@ -371,8 +373,13 @@ class RetrievalConfig:
     enable_authority_hierarchy: bool = True
     authority_multipliers: dict[str, float] | None = None
     enable_lost_in_middle_reordering: bool = False
+    anchor_arm_leaders: bool | None = None
 
     def __post_init__(self) -> None:
+        if self.anchor_arm_leaders is None:
+            object.__setattr__(self, "anchor_arm_leaders", self.anchor_arm_top1)
+        elif self.anchor_arm_top1 != self.anchor_arm_leaders:
+            object.__setattr__(self, "anchor_arm_top1", self.anchor_arm_leaders)
         if self.rerank and self.rerank_top_n < self.k_final:
             raise ValueError(
                 f"rerank_top_n ({self.rerank_top_n}) must be >= k_final ({self.k_final}); "
@@ -443,6 +450,7 @@ class RetrievalConfig:
             "auto_constrain_tags": self.auto_constrain_tags,
             "enable_authority_hierarchy": self.enable_authority_hierarchy,
             "enable_lost_in_middle_reordering": self.enable_lost_in_middle_reordering,
+            "anchor_arm_leaders": self.anchor_arm_leaders,
         }
 
 
@@ -458,4 +466,5 @@ SERVING_CONFIG = RetrievalConfig(
     k_final=10,
     rrf_k=DEFAULT_RRF_K,
     anchor_arm_top1=True,
+    anchor_arm_leaders=True,
 )

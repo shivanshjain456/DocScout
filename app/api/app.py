@@ -889,6 +889,8 @@ def search(
             centrality_boost=round(hit.centrality_boost, 6),
             difficulty_level=payload.difficulty_band,
             presentation_rank=hit.presentation_rank,
+            is_arm_anchor=hit.is_arm_anchor,
+            anchored_arm=hit.anchored_arm,
         )
         for hit in hits
     ]

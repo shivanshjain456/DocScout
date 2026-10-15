@@ -509,8 +509,20 @@ class Retriever:
                 logger.warning("authority_hierarchy_boost_failed", error=str(exc))
 
         top = fused[: config.k_final]
-        if config.anchor_arm_top1 and config.mode in ("hybrid", "graph-hybrid"):
-            top = _anchor_arm_leaders(top, arms, fused, config.k_final)
+        anchored_provenance: dict[str, str] = {}
+        if (
+            config.anchor_arm_top1 or getattr(config, "anchor_arm_leaders", False)
+        ) and config.mode in (
+            "hybrid",
+            "graph-hybrid",
+        ):
+            top = _anchor_arm_leaders(
+                top,
+                arms,
+                fused,
+                config.k_final,
+                anchored_out=anchored_provenance,
+            )
         is_curr = filter_spec.is_current if filter_spec is not None else True
         meta = self._metadata(
             [cid for cid, _, _ in top],
@@ -558,6 +570,8 @@ class Retriever:
                     authority_tier=tier_val,
                     applied_authority_multiplier=mult_val,
                     document_class=doc_cls_val,
+                    is_arm_anchor=chunk_id in anchored_provenance,
+                    anchored_arm=anchored_provenance.get(chunk_id),
                 )
             )
 
@@ -577,13 +591,74 @@ class Retriever:
         return results
 
 
+def anchor_arm_leaders(
+    candidates: list[Candidate],
+    arm_leaders: dict[str, Candidate],
+    k: int,
+) -> list[Candidate]:
+    """Ensure every retrieval arm's top-1 candidate survives into top-k candidates (FEAT-074).
+
+    Inputs:
+        candidates: Reranked or fused candidate list.
+        arm_leaders: Mapping from arm name ("lexical", "dense", "graph") to its rank-1 Candidate.
+        k: Final desired cutoff depth (must be >= 1).
+    """
+    if k < 1:
+        raise ValueError(f"k must be >= 1, got {k}")
+    if not candidates:
+        raise ValueError("candidates must not be empty")
+
+    try:
+        present = {c.chunk_id for c in candidates[:k]}
+        missing: list[tuple[str, Candidate]] = []
+        seen_missing: set[str] = set()
+        for arm_name, leader in arm_leaders.items():
+            if (
+                leader is not None
+                and leader.chunk_id not in present
+                and leader.chunk_id not in seen_missing
+            ):
+                missing.append((arm_name, leader))
+                seen_missing.add(leader.chunk_id)
+
+        if not missing:
+            return list(candidates[:k])
+
+        keep = list(candidates[: max(0, k - len(missing))])
+        for arm_name, leader in missing:
+            try:
+                from app.api.metrics import ARM_LEADERS_ANCHORED_TOTAL
+
+                ARM_LEADERS_ANCHORED_TOTAL.labels(arm_name=arm_name).inc()
+            except Exception:
+                logger.debug("arm_anchoring_metric_failed", exc_info=True)
+
+            anchored_c = Candidate(
+                chunk_id=leader.chunk_id,
+                text=leader.text,
+                score=leader.score,
+                arm_ranks=dict(leader.arm_ranks),
+                is_arm_anchor=True,
+                anchored_arm=arm_name,
+            )
+            keep.append(anchored_c)
+
+        return keep[:k]
+    except Exception as exc:
+        logger.warning("arm_anchoring_failed", error=str(exc))
+        return list(candidates[:k])
+
+
 def _anchor_arm_leaders(
-    top: list[tuple[str, float, dict[str, int]]],
-    arms: dict[str, list[str]],
-    fused: list[tuple[str, float, dict[str, int]]],
-    k_final: int,
-) -> list[tuple[str, float, dict[str, int]]]:
-    """Ensure every arm's own rank-1 chunk survives into the returned k.
+    top: Any,
+    arms: Any,
+    fused: Any = None,
+    k_final: int | None = None,
+    *,
+    k: int | None = None,
+    anchored_out: dict[str, str] | None = None,
+) -> Any:
+    """Ensure every arm's own rank-1 chunk survives into the returned k (FEAT-074, ADR-0007).
 
     Fusion by rank alone cannot express certainty: an arm that put a chunk first contributes
     the same 1/(k+1) whether it was certain or barely preferred it. When the other arm
@@ -593,16 +668,50 @@ def _anchor_arm_leaders(
 
     A reserved seat is the narrowest possible fix: it changes nothing about how the other
     results are scored or ordered, and it is bounded -- at most one chunk per arm. Any chunk
-    inserted keeps its real fused score, so the report never shows a fabricated number.
+    inserted keeps its real fused or reranked score, preserving provenance.
     """
-    present = {chunk_id for chunk_id, _, _ in top}
-    scores = {chunk_id: (score, ranks) for chunk_id, score, ranks in fused}
-    missing = [ids[0] for ids in arms.values() if ids and ids[0] not in present]
-    if not missing:
+    # If called with candidates: list[Candidate], arm_leaders: dict[str, Candidate], k: int
+    if isinstance(top, list) and (
+        (top and isinstance(top[0], Candidate))
+        or (isinstance(arms, dict) and any(isinstance(v, Candidate) for v in arms.values()))
+    ):
+        target_k = k if k is not None else (k_final if k_final is not None else len(top))
+        return anchor_arm_leaders(top, arms, target_k)
+
+    target_k = k_final if k_final is not None else (k if k is not None else 10)
+    if target_k < 1:
+        raise ValueError(f"k_final must be >= 1, got {target_k}")
+    if not top and not fused:
         return top
-    # Drop from the tail to make room, so the highest-fused results are never displaced.
-    keep = top[: max(0, k_final - len(missing))]
-    for chunk_id in missing:
-        score, ranks = scores.get(chunk_id, (0.0, {}))
-        keep.append((chunk_id, score, ranks))
-    return keep[:k_final]
+
+    try:
+        present = {chunk_id for chunk_id, _, _ in top}
+        scores = {chunk_id: (score, ranks) for chunk_id, score, ranks in (fused or top)}
+        missing: list[tuple[str, str]] = []
+        seen_missing: set[str] = set()
+        for arm_name, ids in arms.items():
+            if ids and ids[0] not in present and ids[0] not in seen_missing:
+                missing.append((arm_name, ids[0]))
+                seen_missing.add(ids[0])
+
+        if not missing:
+            return top
+
+        # Drop from the tail to make room, so the highest-fused results are never displaced.
+        keep = list(top[: max(0, target_k - len(missing))])
+        for arm_name, chunk_id in missing:
+            score, ranks = scores.get(chunk_id, (0.0, {}))
+            keep.append((chunk_id, score, ranks))
+            if anchored_out is not None:
+                anchored_out[chunk_id] = arm_name
+            try:
+                from app.api.metrics import ARM_LEADERS_ANCHORED_TOTAL
+
+                ARM_LEADERS_ANCHORED_TOTAL.labels(arm_name=arm_name).inc()
+            except Exception:
+                logger.debug("arm_anchoring_metric_failed", exc_info=True)
+
+        return keep[:target_k]
+    except Exception as exc:
+        logger.warning("arm_anchoring_failed", error=str(exc))
+        return top[:target_k]

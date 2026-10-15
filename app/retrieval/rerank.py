@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 import structlog
@@ -69,6 +69,10 @@ class Candidate:
 
     chunk_id: str
     text: str
+    score: float = 0.0
+    arm_ranks: dict[str, int] = field(default_factory=dict)
+    is_arm_anchor: bool = False
+    anchored_arm: str | None = None
 
 
 class CrossEncoderReranker:

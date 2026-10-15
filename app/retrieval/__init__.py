@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from app.retrieval.context_packer import ContextPacker, pack_context
-from app.retrieval.search import Retriever
+from app.retrieval.search import Retriever, anchor_arm_leaders
 from app.retrieval.types import (
     DEFAULT_RRF_K,
     SERVING_CONFIG,
@@ -22,5 +22,6 @@ __all__ = [
     "Retrieved",
     "Retriever",
     "SERVING_CONFIG",
+    "anchor_arm_leaders",
     "pack_context",
 ]
