@@ -928,6 +928,16 @@ SECURITY_THREATS_BLOCKED_TOTAL = Counter(
     ("threat_type",),
 )
 
+CANARY_AUDIT_RUNS_TOTAL = Counter(
+    "docscout_canary_audit_runs_total",
+    "Total canary token leakage assertion runs (FEAT-084).",
+)
+
+CANARY_LEAKAGE_DETECTED = Gauge(
+    "docscout_canary_leakage_detected",
+    "Binary indicator of canary leakage detection in production responses (FEAT-084).",
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.
