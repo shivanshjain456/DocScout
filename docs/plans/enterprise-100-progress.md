@@ -118,7 +118,7 @@
 - [x] FEAT-090: Automated LLM Judge Calibration with Cohen's Kappa
 
 ### Pillar 10: Enterprise Reliability, Security, Observability & Continuous Compliance
-- [ ] FEAT-091: Automated Canary Analysis (ACA) Deployment Gate
+- [x] FEAT-091: Automated Canary Analysis (ACA) Deployment Gate
 - [ ] FEAT-092: Error Budget Policy & Multi-Window Burn Rate Alerting
 - [ ] FEAT-093: Bulkhead Concurrency Isolation & Adaptive Load Shedding
 - [ ] FEAT-094: Chaos Engineering Fault Injection Test Harness
@@ -225,6 +225,7 @@
 | FEAT-088 | 2438737 | PASS | Data contamination & lexical leakage stratifier, ADR-0079, LeakageConfig, MetricSlice, LeakageStratificationReport, fast regex tokenizer in < 5ms for 425 items, check_leakage_gate in gate.py, goldset leakage CLI, tests/test_leakage_stratifier.py |
 | FEAT-089 | 6d5723f | PASS | Real-time hallucination telemetry & Prometheus alarms, ADR-0080, HallucinationTelemetryTracker (5-min rolling window, O(1) running totals, overhead < 0.02ms), docscout_claim_support_ratio gauge, docscout_unsupported_claim_alerts gauge (triggers < 0.98), docscout_unsupported_claim_alarm_events_total counter, POST /v1/telemetry/claims endpoint, tests/test_metrics.py |
 | FEAT-090 | e66fdde | PASS | Automated LLM judge calibration with Cohen's Kappa, ADR-0081, JudgeCalibrationConfig (min_kappa=0.85, floor=0.80), CalibrationReport with p-value (erfc) & z-score, binary & multiclass Kappa in stats.py, 100-pair gold benchmark (kappa=0.8746, 100% pass), goldset calibrate CLI, check_judge_calibration_gate in gate.py, tests/test_judge_calibration.py |
+| FEAT-091 | 146bd73 | PASS | Automated canary analysis (ACA) deployment gate, ADR-0082, ACAConfig (eval_window_minutes=15, max_latency_increase=5%, max_error_rate=0.001, min_queries=100), Mann-Whitney U test on latency, Fisher's exact test on error rates, fail-safe abort on unreachable Prometheus, docscout_canary_evaluations_total metric, .github/workflows/deploy.yml, infra/canary/analysis.py CLI, tests/test_canary_analysis.py |
 
 ---
 
