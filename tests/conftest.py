@@ -25,6 +25,16 @@ from pgvector.psycopg import register_vector
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
+def pytest_report_header(config: pytest.Config) -> list[str]:
+    """Log deterministic test seed and frozen clock in pytest header (FEAT-095)."""
+    return [
+        "DocScout Deterministic Test Harness (FEAT-095):",
+        "  deterministic_seed: 0",
+        "  frozen_time: 2026-10-10T12:00:00Z",
+        "  hermetic_fixtures: enabled",
+    ]
+
+
 def pytest_configure(config: pytest.Config) -> None:
     """Ensure pytest uses a writable basetemp if the system temp is locked."""
     if config.option.basetemp is None:
@@ -193,3 +203,24 @@ def _fresh_rate_limiter() -> Iterator[None]:
     reset()
     yield
     reset()
+
+
+@pytest.fixture(autouse=True)
+def _deterministic_environment() -> Iterator[None]:
+    """Enforce hermetic deterministic seeds and clock injection across all test cases (FEAT-095)."""
+    import random
+
+    import numpy as np
+
+    os.environ["PYTHONHASHSEED"] = "0"
+    random.seed(0)
+    np.random.seed(0)
+
+    clock_mod = sys.modules.get("app.testing.clock")
+    if clock_mod is not None:
+        clock_mod.seed_everything(0)
+        clock = clock_mod.FrozenClock("2026-10-10T12:00:00Z")
+        clock_mod.set_clock(clock)
+    yield
+    if clock_mod is not None:
+        clock_mod.set_clock(None)
