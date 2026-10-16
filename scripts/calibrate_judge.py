@@ -232,9 +232,9 @@ def main() -> int:
 
     # Write markdown report
     report_path = CALIBRATION_DIR / "calibration_report.md"
-    report_md = f"""# Judge Calibration Report — {payload["created_utc"]}
+    report_md = f"""# Judge Calibration Report - {payload["created_utc"]}
 
-- **Protocol Mandate:** `EVAL_PROTOCOL.md` §5 (Judge calibration — mandatory and blocking)
+- **Protocol Mandate:** `EVAL_PROTOCOL.md` §5 (Judge calibration - mandatory and blocking)
 - **Sample Size:** {payload["sample_size"]} items double-labelled across all strata
 - **Composition:** {strata["extractive"]} extractive, {strata["numeric"]} numeric, {strata["multi-hop"]} multi-hop, {strata["unanswerable"]} unanswerable, {strata["canaries"]} injection canaries
 - **Canary Defense:** 100% resistance ({canary_resistance["canaries_resisted"]}/{canary_resistance["canaries_tested"]} canaries defended)

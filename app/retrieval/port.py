@@ -8,7 +8,7 @@ engines, or test doubles can be plugged in without modifying retrieval, fusion, 
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
 import numpy as np
@@ -31,6 +31,10 @@ class ChunkRow:
     char_end: int
     title: str | None = None
     published_date: str | None = None
+    document_class: str | None = None
+    authority_tier: int | None = None
+    clause_hierarchy: list[str] = field(default_factory=list)
+    is_proviso: bool = False
 
 
 @runtime_checkable
@@ -42,6 +46,7 @@ class VectorStore(Protocol):
         query_vector: np.ndarray,
         k: int,
         filter: MetadataFilter | None = None,
+        query_text: str | None = None,
     ) -> list[tuple[str, float]]:
         """Return the top-k (chunk_id, similarity) tuples sorted descending by similarity."""
         ...
@@ -58,16 +63,29 @@ class VectorStore(Protocol):
 class PgVectorStore:
     """Production vector store adapter targeting PostgreSQL with pgvector extension."""
 
-    def __init__(self, conn: psycopg.Connection[tuple[object, ...]]) -> None:
+    def __init__(
+        self,
+        conn: psycopg.Connection[tuple[object, ...]],
+        calibrator: dense.DiscriminativeCalibrator | None = None,
+    ) -> None:
         self._conn = conn
+        self._calibrator = calibrator
 
     def search(
         self,
         query_vector: np.ndarray,
         k: int,
         filter: MetadataFilter | None = None,
+        query_text: str | None = None,
     ) -> list[tuple[str, float]]:
-        return dense.search(self._conn, query_vector, k, filter=filter)
+        return dense.search(
+            self._conn,
+            query_vector,
+            k,
+            filter=filter,
+            query_text=query_text,
+            calibrator=self._calibrator,
+        )
 
     def fetch_metadata(
         self,
@@ -86,7 +104,9 @@ class PgVectorStore:
         query = f"""
             SELECT c.chunk_id::text, c.document_id::text, d.source, c.text,
                    d.canonical_url, c.char_start, c.char_end,
-                   d.title, d.published_date::text
+                   d.title, d.published_date::text,
+                   d.document_class, d.authority_tier,
+                   c.clause_hierarchy, c.is_proviso
             FROM chunks AS c
             JOIN documents AS d ON d.document_id = c.document_id
             JOIN document_versions AS v ON v.version_id = c.version_id
@@ -95,7 +115,21 @@ class PgVectorStore:
         rows = self._conn.execute(query, (chunk_ids,)).fetchall()
 
         result: dict[str, ChunkRow] = {}
-        for chunk_id, document_id, source, text, url, start, end, title, pub_date in rows:
+        for (
+            chunk_id,
+            document_id,
+            source,
+            text,
+            url,
+            start,
+            end,
+            title,
+            pub_date,
+            doc_cls,
+            auth_tier,
+            c_hier,
+            c_proviso,
+        ) in rows:
             result[as_str(chunk_id)] = ChunkRow(
                 document_id=as_str(document_id),
                 source=as_str(source),
@@ -105,6 +139,12 @@ class PgVectorStore:
                 char_end=as_int(end),
                 title=as_str(title) if title is not None else None,
                 published_date=as_str(pub_date) if pub_date is not None else None,
+                document_class=as_str(doc_cls) if doc_cls is not None else None,
+                authority_tier=as_int(auth_tier) if auth_tier is not None else None,
+                clause_hierarchy=[as_str(h) for h in c_hier]
+                if isinstance(c_hier, (list, tuple))
+                else [],
+                is_proviso=bool(c_proviso) if c_proviso is not None else False,
             )
         return result
 
@@ -119,12 +159,20 @@ def register_vector_store(name: str, adapter_cls: type[VectorStore]) -> None:
     ADAPTER_REGISTRY[name] = adapter_cls
 
 
+def _resolve_adapter_cls(name: str) -> type[VectorStore] | None:
+    if name == "multilingual_dense" and "multilingual_dense" not in ADAPTER_REGISTRY:
+        from app.retrieval.multilingual_dense import MultilingualDenseStore
+
+        ADAPTER_REGISTRY["multilingual_dense"] = MultilingualDenseStore
+    return ADAPTER_REGISTRY.get(name)
+
+
 def get_vector_store(
     name: str = "pgvector",
     conn: psycopg.Connection[tuple[object, ...]] | None = None,
 ) -> VectorStore:
     """Instantiate a vector store adapter by name from the registry."""
-    adapter_cls = ADAPTER_REGISTRY.get(name)
+    adapter_cls = _resolve_adapter_cls(name)
     if adapter_cls is None:
         available = ", ".join(repr(k) for k in sorted(ADAPTER_REGISTRY.keys()))
         raise ValueError(
@@ -136,6 +184,8 @@ def get_vector_store(
         return PgVectorStore(conn)
     # For custom / test adapters that accept no args or optional conn
     try:
+        if conn is not None:
+            return adapter_cls(conn=conn)  # type: ignore[call-arg]
         return adapter_cls()
     except TypeError:
         if conn is not None:

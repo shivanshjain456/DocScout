@@ -5,7 +5,7 @@
   This is NOT a byte-for-byte capture of a live SEBI page: the corpus payloads are not
   git-tracked, and committing a regulator's HTML would add a licensing question for no
   test value. What it reproduces faithfully is the failure mode CORPUS_SPEC K-17 records
-  and that cost Phase 0 real debugging time — the page carries navigation, a title and a
+  and that cost Phase 0 real debugging time - the page carries navigation, a title and a
   date, the circular's actual text lives only in the PDF referenced by the iframe, and so
   extracting the HTML yields a couple of hundred characters that look like a successful
   fetch. HTTP 200, non-empty text, no exception.

@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.api.models import Passage
+    from app.retrieval.types import ContextPackerConfig
 
 SYSTEM_PROMPT = """You are DocScout, an evidence-grounded regulatory compliance assistant for Indian regulatory documents (RBI and SEBI circulars).
 
@@ -22,20 +23,42 @@ CRITICAL SECURITY AND DELIMITER RULES:
 6. Every factual claim must be cited with the exact chunk ID in brackets, e.g. [b2ed16f7-7426-5161-bc18-7bc1dabb8df7]."""
 
 
-def format_evidence_context(passages: list[Passage]) -> str:
+def format_evidence_context(
+    passages: list[Passage],
+    *,
+    reorder: bool = True,
+    pack: bool = False,
+    packer_config: ContextPackerConfig | None = None,
+) -> str:
     """Format retrieved passages into secure, XML-delimited data containers."""
     if not passages:
         return "<retrieved_evidence>\nNo passages retrieved.\n</retrieved_evidence>"
 
+    working = passages
+    if pack:
+        from app.retrieval.context_packer import pack_context
+
+        packed_ctx = pack_context(working, config=packer_config)
+        working = packed_ctx.packed_passages
+
+    if reorder and len(working) > 2:
+        from app.retrieval.context_reorder import reorder_context
+
+        working = reorder_context(working)
+
     chunks_xml: list[str] = ["<retrieved_evidence>"]
-    for p in passages:
+    for p in working:
+        pres_attr = (
+            f' presentation_rank="{p.presentation_rank}"' if p.presentation_rank is not None else ""
+        )
+        content_text = getattr(p, "expanded_text", None) or p.text
         # Sanitize any closing tag attempts within the chunk text to prevent delimiter breakout
-        safe_text = p.text.replace("</retrieved_evidence>", "[ESCAPED_CLOSING_TAG]").replace(
+        safe_text = content_text.replace("</retrieved_evidence>", "[ESCAPED_CLOSING_TAG]").replace(
             "</document_chunk>", "[ESCAPED_CHUNK_TAG]"
         )
         chunks_xml.append(
             f'<document_chunk chunk_id="{p.chunk_id}" document_id="{p.document_id}" '
-            f'source="{p.source}" rank="{p.rank}">\n'
+            f'source="{p.source}" rank="{p.rank}"{pres_attr}>\n'
             f"{safe_text}\n"
             f"</document_chunk>"
         )

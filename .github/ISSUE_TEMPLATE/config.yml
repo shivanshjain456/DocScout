@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security Vulnerability Reporting
+    url: https://github.com/shivanshjain456/DocScout/blob/master/SECURITY.md
+    about: Please report security vulnerabilities privately according to our security policy.
+  - name: Architecture & Project Documentation
+    url: https://github.com/shivanshjain456/DocScout/blob/master/docs/architecture/ARCHITECTURE.md
+    about: Review authoritative system specifications, data models, and decision records.
+  - name: Community & Support
+    url: https://github.com/shivanshjain456/DocScout/blob/master/SUPPORT.md
+    about: Learn how to get help and connect with the DocScout maintainers.

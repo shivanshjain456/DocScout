@@ -1,4 +1,4 @@
-"""Ingestion-scale throughput & latency benchmarking script — ADR-0023 / P2-5.
+"""Ingestion-scale throughput & latency benchmarking script - ADR-0023 / P2-5.
 
 Simulates 200 regulatory documents across concurrency levels (1, 4, 8),
 measuring:

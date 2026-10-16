@@ -21,7 +21,12 @@ Three invariants this module is responsible for, all checked rather than assumed
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any
+from uuid import UUID
+
+if TYPE_CHECKING:
+    from app.ingest.hierarchical_chunker import ChunkingConfig, HierarchicalChunk
 
 #: ADR-0003. Changing either value invalidates the sweep that chose them.
 CHUNK_SIZE = 1000
@@ -48,6 +53,10 @@ class Chunk:
     char_start: int
     char_end: int
     token_count: int
+    parent_chunk_id: UUID | None = None
+    clause_hierarchy: list[str] = field(default_factory=list)
+    is_proviso: bool = False
+    chunk_type: str = "standard"
 
 
 def _windows(text: str, size: int, overlap: int) -> Iterator[tuple[int, int]]:
@@ -165,7 +174,22 @@ def chunk_document(
     return chunks
 
 
-def verify_offsets(text: str, chunks: list[Chunk]) -> None:
+def chunk_document_hierarchical(
+    text: str,
+    token_counter: TokenCounter,
+    *,
+    config: ChunkingConfig | None = None,
+) -> list[HierarchicalChunk]:
+    """Split regulatory text into structure-aware hierarchical chunks (FEAT-061)."""
+    from app.ingest.hierarchical_chunker import get_default_hierarchical_chunker
+
+    chunker = get_default_hierarchical_chunker(config=config, token_counter=token_counter)
+    chunks = chunker.chunk(text)
+    verify_offsets(text, chunks)
+    return chunks
+
+
+def verify_offsets(text: str, chunks: list[Any]) -> None:
     """Assert FR-7 for every chunk: its offsets must re-extract its stored text.
 
     Raises `ValueError` naming the first offending chunk. This runs on every ingest
@@ -183,7 +207,7 @@ def verify_offsets(text: str, chunks: list[Chunk]) -> None:
             )
 
 
-def uncovered_characters(text: str, chunks: list[Chunk]) -> int:
+def uncovered_characters(text: str, chunks: list[Any]) -> int:
     """Count non-whitespace characters of `text` covered by no chunk.
 
     Used by the ingest report as evidence for invariant 2 rather than as a claim about it.

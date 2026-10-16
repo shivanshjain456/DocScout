@@ -1,4 +1,4 @@
-# Research Agent Calibration Report — 2026-10-09T20:00:00Z
+# Research Agent Calibration Report - 2026-10-09T20:00:00Z
 
 - **Protocol Mandate:** P2-3 Double-Labeled Research Calibration & Canary Resistance.
 - **Sample Size:** 40 research tasks across all regulatory inquiry strata.

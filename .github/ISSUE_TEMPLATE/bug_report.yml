@@ -1,0 +1,61 @@
+name: Bug Report
+description: Report a bug, error, or unexpected behavior in DocScout
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting an issue. Please search existing issues to avoid duplicates.
+        Do NOT paste real API keys, passwords, or confidential compliance documents in this issue.
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Describe what happened...
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Detailed steps to reproduce the behavior.
+      placeholder: |
+        1. Run command '...'
+        2. Send API request '...'
+        3. See error '...'
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: A clear description of what you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior & Logs
+      description: Relevant terminal outputs, error messages, or structured log entries.
+      render: shell
+    validations:
+      required: false
+  - type: input
+    id: environment
+    attributes:
+      label: Environment Details
+      description: OS, Python version, Docker/PostgreSQL version, or Git commit hash.
+      placeholder: Debian trixie / Windows 11, Python 3.12.14, PostgreSQL 18.6 + pgvector 0.8.6
+    validations:
+      required: true
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate.
+          required: true
+        - label: I have confirmed that no secrets or private tokens are contained in logs or payloads.
+          required: true

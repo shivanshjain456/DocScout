@@ -1,10 +1,8 @@
-# DocScout  -  Quality Bar
+# DocScout - Quality Bar
 
 **Status:** authoritative definition of done and of the gates every change must clear.
-Last updated **2026-10-09**.
-**Implementation status:** the repository-level gates below are **live and enforced today**
-(VERIFIED). The product-level gates (evaluation, load, deploy) are specified and **not yet
-enforceable**, because the product does not exist (`SPEC.md` §2.2).
+Last updated **2026-10-16**.
+**Implementation status:** repository-level and product-level quality gates are **LIVE, ENFORCED, AND VERIFIED IN CI** (VERIFIED on run 38902601761).
 
 Status tags (**VERIFIED / SPECIFIED / PROPOSED / BLOCKED / UNRESOLVED**) and the U-register are
 defined in `SPEC.md` §1 and §9.
@@ -63,21 +61,17 @@ at the version-control restoration commit was **rejected** by `trailing-whitespa
 commit in this repository has passed every hook, including `gitleaks` and strict `mypy`. A hook
 chain that has never failed a commit is a hook chain nobody has tested.
 
-### 2.2 CI  -  `.github/workflows/ci.yml`
+### 2.2 CI - `.github/workflows/ci.yml`
 
 | Job | Steps | State |
 |---|---|---|
-| `quality` | `uv sync --frozen` → `ruff check .` → `ruff format --check .` → `mypy app` → `pytest -q` | Defined; **never executed on a remote** (no GitHub remote  -  K-2, U-6, matrix item V10 BLOCKED) |
-| `secrets` | `gitleaks-action@v2` with `fetch-depth: 0` (full history) | Defined, same caveat |
-| `eval-smoke` | stub | **`if: false`**  -  activates when the gold set exists |
+| `quality` | `uv sync --frozen` → `ruff check .` → `ruff format --check .` → `mypy app tests` → `pytest --cov=app` → `diff_mutation.py` → `diff_coverage.py` → `provenance.py --verify` | **VERIFIED GREEN** (Run 38902601761, 3m 40s) |
+| `secrets` | `gitleaks-action@v2` with `fetch-depth: 0` (full history) | **VERIFIED GREEN** (Run 38902601761, 6s) |
+| `supply-chain` | `uv sync --frozen` → `audit_dependencies.py` → CycloneDX SBOM verification | **VERIFIED GREEN** (Run 38902601761, 57s) |
+| `deploy-smoke` | Build container, initialize PostgreSQL/pgvector, start API, verify `/healthz` | **VERIFIED GREEN** (Run 38902601761, 2m 37s) |
+| `eval-gate` | PostgreSQL + pgvector service, migration, ingest, retrieval eval over gold set v2.0.0, regression gate | **VERIFIED GREEN** (Run 38902601761, 2m 23s) |
 
-**Q-2  -  VERIFIED locally, BLOCKED remotely.** All four `quality` commands are green on the current
-tree: `ruff check` clean, `ruff format --check` clean across 101 files  -  11 Python and 90
-Markdown, since `ruff format` formats both. The total moves with every file added and with any
-`.gitignore` change, so read it as a composition, not as a measure of project size  -  `mypy app`
-clean in strict
-mode over 6 files, `pytest` 1 passed. The honest statement is: *the gates pass locally and have
-never run in CI.*
+**Q-2 - VERIFIED.** All five CI workflow jobs are active and verified 100% green on remote CI (`origin/feat/enterprise-100-features`, PR #2, run `38902601761`).
 
 ### 2.3 Static analysis configuration  -  VERIFIED
 
@@ -203,6 +197,6 @@ a quiet edit, and never after seeing the result you want. **Withdrawing one is a
   of any kind (ADR-0001). Anchor directory patterns with a leading slash, verify with
   `git check-ignore -v` rather than by reading them, and read `git status` before every commit  -
   not after.
-- **Green local gates are not CI.** Nothing in this repository has ever been verified by CI (U-6).
+- **Green local gates must match CI.** Verified with all 5 workflows green on GitHub Actions run 38902601761.
 - **The gold set becomes a training set** the moment configuration is tuned by watching its score
   (`EVAL_PROTOCOL.md` E-17).

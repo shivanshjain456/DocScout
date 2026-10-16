@@ -1,0 +1,982 @@
+[
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "synthetic://canary-001",
+      "digest": {
+        "sha256": "ef1f71aed2b9ac55635b111c29c3aed21af1d5e00d5b18aef0a0ae5d4bac6404"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/canary-001-synthetic.txt",
+        "digest": {
+          "sha256": "ef1f71aed2b9ac55635b111c29c3aed21af1d5e00d5b18aef0a0ae5d4bac6404"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "SYNTHETIC",
+      "fetch_ts": "2026-10-01T10:15:06.191233+00:00",
+      "extractor": "none(plaintext)",
+      "pages": null,
+      "bytes": 1524
+    },
+    "signature": "uxcbpsAXYBbdgEFHGkuIoeadfEyWai1LB8ziXgBPd4lv6oYHwtzHqhTRf8Et97GY7ASzD5GHUnmtdtWv+upnDw==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI27401102026AA16BFEFF59341BF97FD2930B1A4A63C.PDF",
+      "digest": {
+        "sha256": "a9604795a2a64f519fca40698ee9d0750304fe612023c076ca15682183497fe9"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/01-RBI-NOTI27401102026AA16BFEFF59341BF97FD2930B1A4A63C.PDF",
+        "digest": {
+          "sha256": "a9604795a2a64f519fca40698ee9d0750304fe612023c076ca15682183497fe9"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "RBI",
+      "fetch_ts": "2026-10-01T10:14:35.473483+00:00",
+      "extractor": "pypdf",
+      "pages": 23,
+      "bytes": 434713
+    },
+    "signature": "azSYVdsgZacOssOvWDaSpQQ/sVRCMO1eYJAGwJqN1cVbn4zBhn8O3SjYb0OSe5lielBOUoVj1Whtx1hr6LI/Aw==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI27301102026D31353CD354443869BCAD069E0BF15CC.PDF",
+      "digest": {
+        "sha256": "15f4cdf2950f1a25e8f80a4b2b979046ed5cfc0a42cd9cecc5a51fd22fdbb401"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/02-RBI-NOTI27301102026D31353CD354443869BCAD069E0BF15CC.PDF",
+        "digest": {
+          "sha256": "15f4cdf2950f1a25e8f80a4b2b979046ed5cfc0a42cd9cecc5a51fd22fdbb401"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "RBI",
+      "fetch_ts": "2026-10-01T10:14:38.326827+00:00",
+      "extractor": "pypdf",
+      "pages": 1,
+      "bytes": 156945
+    },
+    "signature": "Iz9WJltdMHzndEPBCNv8dBLuwnl32asjw7vudUpOS3JP+LQnL4iLF90p1b1wR8oABsRrihXPge0L0RL+mw2QDA==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/272MC011020266691348260DF4CF99ACE017F146409F1.PDF",
+      "digest": {
+        "sha256": "b8a13c2a7651eb84e68d733ff50125f02bb8a9e15d4cec6102f4661a628ac658"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/03-RBI-272MC011020266691348260DF4CF99ACE017F146409F1.PDF",
+        "digest": {
+          "sha256": "b8a13c2a7651eb84e68d733ff50125f02bb8a9e15d4cec6102f4661a628ac658"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "RBI",
+      "fetch_ts": "2026-10-01T10:14:38.736351+00:00",
+      "extractor": "pypdf",
+      "pages": 8,
+      "bytes": 265034
+    },
+    "signature": "gMvFs4LhRtHNWH9SILAZd69At0mu8g2ch2aG3gGCdbDQE6w18zd+wh5AKjytvK/+nqjsZSwWqPlZNh9yQ6RWAQ==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI2713C3AD0FCF88D4E0682D80BD7FC932BF9.PDF",
+      "digest": {
+        "sha256": "a72b0c02b83457166d4f8691a13a22c2e9930b61c29a00bb94022bd8e7142887"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/04-RBI-NOTI2713C3AD0FCF88D4E0682D80BD7FC932BF9.PDF",
+        "digest": {
+          "sha256": "a72b0c02b83457166d4f8691a13a22c2e9930b61c29a00bb94022bd8e7142887"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "RBI",
+      "fetch_ts": "2026-10-01T10:14:39.477000+00:00",
+      "extractor": "pypdf",
+      "pages": 3,
+      "bytes": 299955
+    },
+    "signature": "S4PeD0v5YCrWryx7qJEQcnwTEzvPSEO9B0FLoS5/i0rZOJ9ZHv2zpRf6l5QaRTZ+H8LgKvk4ADwqn82ZCDr+BQ==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/FEMA23R2509202677C08DEDE2694B528FF6025930BF49F9.PDF",
+      "digest": {
+        "sha256": "d6b5a89147df89d8c6dc9d514ecd0eaae1b8db5d21cb9dde5ec6462bb964717a"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/05-RBI-FEMA23R2509202677C08DEDE2694B528FF6025930BF49F9.PDF",
+        "digest": {
+          "sha256": "d6b5a89147df89d8c6dc9d514ecd0eaae1b8db5d21cb9dde5ec6462bb964717a"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "RBI",
+      "fetch_ts": "2026-10-01T10:14:40.106418+00:00",
+      "extractor": "pypdf",
+      "pages": 1,
+      "bytes": 157321
+    },
+    "signature": "bL8EcbUfclpcBR5LwOBIFDjRU9KKifOt+bGRDlQZ8G8nzIJUfrST9xbcmMKxt9G9+HRykC9+UapvBzvH4UvJBA==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI27024092026B5163644F687458B97DB7E5AF0FF4FDD.PDF",
+      "digest": {
+        "sha256": "93c944624b4c6ec1589c782c37c4dce064f4a5a16bffaf52f08cb00661b380d5"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/06-RBI-NOTI27024092026B5163644F687458B97DB7E5AF0FF4FDD.PDF",
+        "digest": {
+          "sha256": "93c944624b4c6ec1589c782c37c4dce064f4a5a16bffaf52f08cb00661b380d5"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "RBI",
+      "fetch_ts": "2026-10-01T10:14:40.452478+00:00",
+      "extractor": "pypdf",
+      "pages": 2,
+      "bytes": 208035
+    },
+    "signature": "YoPvJw96Ohmb9E8vL7wnP+PRsCQz9DFvcsoo4uWvSv8gPZhvQ1WqlOsL1weVaEgyLNwyb/9NhMicXfTzofeYCg==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NT269D2CF6DE13687460D8CFB6E8AD0CDEF4E.PDF",
+      "digest": {
+        "sha256": "88c8f50c9f51ed0751cc89cc2cc2fae548ac3a564a0c4ae49dcab381f3a166d9"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/07-RBI-NT269D2CF6DE13687460D8CFB6E8AD0CDEF4E.PDF",
+        "digest": {
+          "sha256": "88c8f50c9f51ed0751cc89cc2cc2fae548ac3a564a0c4ae49dcab381f3a166d9"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "RBI",
+      "fetch_ts": "2026-10-01T10:14:40.864442+00:00",
+      "extractor": "pypdf",
+      "pages": 2,
+      "bytes": 270161
+    },
+    "signature": "4+ll9PXKBkLVVXOwdykEVKciXZqTjn1KggYmgNwPJCX/ayu+KUsxMR4TCKE3Dmczw7Hz0rTVZWc9CNZL7mvdCw==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NT26840D3650D40D2475CB0378668FD8B8EC1.PDF",
+      "digest": {
+        "sha256": "4de478a2e8db526f552b830bbd35e7b74dc40801b13791915229bc466864dbaf"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/08-RBI-NT26840D3650D40D2475CB0378668FD8B8EC1.PDF",
+        "digest": {
+          "sha256": "4de478a2e8db526f552b830bbd35e7b74dc40801b13791915229bc466864dbaf"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "RBI",
+      "fetch_ts": "2026-10-01T10:14:41.536037+00:00",
+      "extractor": "pypdf",
+      "pages": 2,
+      "bytes": 231297
+    },
+    "signature": "nY34zl2NJJzf4EFleimL5iU9xxrLxtIaUcwkxhOQKjF2fWrndeGym16mWj2AmGgnEjxonooPW9Dwd+dt1pZ8Dw==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NT267F885FEF645D54E6DAC327AE684434E56.PDF",
+      "digest": {
+        "sha256": "fbbc46dd7874b3eaa2e0768b64ea4b101b8ffdcb3529356ca34c4a1ea192a4a8"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/09-RBI-NT267F885FEF645D54E6DAC327AE684434E56.PDF",
+        "digest": {
+          "sha256": "fbbc46dd7874b3eaa2e0768b64ea4b101b8ffdcb3529356ca34c4a1ea192a4a8"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "RBI",
+      "fetch_ts": "2026-10-01T10:14:41.931850+00:00",
+      "extractor": "pypdf",
+      "pages": 2,
+      "bytes": 232302
+    },
+    "signature": "O7Y+EHUWbIOHs69jjdYPITxpvgvQpg4VLOzLFpdFK+Br+fom3JcLwgAHCbNw+uiuxpX9lHS5PJQJUQR8TfrzAg==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NT2663B9D47D9B0A147A5A2F0574A11554B97.PDF",
+      "digest": {
+        "sha256": "85c91dbcda4ec7835960ad7d01adb0bb8a1b8bbeb14149145d55b1164a8d4ee8"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/10-RBI-NT2663B9D47D9B0A147A5A2F0574A11554B97.PDF",
+        "digest": {
+          "sha256": "85c91dbcda4ec7835960ad7d01adb0bb8a1b8bbeb14149145d55b1164a8d4ee8"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "RBI",
+      "fetch_ts": "2026-10-01T10:14:42.318705+00:00",
+      "extractor": "pypdf",
+      "pages": 2,
+      "bytes": 250073
+    },
+    "signature": "oAqN6y7MTUwvA/wL7wz6NagLDrePWn8f+OXtQrwTxbbu3wXiLCzvLGi39ksUa86RTrTbsacL3SaeKxhxB9fNAw==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://www.sebi.gov.in/sebi_data/attachdocs/aug-2026/1787224027885.pdf",
+      "digest": {
+        "sha256": "b7eee7594965ecf5c2c7a6ccd3b6049bcdd89d36f9e60bf267754fd3199db458"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/11-SEBI-1787224027885.pdf",
+        "digest": {
+          "sha256": "b7eee7594965ecf5c2c7a6ccd3b6049bcdd89d36f9e60bf267754fd3199db458"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "SEBI",
+      "fetch_ts": "2026-10-01T10:14:42.716668+00:00",
+      "extractor": "pypdf",
+      "pages": 2,
+      "bytes": 639304
+    },
+    "signature": "9YOFCbAkVrhR68+SavI4V83jUHAYWP/EJ1CA6Gf1utDYErOWd6KhN3HqnyyteMCa/kAwtmXBvIey/T/SNvl8Dw==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://www.sebi.gov.in/sebi_data/attachdocs/aug-2026/1787569463244.pdf",
+      "digest": {
+        "sha256": "dfa78c1c81d50f9b61964ddeb7d8ee7dfa0d5ca516acb45459ca1fab14a7c1f1"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/12-SEBI-1787569463244.pdf",
+        "digest": {
+          "sha256": "dfa78c1c81d50f9b61964ddeb7d8ee7dfa0d5ca516acb45459ca1fab14a7c1f1"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "SEBI",
+      "fetch_ts": "2026-10-01T10:14:45.565080+00:00",
+      "extractor": "pypdf",
+      "pages": 4,
+      "bytes": 1002276
+    },
+    "signature": "j2pocjyCDNRWiFVJVeMeyx2yUMmVKlCeug3/P6s9xQ5OGGv6bd58Z8qrBdoExmQJu/MzA6ZtFFVx29Qe6Na0BQ==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://www.sebi.gov.in/sebi_data/attachdocs/aug-2026/1786447511614.pdf",
+      "digest": {
+        "sha256": "5797d50f77e399c4ed97f9a041b8a60e354d18b5de1a1c17b9d23ad065b7d4be"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/13-SEBI-1786447511614.pdf",
+        "digest": {
+          "sha256": "5797d50f77e399c4ed97f9a041b8a60e354d18b5de1a1c17b9d23ad065b7d4be"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "SEBI",
+      "fetch_ts": "2026-10-01T10:14:49.436784+00:00",
+      "extractor": "pypdf",
+      "pages": 5,
+      "bytes": 311449
+    },
+    "signature": "7CuxoKYhrjeOtnkk9P5kndLU1ZyDPrW6CcrP4C4mQ1gBbAJzVLt2bzHawGbMASs6275M8RZapStm19ZSCTRPDA==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://www.sebi.gov.in/sebi_data/attachdocs/aug-2026/1787285998826.pdf",
+      "digest": {
+        "sha256": "5618b16208054ce30095307acccded6ad37771b6ab7b62183e85ed196be02acf"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/14-SEBI-1787285998826.pdf",
+        "digest": {
+          "sha256": "5618b16208054ce30095307acccded6ad37771b6ab7b62183e85ed196be02acf"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "SEBI",
+      "fetch_ts": "2026-10-01T10:14:51.037206+00:00",
+      "extractor": "pypdf",
+      "pages": 2,
+      "bytes": 460590
+    },
+    "signature": "FPoSKe369Rsf+v73QymOAlHRbTmte7HsRA/7coS/HkS5DNJtooU77kB/U/Z6i2LxMQt8zU54JNl/Gt/gEoMeDg==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://www.sebi.gov.in/sebi_data/attachdocs/aug-2026/1785760104221.pdf",
+      "digest": {
+        "sha256": "84c48ede9d2c079ffa93e973e27c9a67bb078757b541df276297cdd59f183523"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/15-SEBI-1785760104221.pdf",
+        "digest": {
+          "sha256": "84c48ede9d2c079ffa93e973e27c9a67bb078757b541df276297cdd59f183523"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "SEBI",
+      "fetch_ts": "2026-10-01T10:14:54.331883+00:00",
+      "extractor": "pypdf",
+      "pages": 2,
+      "bytes": 460668
+    },
+    "signature": "1+PFG1Hc9w1e2sCUZ5/tFbxNpoMpjtxcLgVAnynabneqHQLVxGNG39PUqFVEwpLPbNS7SCSW640DMeoY6mzTBg==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://www.sebi.gov.in/sebi_data/attachdocs/aug-2026/1787914585756.pdf",
+      "digest": {
+        "sha256": "456ad5f299578a455d280befb7d9643b7b8d97c0f7f64970f5757c1f8206be16"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/16-SEBI-1787914585756.pdf",
+        "digest": {
+          "sha256": "456ad5f299578a455d280befb7d9643b7b8d97c0f7f64970f5757c1f8206be16"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "SEBI",
+      "fetch_ts": "2026-10-01T10:14:56.126089+00:00",
+      "extractor": "pypdf",
+      "pages": 2,
+      "bytes": 121766
+    },
+    "signature": "Oi+Ol59T/1FbU/Zsk2P+jWd9UPrX1VBvjA9xp9xfRPZcwD69tPRB1kNFwvxDHfrXP32IQ+UlPOuYZYXSruwcBw==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://www.sebi.gov.in/sebi_data/attachdocs/aug-2026/1786705393789.pdf",
+      "digest": {
+        "sha256": "925235333fd5622489cee6e4983566f8a5bc586583c5d431fe6bb151554473bb"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/17-SEBI-1786705393789.pdf",
+        "digest": {
+          "sha256": "925235333fd5622489cee6e4983566f8a5bc586583c5d431fe6bb151554473bb"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "SEBI",
+      "fetch_ts": "2026-10-01T10:14:56.729575+00:00",
+      "extractor": "pypdf",
+      "pages": 8,
+      "bytes": 714392
+    },
+    "signature": "dqp6MdUexeu9XDjDA4xnuW/Fks4q6sftKRwOP3tdbGWEbLf9YPD4SiQmgsRUD/HHz9yPu+Aj8mpxTNQ4ZUalCQ==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://www.sebi.gov.in/sebi_data/attachdocs/aug-2026/1787568759364.pdf",
+      "digest": {
+        "sha256": "b04dfd62819300887b70c11163ce4bd1c6ecd84f09509aafef82781fb1caaafe"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/18-SEBI-1787568759364.pdf",
+        "digest": {
+          "sha256": "b04dfd62819300887b70c11163ce4bd1c6ecd84f09509aafef82781fb1caaafe"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "SEBI",
+      "fetch_ts": "2026-10-01T10:14:59.546602+00:00",
+      "extractor": "pypdf",
+      "pages": 4,
+      "bytes": 704073
+    },
+    "signature": "NIi1pZW/+5tsft/nboIMZbwDx3Hjf91eqQQqJZWUaIF/gYpSE3xA3VwVcRfRxkxsU9TE8XzPwzg4Fvt5bjo8Aw==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://www.sebi.gov.in/sebi_data/attachdocs/aug-2026/1786705729757.pdf",
+      "digest": {
+        "sha256": "2e2e9b36b4b9d7c4cbca8ad04e5fd139f4f737101e9193750fc1f97ee4f9e4f6"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/19-SEBI-1786705729757.pdf",
+        "digest": {
+          "sha256": "2e2e9b36b4b9d7c4cbca8ad04e5fd139f4f737101e9193750fc1f97ee4f9e4f6"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "SEBI",
+      "fetch_ts": "2026-10-01T10:15:02.233858+00:00",
+      "extractor": "pypdf",
+      "pages": 4,
+      "bytes": 726984
+    },
+    "signature": "XwA5Qh3jkgnNQNfd4cMJkhFcwf6Exzkb9w/qWbkdfVOA7Gb5nKoL3TqbiaDn7AVvB5AfKIhxGvOFI1cCvnBFAQ==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://www.sebi.gov.in/sebi_data/attachdocs/aug-2026/1786537329546.pdf",
+      "digest": {
+        "sha256": "b0a2f7d8d6bc25d49f3bb892a2e25e06e3f63c5e4b2a3b859356f9b1b79947a9"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/20-SEBI-1786537329546.pdf",
+        "digest": {
+          "sha256": "b0a2f7d8d6bc25d49f3bb892a2e25e06e3f63c5e4b2a3b859356f9b1b79947a9"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "SEBI",
+      "fetch_ts": "2026-10-01T10:15:05.023830+00:00",
+      "extractor": "pypdf",
+      "pages": 2,
+      "bytes": 273538
+    },
+    "signature": "OnIWIyk+Jxl+QB3ngGjmk7xBtB5kC49VWbKnh20Hxe5igDZdN38uD3CyWqtkp7I1hspYSVMiB5oX2jWlm+JYCg==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI280DIGITALLENDING2024.PDF",
+      "digest": {
+        "sha256": "53858aaa810c6d1c5882914cff26b131a8bbfa803a89b50bbc1d9359880279c5"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/21-RBI-NOTI280DIGITALLENDING2024.PDF",
+        "digest": {
+          "sha256": "53858aaa810c6d1c5882914cff26b131a8bbfa803a89b50bbc1d9359880279c5"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "RBI",
+      "fetch_ts": "2026-10-02T10:00:00.000000+00:00",
+      "extractor": "pypdf",
+      "pages": 4,
+      "bytes": 5556
+    },
+    "signature": "jmupO2VrHVt05K7zBFy8knM3fIkJ18KImAFlpIIgFOzTwmlPqtfbfMo74gHtFLJv7OOPJQfeDFJiozR3ZGJZAQ==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI281KYCUPDATION2024.PDF",
+      "digest": {
+        "sha256": "b613c61b8b37361f6e2dea5f192c4c295e8d3ee7a7dc26eb01947eda6edfa0da"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/22-RBI-NOTI281KYCUPDATION2024.PDF",
+        "digest": {
+          "sha256": "b613c61b8b37361f6e2dea5f192c4c295e8d3ee7a7dc26eb01947eda6edfa0da"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "RBI",
+      "fetch_ts": "2026-10-02T10:00:00.000000+00:00",
+      "extractor": "pypdf",
+      "pages": 4,
+      "bytes": 5614
+    },
+    "signature": "gpx8LbR1w1I2c0T1vzwwej3t9U37PEz3eYYL2u+RIjH/ClY9JvYpftxOIktVw85/E6+IjtFEPaV/IC4mwFuTBQ==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI282CYBERSECURITY2024.PDF",
+      "digest": {
+        "sha256": "468dd06bd96d8442744b4f4f4ae77a9e013bd07502879bc8dbc103ac5ab5ee0c"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/23-RBI-NOTI282CYBERSECURITY2024.PDF",
+        "digest": {
+          "sha256": "468dd06bd96d8442744b4f4f4ae77a9e013bd07502879bc8dbc103ac5ab5ee0c"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "RBI",
+      "fetch_ts": "2026-10-02T10:00:00.000000+00:00",
+      "extractor": "pypdf",
+      "pages": 4,
+      "bytes": 5524
+    },
+    "signature": "OE0OQfilZSsoQd/kcRH3zZXLrUB8nnCxIQXj2bCFxIr3Ro16mFLzWO31MucAthekuSDuw3Iyz5PgBf8PAsUnDQ==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI283NBFCSCALEBASED2024.PDF",
+      "digest": {
+        "sha256": "070a1c8bf38cccf7fe486ba9b26b8590fae2f047572950fc3addeca795c842f5"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/24-RBI-NOTI283NBFCSCALEBASED2024.PDF",
+        "digest": {
+          "sha256": "070a1c8bf38cccf7fe486ba9b26b8590fae2f047572950fc3addeca795c842f5"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "RBI",
+      "fetch_ts": "2026-10-02T10:00:00.000000+00:00",
+      "extractor": "pypdf",
+      "pages": 4,
+      "bytes": 5073
+    },
+    "signature": "a0iAZt5UOz8r+5weMr+gKDRfp63aVPyhOXlmVxKIoTgHl0bddXVXYD9sYjsQq/ReWIMtiqzE2mKJmORMM4REBg==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI284PRIORITYSECTOR2024.PDF",
+      "digest": {
+        "sha256": "ff40a84e1266d4fd64c934a68acf62904a17e2573383732ec07b937ea059788e"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/25-RBI-NOTI284PRIORITYSECTOR2024.PDF",
+        "digest": {
+          "sha256": "ff40a84e1266d4fd64c934a68acf62904a17e2573383732ec07b937ea059788e"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "RBI",
+      "fetch_ts": "2026-10-02T10:00:00.000000+00:00",
+      "extractor": "pypdf",
+      "pages": 4,
+      "bytes": 5135
+    },
+    "signature": "33yIXnHtDV4g4Gs4wFVbkqpFbqU1PaeOL0WZ7gihCDnSpp83nRDdMo5n5UNb1osqlrJ5qcJ+dXGxJdtwrv+UCg==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI285COMPROMISESETTLE2024.PDF",
+      "digest": {
+        "sha256": "8e72ee8a7f04ffb7f9502bbd09aaa12e4fd92b2c01ac551a9f1be15dc5ea8c6c"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/26-RBI-NOTI285COMPROMISESETTLE2024.PDF",
+        "digest": {
+          "sha256": "8e72ee8a7f04ffb7f9502bbd09aaa12e4fd92b2c01ac551a9f1be15dc5ea8c6c"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "RBI",
+      "fetch_ts": "2026-10-02T10:00:00.000000+00:00",
+      "extractor": "pypdf",
+      "pages": 4,
+      "bytes": 4958
+    },
+    "signature": "tX3H+opHEkmNwm5NCuBYm6V4w+nLxglE8DOOlIYuCaMVoUyURw6vKD9R6zxxTyXCerR2RFYM8XzfQhpFMrsnAQ==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI286GREENDEPOSITS2024.PDF",
+      "digest": {
+        "sha256": "bb5f7c5f097a20d77575e632b303e56a4fefd6a735e00fcf0f7c64713b8c8c95"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/27-RBI-NOTI286GREENDEPOSITS2024.PDF",
+        "digest": {
+          "sha256": "bb5f7c5f097a20d77575e632b303e56a4fefd6a735e00fcf0f7c64713b8c8c95"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "RBI",
+      "fetch_ts": "2026-10-02T10:00:00.000000+00:00",
+      "extractor": "pypdf",
+      "pages": 4,
+      "bytes": 5114
+    },
+    "signature": "OQoqZ1F4bsGt+4M/7dtpSCaAs6ziPqCtRb4uXkVkXTgj+fXgbvNh3hxBjeJD0wjnS6IEWuotJDCt5om6ZA0tBA==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI287ITOUTSOURCING2024.PDF",
+      "digest": {
+        "sha256": "588a520d3aa00463a16bfd4b6ea8d1b6a27da17692679ddabf62163519b38c94"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/28-RBI-NOTI287ITOUTSOURCING2024.PDF",
+        "digest": {
+          "sha256": "588a520d3aa00463a16bfd4b6ea8d1b6a27da17692679ddabf62163519b38c94"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "RBI",
+      "fetch_ts": "2026-10-02T10:00:00.000000+00:00",
+      "extractor": "pypdf",
+      "pages": 4,
+      "bytes": 5329
+    },
+    "signature": "uvuIO+UD0Q1GNAoKoOUTUdsevZT7v/q63mrRH+Yjkt6rX4SnC/yD1pEVO35t11u908JQLRVit2zdY0V6uMkQCg==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://www.sebi.gov.in/sebi_data/attachdocs/sep-2026/1788100123456.pdf",
+      "digest": {
+        "sha256": "4ffa045bfbcfaba5623bdf8d5d0a1d96dea504f51f5e2cad16f04f509a9a01c4"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/29-SEBI-1788100123456.pdf",
+        "digest": {
+          "sha256": "4ffa045bfbcfaba5623bdf8d5d0a1d96dea504f51f5e2cad16f04f509a9a01c4"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "SEBI",
+      "fetch_ts": "2026-10-02T10:00:00.000000+00:00",
+      "extractor": "pypdf",
+      "pages": 4,
+      "bytes": 5122
+    },
+    "signature": "6e4V/C9TbLeW/IhtN6obAv3f3Vzs/hsFWzgGhfvzDYa5mvDdTba1oyYLbLBfy26/pw02Z4H9SZ1Jmws6k2OdCw==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://www.sebi.gov.in/sebi_data/attachdocs/sep-2026/1788200234567.pdf",
+      "digest": {
+        "sha256": "683119ee14859296586ddbe7fa783ef6bb68d4dd920d76bf20347c79aad19901"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/30-SEBI-1788200234567.pdf",
+        "digest": {
+          "sha256": "683119ee14859296586ddbe7fa783ef6bb68d4dd920d76bf20347c79aad19901"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "SEBI",
+      "fetch_ts": "2026-10-02T10:00:00.000000+00:00",
+      "extractor": "pypdf",
+      "pages": 4,
+      "bytes": 5112
+    },
+    "signature": "Ar2Vj0x3bXh8R8k6qs/7I7ynpZuRN7m0uMGNUJ2USJbH4H8xuW4gR4ZmUyzqvt1F04Vkiywwdto740ULt5IPDA==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://www.sebi.gov.in/sebi_data/attachdocs/sep-2026/1788300345678.pdf",
+      "digest": {
+        "sha256": "7ab6c73767b79fd063d7b4baa4d9976bf5b7b21b92797d78f85cedd1bd342403"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/31-SEBI-1788300345678.pdf",
+        "digest": {
+          "sha256": "7ab6c73767b79fd063d7b4baa4d9976bf5b7b21b92797d78f85cedd1bd342403"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "SEBI",
+      "fetch_ts": "2026-10-02T10:00:00.000000+00:00",
+      "extractor": "pypdf",
+      "pages": 4,
+      "bytes": 5126
+    },
+    "signature": "9RQ+OmazZDOdNZ1BnAV4vtAzjhWE9y5bO8ATHzLLjdwtWekoYARHdOfnqtqLwuc9Pfl+nqU64XFYAVFkgmpOAw==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://www.sebi.gov.in/sebi_data/attachdocs/sep-2026/1788400456789.pdf",
+      "digest": {
+        "sha256": "4ecb0220d4ca920cabffb4ee68309c8451042c9f512b827683c1e68ac0e40faa"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/32-SEBI-1788400456789.pdf",
+        "digest": {
+          "sha256": "4ecb0220d4ca920cabffb4ee68309c8451042c9f512b827683c1e68ac0e40faa"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "SEBI",
+      "fetch_ts": "2026-10-02T10:00:00.000000+00:00",
+      "extractor": "pypdf",
+      "pages": 4,
+      "bytes": 5021
+    },
+    "signature": "OJGA68bhmOL+FHsiNHoZMDOYwy3P4w9hfmlaDoD19nd2gmaETmsFyj/8b6WuXC1tHMM632Dvl0k6kEN6+bxVBA==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://www.sebi.gov.in/sebi_data/attachdocs/sep-2026/1788500567890.pdf",
+      "digest": {
+        "sha256": "cf06c0937e7cbbeb9e858fc4a0e2781dffb78930fca0aef86b4969f90ea4c93e"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/33-SEBI-1788500567890.pdf",
+        "digest": {
+          "sha256": "cf06c0937e7cbbeb9e858fc4a0e2781dffb78930fca0aef86b4969f90ea4c93e"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "SEBI",
+      "fetch_ts": "2026-10-02T10:00:00.000000+00:00",
+      "extractor": "pypdf",
+      "pages": 4,
+      "bytes": 5002
+    },
+    "signature": "6VflgYUhMd4O0imy9wHtySo5y2FrTvMGgwrigBYi5WcTJz8yFFW0K/adZ42tihmHW+GvSD5LRLn6dZB2zT3/Cg==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  },
+  {
+    "schema_version": "https://slsa.dev/provenance/v1",
+    "builder": "docscout-ci/provenance-signer@v1",
+    "subject": {
+      "name": "https://www.sebi.gov.in/sebi_data/attachdocs/sep-2026/1788600678901.pdf",
+      "digest": {
+        "sha256": "e3a21a3d0e4cf1c372452eb83029e824cc28bbbc67f15a4029c306cebe05b23d"
+      }
+    },
+    "materials": [
+      {
+        "uri": "corpus/raw/34-SEBI-1788600678901.pdf",
+        "digest": {
+          "sha256": "e3a21a3d0e4cf1c372452eb83029e824cc28bbbc67f15a4029c306cebe05b23d"
+        }
+      }
+    ],
+    "invocation": {
+      "source": "SEBI",
+      "fetch_ts": "2026-10-02T10:00:00.000000+00:00",
+      "extractor": "pypdf",
+      "pages": 4,
+      "bytes": 5006
+    },
+    "signature": "7Cq9UH5cQRjGQOz0KJKOE27DKl0/Ki9YdlkgyuRTPTsbXyuSJz7qZ4Jj7ptPSpB47TqQ8Z59AQtycdvVWlujCw==",
+    "signer_identity": "docscout-oidc-signer",
+    "created_at": "2026-10-16T11:05:26Z"
+  }
+]

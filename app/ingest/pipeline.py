@@ -165,6 +165,7 @@ class ChunkedDocument:
     invisible_removed: dict[str, int] = field(default_factory=dict)
     secret_findings: list[dict[str, Any]] = field(default_factory=list)
     pii_findings: list[dict[str, Any]] = field(default_factory=list)
+    metadata: Any | None = None
 
 
 def chunk_source_document(
@@ -186,6 +187,15 @@ def chunk_source_document(
     secret_findings = [f.as_dict() for f in findings if f.category == "secret"]
     pii_findings = [f.as_dict() for f in findings if f.category == "pii"]
 
+    # Automated regulatory metadata extraction (FEAT-069)
+    metadata = None
+    try:
+        from app.ingest.metadata_extractor import extract_regulatory_metadata
+
+        metadata = extract_regulatory_metadata(text, filename=getattr(document, "url", ""))
+    except Exception as exc:
+        logger.debug("Regulatory metadata extraction failed", error=str(exc))
+
     chunks = chunk_document(text, count_tokens)
     if not chunks:
         raise ExtractionError(f"{document.url}: cleaning left no chunkable text")
@@ -199,6 +209,7 @@ def chunk_source_document(
         invisible_removed=invisible_removed,
         secret_findings=secret_findings,
         pii_findings=pii_findings,
+        metadata=metadata,
     )
 
 
@@ -227,6 +238,7 @@ def prepare_document(document: SourceDocument, embedder: Embedder) -> PreparedDo
         embedding_model=embedder.model_id,
         secret_findings=cut.secret_findings,
         pii_findings=cut.pii_findings,
+        metadata=cut.metadata,
     )
 
 

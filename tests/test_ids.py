@@ -111,8 +111,8 @@ def test_stored_chunk_ids_match_the_pure_function(ingest_db: object) -> None:
     """Every row in the live database must agree with `chunk_id` recomputed from its own key.
 
     The unit tests above prove the function is stable; this proves the *ingester* uses it. A
-    pipeline that computed identifiers some other way — or that let a database default slip
-    back in — would pass every test above and still break every committed citation.
+    pipeline that computed identifiers some other way - or that let a database default slip
+    back in - would pass every test above and still break every committed citation.
     """
     conn = ingest_db
     rows = conn.execute(  # type: ignore[attr-defined]

@@ -31,6 +31,7 @@ import psycopg
 
 from app.config import database_url, sha256_file
 from app.evals import abstention, scorers, stats
+from app.evals.calibration import compute_ece
 from app.evals.goldset import (
     DEFAULT_GOLDSET,
     build_corpus_index,
@@ -38,6 +39,7 @@ from app.evals.goldset import (
     load_goldset,
     resolve_groups,
 )
+from app.evals.leakage import build_stratification_report
 from app.ingest.chunk import CHUNK_OVERLAP, CHUNK_SIZE, MAX_TOKENS
 from app.ingest.embed import EMBEDDING_DIM, MODEL_ID, QUERY_PREFIX, Embedder
 from app.retrieval import SERVING_CONFIG, RetrievalConfig, Retriever
@@ -408,12 +410,29 @@ def _score_abstention(
     }
 
 
+def _score_calibration(runs: list[ConfigRun]) -> dict[str, Any] | None:
+    """Compute Expected Calibration Error (ECE) over serving configuration predictions (FEAT-085)."""
+    serving = next((r for r in runs if r.config.name == SERVING_CONFIG.name), None)
+    if not serving or not serving.item_rows:
+        return None
+    pairs: list[tuple[float, float]] = []
+    for row in serving.item_rows:
+        hit = 1.0 if row.get("hit_at", {}).get("5") else (1.0 if row.get("hit") else 0.0)
+        raw_conf = float(row.get("lexical_overlap", 0.70))
+        pairs.append((raw_conf, hit))
+    if not pairs:
+        return None
+    rep = compute_ece(pairs, min_samples_check=False)
+    return rep.as_dict()
+
+
 def write_report(
     runs: list[ConfigRun],
     provenance: dict[str, Any],
     excluded_unanswerable: int,
     out_dir: Path,
     abstention_report: dict[str, Any] | None = None,
+    calibration_report: dict[str, Any] | None = None,
 ) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -421,6 +440,20 @@ def write_report(
     bands = _leakage_bands(runs)
     run_utc = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     items_scored = runs[0].by_cutoff[CUTOFFS[0]].n if runs else 0
+
+    serving_run = next(
+        (r for r in runs if r.config.name == SERVING_CONFIG.name),
+        runs[0] if runs else None,
+    )
+    leakage_stratification = (
+        build_stratification_report(
+            serving_run.item_rows,
+            config_name=serving_run.config.name,
+            cutoff=AB_CUTOFF,
+        ).as_dict()
+        if serving_run and serving_run.item_rows
+        else None
+    )
 
     results = {
         "schema": "docscout.eval.retrieval/1",
@@ -432,8 +465,10 @@ def write_report(
         "items_scored": items_scored,
         "items_excluded_unanswerable": excluded_unanswerable,
         "abstention": abstention_report,
+        "calibration": calibration_report,
         "comparisons": comparisons,
         "by_lexical_overlap_recall": bands,
+        "leakage_stratification": leakage_stratification,
         "configs": [
             {
                 "config": run.config.as_dict(),
@@ -597,6 +632,17 @@ def write_report(
             )
         lines.append("")
 
+    if calibration_report:
+        lines.append("## Calibration (ECE)\n")
+        lines.append(
+            f"Expected Calibration Error (ECE): **{calibration_report['ece_score']:.3f}** "
+            f"(max allowed: 0.06). Status: **{'CALIBRATED' if calibration_report['is_calibrated'] else 'MISCALIBRATED'}** "
+            f"(improvement vs baseline: {calibration_report['improvement_pct']:.1f}%).\n"
+        )
+        lines.append(
+            f"Maximum Calibration Error (MCE): {calibration_report['max_calibration_error']:.3f}.\n"
+        )
+
     lines.append("## Reproduce\n")
     lines.append("```bash\nmake eval\n```\n")
     lines.append(
@@ -656,9 +702,14 @@ def main(argv: list[str] | None = None) -> int:
     print("  scoring abstention over the unanswerable items…", flush=True)
     abstention_report = _score_abstention(items, unanswerable_items, embedder)
 
+    print("  scoring calibration over retrieval confidence…", flush=True)
+    calibration_report = _score_calibration(runs)
+
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     out_dir = args.report_dir or (REPORTS_DIR / stamp)
-    results_path = write_report(runs, provenance, excluded, out_dir, abstention_report)
+    results_path = write_report(
+        runs, provenance, excluded, out_dir, abstention_report, calibration_report
+    )
 
     print()
     for run in runs:

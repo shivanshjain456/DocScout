@@ -45,6 +45,7 @@ class InMemoryVectorStore:
         query_vector: np.ndarray,
         k: int,
         filter: MetadataFilter | None = None,
+        query_text: str | None = None,
     ) -> list[tuple[str, float]]:
         hits: list[tuple[str, float]] = []
         q = np.asarray(query_vector, dtype=np.float32)

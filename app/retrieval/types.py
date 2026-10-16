@@ -13,12 +13,34 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from app.retrieval.rerank import MODEL_ID as RERANK_MODEL_ID
 
 Mode = Literal["dense", "bm25", "hybrid", "graph-hybrid"]
 ExpansionMode = Literal["none", "synonym", "hyde", "combined"]
+
+# 9 canonical taxonomy layers from lexicon.json (FEAT-006)
+VALID_TAXONOMY_LAYERS: tuple[str, ...] = (
+    "architecture-and-data",
+    "delivery-and-platform",
+    "frontiers",
+    "intelligence-and-ai",
+    "physical-and-regulated",
+    "product-and-interface",
+    "quality-and-verification",
+    "reliability-and-operations",
+    "security-and-trust",
+)
+
+# 5 canonical relationship edge kinds from term-taxonomy.json (FEAT-008)
+VALID_RELATIONSHIP_FILTERS: tuple[str, ...] = (
+    "supersedes",
+    "requires",
+    "enables",
+    "complements",
+    "specializedBy",
+)
 
 # Reciprocal Rank Fusion's smoothing constant. 60 is the value from Cormack et al. (2009),
 # which is also what every mainstream implementation defaults to. It is not tuned here: it
@@ -39,14 +61,21 @@ class ChunkMeta:
     canonical_url: str | None = None
     title: str | None = None
     is_synthetic: bool = False
+    taxonomy_layer: str | None = None
+    tags: list[str] = field(default_factory=list)
+    applicability_scope: str = "ALL"
+    superseded_date: date | None = None
+    standard_ids: tuple[str, ...] = ()
 
 
 class MetadataFilter(BaseModel):
-    """Declarative metadata filter specification for in-query pruning (P1-2).
+    """Declarative metadata filter specification for in-query pruning (P1-2, FEAT-006).
 
     Enables bounding regulatory retrieval by authority (RBI, SEBI), issuance
-    date windows (date_from, date_to), version status (is_current), or specific
-    document UUIDs / canonical URLs.
+    date windows (date_from, date_to), version status (is_current), specific
+    document UUIDs / canonical URLs, taxonomy layers, domain tags (FEAT-016),
+    entity vintage scope (FEAT-036), point-in-time temporal state (FEAT-039),
+    or statutory standard/framework compliance mapping (FEAT-044).
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -58,6 +87,49 @@ class MetadataFilter(BaseModel):
     document_ids: list[str] | None = None
     canonical_url: str | None = None
     include_synthetic: bool = False
+    taxonomy_layers: list[str] | None = None
+    relationship_filter: (
+        Literal["supersedes", "requires", "enables", "complements", "specializedBy"] | None
+    ) = None
+    tags: list[str] | None = None
+    entity_vintage: Literal["existing", "new"] | None = None
+    as_of_date: date | None = None
+    standard: str | None = None
+    framework: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_framework_and_standard(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "framework" in data and "standard" not in data:
+                data["standard"] = data["framework"]
+        return data
+
+    @field_validator("standard")
+    @classmethod
+    def validate_standard(cls, v: str | None) -> str | None:
+        if v is not None:
+            from app.compliance.standards_registry import get_default_standards_registry
+
+            std = get_default_standards_registry().get_standard(v)
+            if std is None:
+                known = sorted(get_default_standards_registry().get_all_standard_ids()[:15])
+                raise ValueError(
+                    f"Unrecognized standard '{v}'. Must be a recognized standard ID or name. "
+                    f"Known standards include: {known}"
+                )
+        return v
+
+    @field_validator("taxonomy_layers")
+    @classmethod
+    def validate_taxonomy_layers(cls, v: list[str] | None) -> list[str] | None:
+        if v is not None:
+            invalid = [layer for layer in v if layer not in VALID_TAXONOMY_LAYERS]
+            if invalid:
+                raise ValueError(
+                    f"Invalid taxonomy layer(s) {invalid}. Valid layers: {list(VALID_TAXONOMY_LAYERS)}"
+                )
+        return v
 
     def canonical_tuple(self) -> tuple[Any, ...]:
         """Deterministic hashable representation for query caching."""
@@ -71,6 +143,14 @@ class MetadataFilter(BaseModel):
         if self.document_ids:
             doc_ids = tuple(sorted(self.document_ids))
 
+        layers: tuple[str, ...] | None = None
+        if self.taxonomy_layers:
+            layers = tuple(sorted(self.taxonomy_layers))
+
+        tags_tuple: tuple[str, ...] | None = None
+        if self.tags:
+            tags_tuple = tuple(sorted(self.tags))
+
         return (
             src,
             self.date_from.isoformat() if self.date_from else None,
@@ -79,6 +159,12 @@ class MetadataFilter(BaseModel):
             doc_ids,
             self.canonical_url,
             self.include_synthetic,
+            layers,
+            tags_tuple,
+            self.relationship_filter,
+            self.entity_vintage,
+            self.as_of_date.isoformat() if self.as_of_date else None,
+            self.standard,
         )
 
     def as_dict(self) -> dict[str, Any]:
@@ -92,7 +178,15 @@ class MetadataFilter(BaseModel):
         if not self.include_synthetic and meta.is_synthetic:
             return False
 
-        if self.is_current is not None and meta.is_current != self.is_current:
+        if self.as_of_date is not None:
+            doc_pub = meta.published_date
+            if doc_pub is None and meta.fetch_ts is not None:
+                doc_pub = meta.fetch_ts.date()
+            if doc_pub is not None and doc_pub > self.as_of_date:
+                return False
+            if meta.superseded_date is not None and meta.superseded_date <= self.as_of_date:
+                return False
+        elif self.is_current is not None and meta.is_current != self.is_current:
             return False
 
         if self.source is not None:
@@ -118,7 +212,76 @@ class MetadataFilter(BaseModel):
         if self.canonical_url is not None and meta.canonical_url != self.canonical_url:
             return False
 
+        if self.taxonomy_layers is not None:
+            if meta.taxonomy_layer is None or meta.taxonomy_layer not in self.taxonomy_layers:
+                return False
+
+        if self.tags is not None:
+            chunk_tags = getattr(meta, "tags", None) or []
+            if not any(t in chunk_tags for t in self.tags):
+                return False
+
+        if self.entity_vintage is not None:
+            chunk_scope = getattr(meta, "applicability_scope", "ALL")
+            if self.entity_vintage == "existing" and chunk_scope not in (
+                "ALL",
+                "GRANDFATHERED_EXISTING",
+            ):
+                return False
+            if self.entity_vintage == "new" and chunk_scope not in ("ALL", "NEW_ENTRANTS_ONLY"):
+                return False
+
+        if self.standard is not None:
+            chunk_stds = getattr(meta, "standard_ids", ())
+            if not chunk_stds:
+                return False
+            from app.compliance.standards_registry import get_default_standards_registry
+
+            std = get_default_standards_registry().get_standard(self.standard)
+            cand_keys = {
+                self.standard.lower(),
+                self.standard.lower().replace("-", " ").replace("_", " "),
+            }
+            if std is not None:
+                cand_keys.add(std.id.lower())
+                cand_keys.add(std.name.lower())
+                for a in std.aliases:
+                    cand_keys.add(a.lower())
+            meta_standards = {s.lower() for s in chunk_stds} | {
+                s.lower().replace("-", " ").replace("_", " ") for s in chunk_stds
+            }
+            if not (cand_keys & meta_standards):
+                return False
+
         return True
+
+
+@dataclass(frozen=True)
+class PackedContext:
+    """Dynamically packed context fitting a specified token budget (FEAT-073)."""
+
+    packed_passages: list[Any]
+    total_tokens: int
+    utilization_ratio: float
+    truncated_boundary_chunk: bool
+
+
+@dataclass(frozen=True)
+class ContextPackerConfig:
+    """Configuration for token-budget dynamic context packing (FEAT-073)."""
+
+    max_tokens: int = 2048
+    target_utilization: float = 0.95
+    sentence_boundary_trim: bool = True
+    min_sentence_chars: int = 20
+
+    def __post_init__(self) -> None:
+        if self.max_tokens < 256:
+            raise ValueError(f"max_tokens must be >= 256, got {self.max_tokens}")
+        if not (0.5 <= self.target_utilization <= 1.0):
+            raise ValueError(
+                f"target_utilization must be in [0.5, 1.0], got {self.target_utilization}"
+            )
 
 
 @dataclass(frozen=True)
@@ -144,6 +307,19 @@ class Retrieved:
     char_end: int = 0
     title: str | None = None
     published_date: str | None = None
+    matching_relationships: list[str] = field(default_factory=list)
+    centrality_boost: float = 0.0
+    difficulty_level: str | None = None
+    authority_tier: int | None = None
+    applied_authority_multiplier: float = 1.0
+    document_class: str | None = None
+    presentation_rank: int | None = None
+    is_arm_anchor: bool = False
+    anchored_arm: str | None = None
+    clause_hierarchy: list[str] = field(default_factory=list)
+    is_proviso: bool = False
+    expanded_text: str | None = None
+    highlights: list[Any] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -176,26 +352,79 @@ class RetrievalConfig:
     # Cross-encoder reranking of the fused candidates. Off by default: it is the single
     # most expensive stage in the pipeline and ADR-0009 decides when it earns that cost.
     rerank: bool = False
-    # How many fused candidates the cross-encoder scores. Must be >= k_final, or the
-    # reranker would be asked to choose the top k from fewer than k candidates, which
-    # quietly degrades to "no reranking" while still charging for the model.
-    rerank_top_n: int = 20
+    # How many fused candidates the cross-encoder scores. Clamped to a maximum of 64
+    # candidates per FEAT-071 to respect inference latency budgets.
+    rerank_top_n: int = 50
+    rerank_batch_size: int = 16
+    rerank_timeout_ms: int = 40
     filter: MetadataFilter | None = None
     expand_query: bool = False
     expansion_mode: ExpansionMode = "none"
     vector_store_adapter: str = "pgvector"
+    enable_gar: bool = False
+    gar_max_hops: int = 1
+    gar_decay_factor: float = 0.5
+    enforce_layer_pruning: bool = True
+    relationship_filter: str | None = None
+    enable_centrality_boost: bool = False
+    centrality_weight: float = 0.15
+    broad_query_threshold: float = 0.4
+    enable_disambiguation: bool = False
+    disambiguation_min_confidence: float = 0.70
+    difficulty_band: str | None = None
+    auto_constrain_tags: bool = False
+    enable_normalization: bool = False
+    enable_authority_hierarchy: bool = False
+    authority_multipliers: dict[str, float] | None = None
+    enable_lost_in_middle_reordering: bool = False
+    anchor_arm_leaders: bool | None = None
+    expand_section_context: bool = False
+    max_sibling_clauses: int = 2
 
     def __post_init__(self) -> None:
+        if not (1 <= self.max_sibling_clauses <= 4):
+            raise ValueError(
+                f"max_sibling_clauses must be in [1, 4], got {self.max_sibling_clauses}"
+            )
+        if self.anchor_arm_leaders is None:
+            object.__setattr__(self, "anchor_arm_leaders", self.anchor_arm_top1)
+        elif self.anchor_arm_top1 != self.anchor_arm_leaders:
+            object.__setattr__(self, "anchor_arm_top1", self.anchor_arm_leaders)
         if self.rerank and self.rerank_top_n < self.k_final:
             raise ValueError(
                 f"rerank_top_n ({self.rerank_top_n}) must be >= k_final ({self.k_final}); "
                 "reranking fewer candidates than are returned pays for the model without "
                 "giving it anything to reorder"
             )
+        if self.rerank_top_n > 64:
+            raise ValueError(
+                f"rerank_top_n ({self.rerank_top_n}) exceeds maximum candidate pool ceiling of 64; "
+                "unbounded candidate pools exceed the inference latency budget"
+            )
+        if self.rerank_batch_size <= 0:
+            raise ValueError(f"rerank_batch_size must be positive, got {self.rerank_batch_size}")
+        if self.rerank_timeout_ms <= 0:
+            raise ValueError(f"rerank_timeout_ms must be positive, got {self.rerank_timeout_ms}")
         if self.expand_query and self.expansion_mode == "none":
             object.__setattr__(self, "expansion_mode", "synonym")
         elif self.expansion_mode != "none" and not self.expand_query:
             object.__setattr__(self, "expand_query", True)
+        if self.gar_max_hops not in (1, 2):
+            raise ValueError(f"gar_max_hops must be 1 or 2, got {self.gar_max_hops}")
+        if not (0.0 < self.gar_decay_factor <= 1.0):
+            raise ValueError(f"gar_decay_factor must be in (0.0, 1.0], got {self.gar_decay_factor}")
+        if not (0.0 <= self.centrality_weight <= 0.3):
+            raise ValueError(
+                f"centrality_weight must be in [0.0, 0.3], got {self.centrality_weight}"
+            )
+        if not (0.0 <= self.broad_query_threshold <= 1.0):
+            raise ValueError(
+                f"broad_query_threshold must be in [0.0, 1.0], got {self.broad_query_threshold}"
+            )
+        if not (0.0 <= self.disambiguation_min_confidence <= 1.0):
+            raise ValueError(
+                f"disambiguation_min_confidence must be in [0.0, 1.0], got {self.disambiguation_min_confidence}"
+            )
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -211,10 +440,29 @@ class RetrievalConfig:
             "rerank": self.rerank,
             "rerank_top_n": self.rerank_top_n if self.rerank else None,
             "rerank_model": RERANK_MODEL_ID if self.rerank else None,
+            "rerank_batch_size": self.rerank_batch_size if self.rerank else None,
+            "rerank_timeout_ms": self.rerank_timeout_ms if self.rerank else None,
             "filter": self.filter.as_dict() if self.filter else None,
             "expand_query": self.expand_query,
             "expansion_mode": self.expansion_mode,
             "vector_store_adapter": self.vector_store_adapter,
+            "enable_gar": self.enable_gar,
+            "gar_max_hops": self.gar_max_hops,
+            "gar_decay_factor": self.gar_decay_factor,
+            "enforce_layer_pruning": self.enforce_layer_pruning,
+            "relationship_filter": self.relationship_filter,
+            "enable_centrality_boost": self.enable_centrality_boost,
+            "centrality_weight": self.centrality_weight,
+            "broad_query_threshold": self.broad_query_threshold,
+            "enable_disambiguation": self.enable_disambiguation,
+            "disambiguation_min_confidence": self.disambiguation_min_confidence,
+            "difficulty_band": self.difficulty_band,
+            "auto_constrain_tags": self.auto_constrain_tags,
+            "enable_authority_hierarchy": self.enable_authority_hierarchy,
+            "enable_lost_in_middle_reordering": self.enable_lost_in_middle_reordering,
+            "anchor_arm_leaders": self.anchor_arm_leaders,
+            "expand_section_context": self.expand_section_context,
+            "max_sibling_clauses": self.max_sibling_clauses,
         }
 
 
@@ -230,4 +478,5 @@ SERVING_CONFIG = RetrievalConfig(
     k_final=10,
     rrf_k=DEFAULT_RRF_K,
     anchor_arm_top1=True,
+    anchor_arm_leaders=True,
 )

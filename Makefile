@@ -2,12 +2,12 @@
 SHELL := /bin/bash
 TS := $(shell date -u +%Y%m%dT%H%M%SZ)
 
-.PHONY: help setup dev test lint typecheck secret-scan eval load deploy destroy verify-setup down \
+.PHONY: help setup dev test test-counterfactual test-chaos test-mutation diff-coverage provenance-verify lint typecheck secret-scan eval load deploy destroy verify-setup down \
 	gold-lint gold-pin gold-review gold-stats eval-quick eval-gate eval-baseline \
 	mutation mutation-clean audit-deps \
 	serve bench \
         migrate migrate-status migrate-down ingest ingest-dry ingest-status ingest-verify \
-        refresh refresh-check
+        refresh refresh-check mine-negatives
 
 help:  ## show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-14s\033[0m %s\n",$$1,$$2}'
@@ -65,6 +65,21 @@ refresh-check:  ## check corpus freshness without writing to database (dry run)
 test:  ## run the test suite
 	uv run pytest -q
 
+test-counterfactual:  ## run counterfactual robustness tests (FEAT-087)
+	uv run pytest tests/test_counterfactual.py
+
+test-chaos:  ## run chaos engineering fault injection test harness (FEAT-094)
+	DOCSCOUT_CHAOS_TESTING=1 uv run pytest tests/chaos/test_fault_injection.py
+
+test-mutation:  ## run mutation score ratcheting CI gate (FEAT-096)
+	uv run python scripts/diff_mutation.py
+
+diff-coverage:  ## run differential patch coverage gate (FEAT-097)
+	uv run python scripts/diff_coverage.py
+
+provenance-verify:  ## verify cryptographic provenance attestations (FEAT-098)
+	uv run python scripts/provenance.py --verify
+
 lint:  ## ruff check + format check
 	uv run ruff check .
 	uv run ruff format --check .
@@ -86,6 +101,9 @@ serve:  ## run the API on :8000 (loads the model once at startup)
 
 bench:  ## measure e2e latency, cache effect and cost per 1k against a running API
 	uv run python scripts/bench_api.py --n 200 --concurrency 4
+
+mine-negatives:  ## mine hard negative triplets for discriminative indexing (FEAT-079)
+	uv run python scripts/mine_hard_negatives.py --evaluate
 
 audit-deps:  ## scan locked dependencies for advisories + regenerate the SBOM
 	uv run python scripts/audit_dependencies.py

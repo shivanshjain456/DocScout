@@ -1,4 +1,4 @@
-"""Comprehensive test suite for corpus refresh, freshness signals, and supersession lifecycle — P0-2.
+"""Comprehensive test suite for corpus refresh, freshness signals, and supersession lifecycle - P0-2.
 
 Tests the five pillars of P0-2:
 1. Scheduled corpus refresh updates singleton `corpus_sync_state` with audit provenance.

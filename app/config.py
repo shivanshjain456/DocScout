@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+from dataclasses import dataclass
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -49,6 +50,13 @@ def database_url() -> str:
             "DATABASE_URL is not set. Copy .env.example to .env and run `make setup`."
         )
     return url
+
+
+def optional_database_url() -> str | None:
+    """Return DATABASE_URL if configured, or None without raising."""
+    load_dotenv()
+    url = os.environ.get("DATABASE_URL", "").strip()
+    return url if url else None
 
 
 def api_keys() -> frozenset[str]:
@@ -178,6 +186,37 @@ def auth0_admin_emails() -> frozenset[str]:
     return frozenset(email.strip().lower() for email in raw.split(",") if email.strip())
 
 
+@dataclass(frozen=True)
+class Auth0Config:
+    """Configuration for Auth0 OIDC RS256 JWT authentication and JWKS cache."""
+
+    domain: str = ""
+    audience: str = "https://api.docscout.local"
+    issuer: str = ""
+    jwks_cache_ttl_seconds: int = 3600
+    enabled: bool = False
+
+
+def auth0_config() -> Auth0Config:
+    """Return structured Auth0Config instance from environment."""
+    load_dotenv()
+    domain = auth0_domain()
+    audience = auth0_audience()
+    issuer = auth0_issuer()
+    try:
+        ttl = int(os.environ.get("AUTH0_JWKS_CACHE_TTL_SECONDS", "3600").strip())
+    except ValueError:
+        ttl = 3600
+    enabled = bool(domain and issuer)
+    return Auth0Config(
+        domain=domain,
+        audience=audience,
+        issuer=issuer,
+        jwks_cache_ttl_seconds=ttl,
+        enabled=enabled,
+    )
+
+
 # --- Brevo Transactional Email Configuration ---
 
 DEFAULT_BREVO_API_URL = "https://api.brevo.com/v3"
@@ -278,3 +317,32 @@ def docscout_unsubscribe_secret() -> str:
     # Fallback to key derived from database password or API key to preserve stability across restarts
     raw = os.environ.get("DOCSCOUT_API_KEY", "docscout-default-secret")
     return hashlib.sha256(f"unsubscribe:{raw}".encode()).hexdigest()
+
+
+# --- Real-Time Telemetry & Prometheus Alarms (FEAT-089) ---
+
+
+@dataclass(frozen=True)
+class MetricsConfig:
+    """Configuration for Prometheus telemetry and AI assurance alarms (FEAT-089)."""
+
+    enable_ai_assurance_metrics: bool = True
+    hallucination_alarm_threshold: float = 0.98
+    hallucination_alarm_window_seconds: float = 300.0  # 5 minutes
+    alert_channel: str = "sre-pagerduty"
+
+
+def metrics_config() -> MetricsConfig:
+    """Return runtime MetricsConfig parsed from environment variables."""
+    load_dotenv()
+    enable_raw = os.environ.get("DOCSCOUT_ENABLE_AI_ASSURANCE_METRICS", "").strip().lower()
+    enable = enable_raw not in {"0", "false", "no", "off"}
+    thresh_raw = os.environ.get("DOCSCOUT_HALLUCINATION_ALARM_THRESHOLD", "").strip()
+    try:
+        threshold = float(thresh_raw) if thresh_raw else 0.98
+    except ValueError:
+        threshold = 0.98
+    return MetricsConfig(
+        enable_ai_assurance_metrics=enable,
+        hallucination_alarm_threshold=threshold,
+    )

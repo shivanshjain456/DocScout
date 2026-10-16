@@ -34,7 +34,13 @@ import psycopg
 from pgvector.psycopg import register_vector
 
 from app.api.cache import trigger_corpus_invalidation
+from app.api.metrics import CHUNKS_REUSED_TOTAL, DUPLICATE_DOCUMENTS_DETECTED_TOTAL
 from app.ingest.chunk import Chunk
+from app.ingest.deduplicator import (
+    RegulatoryDeduplicator,
+    compute_minhash_signature,
+    compute_text_sha256,
+)
 from app.ingest.ids import chunk_id
 from app.ingest.source import SourceDocument
 from app.rowtypes import as_int, as_str
@@ -69,6 +75,7 @@ class PreparedDocument:
     invisible_removed: dict[str, int] = field(default_factory=dict)
     secret_findings: list[dict[str, Any]] = field(default_factory=list)
     pii_findings: list[dict[str, Any]] = field(default_factory=list)
+    metadata: Any | None = None
 
 
 @dataclass(frozen=True)
@@ -271,6 +278,9 @@ def store_document(conn: psycopg.Connection[Any], prepared: PreparedDocument) ->
             if existing is not None:
                 version_id, document_id, canonical_url = existing
                 same_url = canonical_url == doc.url
+                CHUNKS_REUSED_TOTAL.inc(len(prepared.chunks))
+                if not same_url:
+                    DUPLICATE_DOCUMENTS_DETECTED_TOTAL.labels(match_type="exact_content").inc()
                 return StoreOutcome(
                     url=doc.url,
                     action=(
@@ -286,19 +296,37 @@ def store_document(conn: psycopg.Connection[Any], prepared: PreparedDocument) ->
                     ),
                 )
 
+            # FEAT-070: Deduplication & reprint check (Text SHA-256 and MinHash LSH)
+            text_sha = compute_text_sha256(prepared.text)
+            minhash_sig = compute_minhash_signature(prepared.text)
+            dedup = RegulatoryDeduplicator().check_duplicate_in_db(conn, prepared.text, doc.sha256)
+
             # FR-5, URL half.
             row = conn.execute(
                 "SELECT document_id FROM documents WHERE canonical_url = %s", (doc.url,)
             ).fetchone()
+
+            meta = prepared.metadata
+            circular_no = getattr(meta, "circular_no", None) if meta else None
+            dept = getattr(meta, "department", None) if meta else None
+            subj = getattr(meta, "subject", None) if meta else None
+            signoff = getattr(meta, "signoff_officer", None) if meta else None
+
+            canonical_doc_id = (
+                UUID(dedup.canonical_doc_id)
+                if (dedup.is_duplicate and dedup.canonical_doc_id)
+                else None
+            )
 
             if row is None:
                 inserted = conn.execute(
                     """
                     INSERT INTO documents (
                         canonical_url, source, authority, detail_page, title, published_date,
-                        is_synthetic
+                        is_synthetic, circular_no, issuing_department, subject, signoff_authority,
+                        canonical_document_id, text_sha256, minhash_signature
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING document_id
                     """,
                     (
@@ -309,6 +337,13 @@ def store_document(conn: psycopg.Connection[Any], prepared: PreparedDocument) ->
                         doc.title,
                         doc.published_date,
                         doc.is_synthetic,
+                        circular_no,
+                        dept,
+                        subj,
+                        signoff,
+                        canonical_doc_id,
+                        text_sha,
+                        minhash_sig,
                     ),
                 ).fetchone()
                 if inserted is None:  # pragma: no cover - RETURNING always yields a row
@@ -317,22 +352,36 @@ def store_document(conn: psycopg.Connection[Any], prepared: PreparedDocument) ->
                 action = Action.INSERTED
             else:
                 document_id = UUID(str(row[0]))
-                if doc.title is not None or doc.published_date is not None or doc.is_synthetic:
-                    conn.execute(
-                        """
-                        UPDATE documents
-                           SET title = COALESCE(%s, documents.title),
-                               published_date = COALESCE(%s, documents.published_date),
-                               is_synthetic = COALESCE(%s, documents.is_synthetic)
-                         WHERE document_id = %s
-                        """,
-                        (
-                            doc.title,
-                            doc.published_date,
-                            doc.is_synthetic,
-                            document_id,
-                        ),
-                    )
+                conn.execute(
+                    """
+                    UPDATE documents
+                       SET title = COALESCE(%s, documents.title),
+                           published_date = COALESCE(%s, documents.published_date),
+                           is_synthetic = COALESCE(%s, documents.is_synthetic),
+                           circular_no = COALESCE(%s, documents.circular_no),
+                           issuing_department = COALESCE(%s, documents.issuing_department),
+                           subject = COALESCE(%s, documents.subject),
+                           signoff_authority = COALESCE(%s, documents.signoff_authority),
+                           canonical_document_id = COALESCE(%s, documents.canonical_document_id),
+                           text_sha256 = COALESCE(%s, documents.text_sha256),
+                           minhash_signature = COALESCE(%s, documents.minhash_signature)
+                     WHERE document_id = %s
+                    """,
+                    (
+                        doc.title,
+                        doc.published_date,
+                        doc.is_synthetic,
+                        circular_no,
+                        dept,
+                        subj,
+                        signoff,
+                        canonical_doc_id,
+                        text_sha,
+                        minhash_sig,
+                        document_id,
+                    ),
+                )
+
                 # FR-4: demote the previous current version in the same transaction.
                 demoted = conn.execute(
                     """
@@ -366,6 +415,20 @@ def store_document(conn: psycopg.Connection[Any], prepared: PreparedDocument) ->
                 raise RuntimeError("version insert returned no id")
             version_id = UUID(str(version_row[0]))
 
+            if dedup.is_duplicate and canonical_doc_id is not None:
+                CHUNKS_REUSED_TOTAL.inc(len(prepared.chunks))
+                return StoreOutcome(
+                    url=doc.url,
+                    action=Action.SKIPPED_DUPLICATE_CONTENT,
+                    document_id=document_id,
+                    version_id=version_id,
+                    chunks_written=0,
+                    detail=(
+                        f"{dedup.match_type} duplicate (similarity {dedup.similarity_score:.4f}) "
+                        f"of canonical document {canonical_doc_id}"
+                    ),
+                )
+
             rows = [
                 (
                     chunk_id(doc.sha256, chunk.char_start, chunk.char_end),
@@ -378,6 +441,10 @@ def store_document(conn: psycopg.Connection[Any], prepared: PreparedDocument) ->
                     chunk.token_count,
                     prepared.embedding_model,
                     embedding,
+                    getattr(chunk, "parent_chunk_id", None),
+                    getattr(chunk, "clause_hierarchy", []),
+                    getattr(chunk, "is_proviso", False),
+                    getattr(chunk, "chunk_type", "standard"),
                 )
                 for chunk, embedding in zip(prepared.chunks, prepared.embeddings, strict=True)
             ]
@@ -386,8 +453,9 @@ def store_document(conn: psycopg.Connection[Any], prepared: PreparedDocument) ->
                     """
                     INSERT INTO chunks
                         (chunk_id, document_id, version_id, ordinal, text, char_start,
-                         char_end, token_count, embedding_model, embedding)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                         char_end, token_count, embedding_model, embedding,
+                         parent_chunk_id, clause_hierarchy, is_proviso, chunk_type)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     rows,
                 )
@@ -407,6 +475,26 @@ def store_document(conn: psycopg.Connection[Any], prepared: PreparedDocument) ->
                 doc_title=doc.title,
                 canonical_url=doc.url,
                 chunks=chunk_dicts,
+            )
+
+            # FEAT-098: Record immutable cryptographic audit trail
+            from app.provenance import (
+                ArtifactMaterial,
+                generate_provenance_attestation,
+                record_audit_trail,
+            )
+
+            att = generate_provenance_attestation(
+                subject={"name": doc.url, "digest": {"sha256": doc.sha256}},
+                materials=[ArtifactMaterial(uri=doc.url, digest={"sha256": doc.sha256})],
+                invocation={"version_id": str(version_id), "chunks": len(rows)},
+            )
+            record_audit_trail(
+                conn,
+                entity_type="circular",
+                entity_id=str(version_id),
+                sha256_digest=doc.sha256,
+                attestation=att,
             )
 
             outcome = StoreOutcome(
@@ -510,6 +598,59 @@ def store_graph_elements(
             )
 
     return len(nodes), len(edges)
+
+
+def store_circular_citations(
+    conn: psycopg.Connection[Any],
+    document_id: UUID | str,
+    text: str,
+    is_synthetic: bool = False,
+) -> int:
+    """Extract and persist formal circular citations (FEAT-005)."""
+    import uuid
+
+    from app.ingest.citation_extractor import CircularCitationExtractor
+    from app.ingest.ids import CHUNK_ID_NAMESPACE
+
+    namespace_citation = uuid.uuid5(CHUNK_ID_NAMESPACE, "circular_citations")
+
+    extractor = CircularCitationExtractor()
+    citations = extractor.extract_citations(text, str(document_id))
+    if not citations:
+        return 0
+
+    with conn.cursor() as cur:
+        rows = [
+            (
+                uuid.uuid5(
+                    namespace_citation,
+                    f"{document_id}:{c.target_circular_no}:{c.char_start}",
+                ),
+                document_id,
+                c.target_circular_no,
+                c.target_doc_id,
+                c.raw_citation_span,
+                c.char_start,
+                c.char_end,
+                is_synthetic,
+            )
+            for c in citations
+        ]
+        cur.executemany(
+            """
+            INSERT INTO circular_citations
+                (citation_id, source_document_id, target_circular_no,
+                 target_document_id, raw_citation_span, char_start, char_end, is_synthetic)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (citation_id) DO UPDATE
+               SET target_circular_no = EXCLUDED.target_circular_no,
+                   target_document_id = EXCLUDED.target_document_id,
+                   raw_citation_span = EXCLUDED.raw_citation_span
+            """,
+            rows,
+        )
+
+    return len(citations)
 
 
 def populate_corpus_knowledge_graph(conn: psycopg.Connection[Any]) -> tuple[int, int]:

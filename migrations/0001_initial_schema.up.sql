@@ -11,7 +11,7 @@
 SET search_path = public;
 
 -- ---------------------------------------------------------------------------------------
--- documents — one logical circular, stable across reissues.
+-- documents - one logical circular, stable across reissues.
 -- ---------------------------------------------------------------------------------------
 CREATE TABLE documents (
     document_id    uuid        PRIMARY KEY DEFAULT uuidv7(),
@@ -36,7 +36,7 @@ COMMENT ON TABLE  documents IS 'One logical regulatory circular, stable across r
 COMMENT ON COLUMN documents.source IS 'RBI | SEBI | SYNTHETIC (injection canary).';
 
 -- ---------------------------------------------------------------------------------------
--- document_versions — one observed byte-state of a document.
+-- document_versions - one observed byte-state of a document.
 -- ---------------------------------------------------------------------------------------
 CREATE TABLE document_versions (
     version_id   uuid        PRIMARY KEY DEFAULT uuidv7(),
@@ -85,7 +85,7 @@ COMMENT ON TABLE  document_versions IS 'One observed byte-state of a document; a
 COMMENT ON COLUMN document_versions.sha256 IS 'Globally unique: identical bytes are one version regardless of URL (FR-5).';
 
 -- ---------------------------------------------------------------------------------------
--- chunks — the retrievable unit.
+-- chunks - the retrievable unit.
 -- ---------------------------------------------------------------------------------------
 CREATE TABLE chunks (
     chunk_id        uuid        PRIMARY KEY DEFAULT uuidv7(),

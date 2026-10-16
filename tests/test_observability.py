@@ -16,12 +16,22 @@ from typing import Any
 import pytest
 import structlog
 
+from app.api.metrics import QUERY_COST_USD_TOTAL, QUERY_TOKENS_TOTAL
 from app.observability import (
     REDACTED,
+    TelemetryConfig,
+    calculate_query_complexity,
+    calculate_query_cost,
     configure_logging,
+    estimate_token_count,
     get_logger,
+    hash_query_text,
     normalise_request_id,
+    parse_or_mint_traceparent,
+    record_telemetry_access,
     reset_logging_for_tests,
+    telemetry_config,
+    trace_span,
 )
 
 
@@ -201,3 +211,195 @@ def test_third_party_info_is_quieted(capsys: pytest.CaptureFixture[str]) -> None
     logging.getLogger("httpx").warning("connection failed")
     events = [r["event"] for r in emitted(capsys)]
     assert events == ["connection failed"]
+
+
+# --- FEAT-100: High-Cardinality Telemetry & Cost-Per-Query Accounting ------------------
+
+
+def test_telemetry_config_defaults_and_env() -> None:
+    """TelemetryConfig defaults match specification and environment overrides work."""
+    cfg = TelemetryConfig()
+    assert cfg.export_otlp is False
+    assert cfg.cost_per_1k_tokens == 0.0001
+    assert "docscout" in cfg.service_name
+
+    loaded = telemetry_config()
+    assert isinstance(loaded, TelemetryConfig)
+    assert loaded.cost_per_1k_tokens > 0
+
+
+def test_parse_or_mint_traceparent_valid_w3c() -> None:
+    """Inbound valid W3C traceparent preserves trace ID and flags while minting child span."""
+    inbound = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+    trace_id, span_id, flags, out_header = parse_or_mint_traceparent(inbound)
+    assert trace_id == "4bf92f3577b34da6a3ce929d0e0e4736"
+    assert flags == "01"
+    assert span_id != "00f067aa0ba902b7"  # Fresh child span
+    assert len(span_id) == 16
+    assert out_header.startswith("00-4bf92f3577b34da6a3ce929d0e0e4736-")
+    assert out_header.endswith("-01")
+
+
+def test_parse_or_mint_traceparent_fallback_on_invalid() -> None:
+    """Missing or corrupted traceparent header mints compliant 32-hex trace ID."""
+    trace_id, span_id, flags, out_header = parse_or_mint_traceparent("invalid-trace-header")
+    assert len(trace_id) == 32
+    assert len(span_id) == 16
+    assert flags == "01"
+    assert out_header == f"00-{trace_id}-{span_id}-01"
+
+
+def test_token_count_estimation() -> None:
+    """Whitespace heuristic estimates tokens consistently."""
+    assert estimate_token_count(None, base_tokens=10) == 10
+    assert estimate_token_count("", base_tokens=15) == 15
+    text = "What are the priority sector lending norms for regional rural banks in India?"
+    tokens = estimate_token_count(text)
+    assert tokens >= 12
+
+
+def test_cost_calculation() -> None:
+    """Cost calculations accurately track monetary value per thousand tokens."""
+    # 1,000 tokens @ $0.0001 per 1k = $0.0001
+    assert calculate_query_cost(1000, 0.0001) == 0.0001
+    # 50,000 tokens @ $0.0001 per 1k = $0.005
+    assert calculate_query_cost(50000, 0.0001) == 0.005
+    assert calculate_query_cost(0, 0.0001) == 0.0
+
+
+def test_query_complexity_calculation() -> None:
+    """Complexity combines input tokens, passage evaluation, and execution timing."""
+    score = calculate_query_complexity(tokens=50, retrieved_chunks=10, duration_ms=25.0)
+    # 50*1 + 10*2.5 + 2.5 = 77.5
+    assert score == 77.5
+
+
+def test_customer_query_redacted_in_telemetry(capsys: pytest.CaptureFixture[str]) -> None:
+    """Customer proprietary query strings are never logged in cleartext."""
+    configure_logging("INFO", json_output=True)
+    raw_query = "Confidential SEBI insider trading investigation regarding Company X"
+    get_logger("docscout.test").info(
+        "search.request",
+        user_query=raw_query,
+        search_query=raw_query,
+        status=200,
+    )
+    record = emitted(capsys)[0]
+    # Raw query text must be absent
+    assert raw_query not in json.dumps(record)
+    assert "[redacted hash=" in record["user_query"]
+    assert "[redacted hash=" in record["search_query"]
+    assert f"hash={hash_query_text(raw_query)}" in record["user_query"]
+
+
+def test_trace_span_context_manager() -> None:
+    """trace_span context manager tracks duration and records attributes."""
+    with trace_span("lexical_retrieval", {"k": 10, "engine": "bm25"}) as span:
+        assert span["name"] == "lexical_retrieval"
+        assert len(span["span_id"]) == 16
+        assert span["attributes"]["k"] == 10
+
+    assert "duration_ms" in span
+    assert span["duration_ms"] >= 0.0
+
+
+def test_record_telemetry_access_emits_json_and_increments_metrics(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """record_telemetry_access emits structured http.access log line and Prometheus metrics."""
+    configure_logging("INFO", json_output=True)
+    logger = get_logger("docscout.access")
+
+    record_telemetry_access(
+        logger=logger,
+        status_code=200,
+        duration_ms=15.42,
+        tenant_id="tenant-rbi-supervisory",
+        user_id="analyst-707",
+        tokens=350,
+        cost_usd=0.000035,
+        cache_outcome="hit",
+        query_complexity=42.5,
+        trace_id="4bf92f3577b34da6a3ce929d0e0e4736",
+        span_id="00f067aa0ba902b7",
+    )
+
+    records = emitted(capsys)
+    assert len(records) == 1
+    rec = records[0]
+    assert rec["event"] == "http.access"
+    assert rec["status"] == 200
+    assert rec["duration_ms"] == 15.42
+    assert rec["tenant_id"] == "tenant-rbi-supervisory"
+    assert rec["user_id"] == "analyst-707"
+    assert rec["tokens"] == 350
+    assert rec["cost_usd"] == 0.000035
+    assert rec["cache_outcome"] == "hit"
+    assert rec["query_complexity"] == 42.5
+
+    assert QUERY_COST_USD_TOTAL is not None
+    assert QUERY_TOKENS_TOTAL is not None
+
+
+def test_telemetry_overhead_under_0_1ms() -> None:
+    """Telemetry calculations overhead per request is under 0.1 ms."""
+    import time
+
+    t0 = time.perf_counter()
+    for _ in range(500):
+        _tid, _sid, _flags, _hdr = parse_or_mint_traceparent(
+            "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+        )
+        tokens = estimate_token_count("RBI circular on liquidity coverage ratio", base_tokens=25)
+        _cost = calculate_query_cost(tokens, 0.0001)
+        _comp = calculate_query_complexity(tokens, duration_ms=12.0)
+    t1 = time.perf_counter()
+    avg_ms = ((t1 - t0) / 500.0) * 1000.0
+    assert avg_ms <= 0.1, f"Telemetry calculation overhead {avg_ms:.4f} ms exceeded 0.1 ms limit"
+
+
+def test_synthetic_1000_multi_tenant_queries_accounting(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Evaluation dataset: 1,000 synthetic multi-tenant queries all carry correlation and cost."""
+    configure_logging("INFO", json_output=True)
+    logger = get_logger("docscout.benchmark")
+    tenants = ["rbi-supervisory", "sebi-markets", "irdai-insurance", "pfrda-pensions"]
+
+    total_cost_usd = 0.0
+    total_tokens = 0
+
+    for i in range(1000):
+        tenant = tenants[i % len(tenants)]
+        tokens = 50 + (i % 200)
+        cost = calculate_query_cost(tokens, 0.0001)
+        total_cost_usd += cost
+        total_tokens += tokens
+        cache_outcome = "hit" if i % 3 == 0 else "miss"
+
+        record_telemetry_access(
+            logger=logger,
+            status_code=200,
+            duration_ms=5.0 + (i % 15),
+            tenant_id=tenant,
+            user_id=f"analyst-{i}",
+            tokens=tokens,
+            cost_usd=cost,
+            cache_outcome=cache_outcome,
+            query_complexity=calculate_query_complexity(tokens, retrieved_chunks=5),
+            trace_id=f"trace-{i:032x}",
+            span_id=f"span-{i:016x}",
+        )
+
+    lines = emitted(capsys)
+    assert len(lines) == 1000
+    # 100% of search requests carry correlation ID and computed cost metric
+    for rec in lines:
+        assert "trace_id" in rec
+        assert "span_id" in rec
+        assert "cost_usd" in rec
+        assert "tokens" in rec
+        assert "tenant_id" in rec
+
+    assert total_cost_usd > 0.0
+    assert total_tokens > 0

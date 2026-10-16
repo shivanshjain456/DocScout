@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# PreToolUse(Bash) hook — deterministic denylist. Skills suggest; hooks enforce.
+# PreToolUse(Bash) hook - deterministic denylist. Skills suggest; hooks enforce.
 #
 # Reads the tool call as JSON on stdin, extracts .tool_input.command, and exits 2 to DENY
 # (exit 2 = block + feed stderr back to the agent; exit 0 = allow).

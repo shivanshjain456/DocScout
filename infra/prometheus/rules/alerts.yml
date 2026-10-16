@@ -1,0 +1,42 @@
+groups:
+  - name: docscout_error_budget_alerts
+    rules:
+      - alert: DocScoutErrorBudgetRapidBurn
+        expr: docscout_error_budget_burn_rate{window="1h"} >= 14.4
+        for: 2m
+        labels:
+          severity: critical
+          team: sre
+        annotations:
+          summary: "DocScout 1-Hour Rapid Error Budget Burn Rate (>= 14.4x)"
+          description: "Error budget is burning at {{ $value }}x over a 1-hour window. At this rate, 2% of monthly budget is consumed per hour. Automated freeze active."
+
+      - alert: DocScoutErrorBudgetElevatedBurn
+        expr: docscout_error_budget_burn_rate{window="6h"} >= 6.0
+        for: 15m
+        labels:
+          severity: warning
+          team: sre
+        annotations:
+          summary: "DocScout 6-Hour Elevated Error Budget Burn Rate (>= 6.0x)"
+          description: "Error budget is burning at {{ $value }}x over a 6-hour window. At this rate, 5% of monthly budget is consumed per 6 hours."
+
+      - alert: DocScoutDeploymentFrozen
+        expr: docscout_error_budget_deployment_frozen == 1
+        for: 1m
+        labels:
+          severity: critical
+          team: sre
+        annotations:
+          summary: "DocScout Production Deployment Freeze Active"
+          description: "Production deployments are frozen due to remaining error budget dropping below 10% or rapid burn threshold violation."
+
+      - alert: DocScoutLowErrorBudgetRemaining
+        expr: docscout_error_budget_remaining_ratio{slo="availability"} < 0.10
+        for: 5m
+        labels:
+          severity: critical
+          team: sre
+        annotations:
+          summary: "DocScout Error Budget Remaining Below 10%"
+          description: "Only {{ $value | humanizePercentage }} of the 30-day availability error budget remains. Deployment freeze is enforced."

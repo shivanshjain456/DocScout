@@ -7,7 +7,7 @@ were in force is worse than one that answers nothing.
 
 The combination that made this reachable is specific to this schema. `store.py` demotes
 the previous version on supersession (`is_current = false`), FR-4 makes retention a
-guarantee, and the application role holds no DELETE — so the old chunks necessarily remain
+guarantee, and the application role holds no DELETE - so the old chunks necessarily remain
 in `chunks`. Nothing in the retrieval path excluded them. Measured before the fix: marking
 one version superseded left all ten of its chunks in the top ten.
 
@@ -131,7 +131,7 @@ def test_superseded_text_is_absent_from_the_bm25_term_table(
     """Excluded at index build, not after scoring.
 
     Superseded terms left in the table would distort document frequency and average
-    document length, which changes the score of every *current* chunk — a subtler fault
+    document length, which changes the score of every *current* chunk - a subtler fault
     than returning the wrong row.
     """
     superseded, _, _ = two_version_document

@@ -57,3 +57,9 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
+
+      - id: qa-content-gate
+        name: qa content and typography gate
+        entry: uv run python scripts/qa_content_gate.py
+        language: system
+        pass_filenames: false

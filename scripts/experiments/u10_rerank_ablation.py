@@ -4,7 +4,7 @@
 ADR-0006 deferred the reranker with a specific prediction: "a reranker reorders what
 retrieval already found, so it cannot fix a recall ceiling, and at recall@10 near 0.98
 there is almost nothing left for it to recover". ADR-0007 then pushed recall@10 to 1.000,
-which makes that prediction sharper rather than obsolete — the reranker now provably cannot
+which makes that prediction sharper rather than obsolete - the reranker now provably cannot
 improve recall at depth 10, because there is nothing left to find.
 
 So this experiment asks the only question still open: **can it improve the top of the
@@ -17,7 +17,7 @@ It measures both sides of the trade honestly:
   so a two-item change is not reported as a win.
 * **Cost** as real wall-clock per query, measured on the actual corpus chunks rather than
   on toy strings. Cross-encoder cost scales with sequence length, and a 1,000-character
-  regulatory chunk is nothing like the short passages a quick benchmark would use — a
+  regulatory chunk is nothing like the short passages a quick benchmark would use - a
   per-pair figure from toy text would understate the real cost several-fold.
 
 `rerank_top_n` is swept because it is the entire cost dial: the model scores exactly that

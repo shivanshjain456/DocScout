@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# DocScout Scheduled Corpus Refresh Runner — P0-2.
+# DocScout Scheduled Corpus Refresh Runner - P0-2.
 #
 # Runs the corpus freshness check, manifest verification, and sync state update.
 # Designed for periodic cron execution:

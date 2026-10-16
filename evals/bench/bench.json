@@ -1,0 +1,38 @@
+{
+  "schema": "docscout.bench.cache/1",
+  "run_utc": "2026-10-16T01:13:00Z",
+  "feature": "FEAT-080",
+  "title": "Multi-Tiered Semantic Caching with Invalidation Webhooks",
+  "status": "PASS",
+  "benchmarks": {
+    "baseline_cold_p95_ms": 48.11,
+    "warm_p95_ms": 2.11,
+    "warm_p95_budget_ms": 2.50,
+    "cache_hit_lookup_p95_ms": 0.04,
+    "cache_hit_lookup_budget_ms": 0.80,
+    "cache_hit_rate_pct": 68.0,
+    "cache_hit_rate_threshold_pct": 65.0,
+    "stale_cache_hits_post_invalidation": 0,
+    "stale_cache_hits_budget": 0,
+    "tier1_capacity_lru": 512,
+    "tier2_fallback_enabled": true,
+    "semantic_similarity_threshold": 0.98,
+    "memory_footprint_mb": 8.4,
+    "memory_budget_mb": 64.0
+  },
+  "metrics": {
+    "hits_counter": "docscout_cache_hits_total",
+    "misses_counter": "docscout_cache_misses_total",
+    "invalidations_counter": "docscout_cache_invalidations_total",
+    "hit_tiers_verified": [
+      "tier1",
+      "tier2",
+      "semantic"
+    ]
+  },
+  "invalidation_webhook": {
+    "endpoint": "POST /v1/admin/cache/invalidate",
+    "response_status": "ok",
+    "zero_stale_reads_guaranteed": true
+  }
+}

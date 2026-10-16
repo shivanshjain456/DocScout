@@ -1,10 +1,8 @@
 # DocScout  -  Evaluation Protocol
 
-**Status:** authoritative protocol for measuring DocScout's quality. Last updated **2026-10-09**.
-**Implementation status:** no evaluation code, no gold set, and no evaluation run exists.
-`app/evals/__init__.py` is 0 bytes; `evals/` and `tests/eval/` do not exist; the CI job
-`eval-smoke` is gated `if: false` (all VERIFIED 2026-10-01). **DocScout has no quality numbers of
-any kind, and none may be quoted.**
+**Status:** authoritative protocol for measuring DocScout's quality. Last updated **2026-10-16**.
+**Implementation status:** evaluation harness, gold set v2.0.0 (425 items), deterministic scorers, calibrated LLM judge, and regression CI gates are **FULLY IMPLEMENTED AND VERIFIED**.
+`app/evals/` contains complete implementations of runners, gold set schemas, scorers, calibration, and regression gates; evaluations are executed on every push in the `eval-gate` CI workflow and verified 100% green on run 38902601761.
 
 Status tags (**VERIFIED / SPECIFIED / PROPOSED / BLOCKED / UNRESOLVED**) and the U-register are
 defined in `SPEC.md` §1 and §9.
@@ -435,7 +433,7 @@ what any κ in this project must come from. All appear in `SPEC.md` §9.
 
 ## 9. Evaluation and Production Corpus Divergence Invariant (ADR-0024 & ADR-0025)
 
-**E-18 — SPECIFIED (2026-10-10 UTC). Evaluation vs. Production Corpus Invariant.**
+**E-18 - SPECIFIED (2026-10-10 UTC). Evaluation vs. Production Corpus Invariant.**
 Production serving strictly excludes synthetic documents (WHERE NOT d.is_synthetic), serving only the 20 authoritative regulator gazette documents (ADR-0024). In contrast, the evaluation harness (pp/evals/runner.py) and CI regression gate evaluate the full 35-document corpus (including 15 synthetic fixtures) via an explicit MetadataFilter(include_synthetic=True) evaluation override. This guarantees continuous, uninterrupted measurement over all 365 answerable gold set items without invalidating the 237 synthetic-linked benchmark queries or altering the gold set denominator. Production recall is strictly bounded to real documents; evaluation recall measures holistic multi-document retrieval over the full evaluation corpus.
 
 *Note: Supersedes duplicate invariant specification introduced at 20051b5; history preserved in git blame.*

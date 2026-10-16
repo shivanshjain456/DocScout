@@ -159,10 +159,10 @@
       "version": "50.0.2"
     },
     {
-      "bom-ref": "pkg:pypi/cuda-bindings@13.4.3",
+      "bom-ref": "pkg:pypi/cuda-bindings@13.4.4",
       "name": "cuda-bindings",
       "type": "library",
-      "version": "13.4.3"
+      "version": "13.4.4"
     },
     {
       "bom-ref": "pkg:pypi/cuda-pathfinder@1.8.3",
@@ -615,10 +615,28 @@
       "version": "1.1.1"
     },
     {
+      "bom-ref": "pkg:pypi/pdfminer.six@20260107",
+      "name": "pdfminer.six",
+      "type": "library",
+      "version": "20260107"
+    },
+    {
+      "bom-ref": "pkg:pypi/pdfplumber@0.11.10",
+      "name": "pdfplumber",
+      "type": "library",
+      "version": "0.11.10"
+    },
+    {
       "bom-ref": "pkg:pypi/pgvector@0.5.0",
       "name": "pgvector",
       "type": "library",
       "version": "0.5.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/pillow@12.3.0",
+      "name": "pillow",
+      "type": "library",
+      "version": "12.3.0"
     },
     {
       "bom-ref": "pkg:pypi/pluggy@1.6.0",
@@ -709,6 +727,12 @@
       "name": "pypdf",
       "type": "library",
       "version": "6.19.0"
+    },
+    {
+      "bom-ref": "pkg:pypi/pypdfium2@5.14.0",
+      "name": "pypdfium2",
+      "type": "library",
+      "version": "5.14.0"
     },
     {
       "bom-ref": "pkg:pypi/pytest@9.1.1",
@@ -1115,7 +1139,7 @@
       "ref": "pkg:pypi/cryptography@50.0.2"
     },
     {
-      "ref": "pkg:pypi/cuda-bindings@13.4.3"
+      "ref": "pkg:pypi/cuda-bindings@13.4.4"
     },
     {
       "ref": "pkg:pypi/cuda-pathfinder@1.8.3"
@@ -1343,7 +1367,16 @@
       "ref": "pkg:pypi/pathspec@1.1.1"
     },
     {
+      "ref": "pkg:pypi/pdfminer.six@20260107"
+    },
+    {
+      "ref": "pkg:pypi/pdfplumber@0.11.10"
+    },
+    {
       "ref": "pkg:pypi/pgvector@0.5.0"
+    },
+    {
+      "ref": "pkg:pypi/pillow@12.3.0"
     },
     {
       "ref": "pkg:pypi/pluggy@1.6.0"
@@ -1389,6 +1422,9 @@
     },
     {
       "ref": "pkg:pypi/pypdf@6.19.0"
+    },
+    {
+      "ref": "pkg:pypi/pypdfium2@5.14.0"
     },
     {
       "ref": "pkg:pypi/pytest-asyncio@1.4.0"
@@ -1554,7 +1590,7 @@
     }
   ],
   "metadata": {},
-  "serialNumber": "urn:uuid:23b25adb-6ffe-598a-90f6-f2de252be404",
+  "serialNumber": "urn:uuid:ef3a123b-1120-5812-92e8-9688bf8313fd",
   "specVersion": "1.4",
   "version": 1
 }

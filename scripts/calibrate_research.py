@@ -396,7 +396,7 @@ def main() -> None:
 
         # Write calibration report markdown
         report_path = pathlib.Path("evals/calibration/20261009T200000Z/research_report.md")
-        report_content = f"""# Research Agent Calibration Report — 2026-10-09T20:00:00Z
+        report_content = f"""# Research Agent Calibration Report - 2026-10-09T20:00:00Z
 
 - **Protocol Mandate:** P2-3 Double-Labeled Research Calibration & Canary Resistance.
 - **Sample Size:** 40 research tasks across all regulatory inquiry strata.

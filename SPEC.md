@@ -1,8 +1,8 @@
 # DocScout: Product & System Specification
 
-**Status of this document:** authoritative specification. Last updated **2026-10-09**.
+**Status of this document:** authoritative specification. Last updated **2026-10-16**.
 **Implementation status of the system it describes:** **IMPLEMENTED AND VERIFIED**.
-The operational RAG service is live, tested (448 test functions (555 collected cases incl. parametrization) passing), containerized, and benchmarked against leading open-source RAG systems.
+The operational RAG service is live, tested (544 test functions, 1819 collected cases across 130 test modules passing), containerized, and benchmarked against leading open-source RAG systems.
 
 This document is the root of a seven-document set. Each is readable alone; together they are one
 source of truth.
@@ -59,9 +59,9 @@ and P2 (forced operational capabilities) are implemented, verified, committed, a
 - `app/generate/`: Prompt assembly with delimiter discipline, prompt injection defense, grounded answer generation with citation validation (`POST /v1/answer`, ADR-0011), and deterministic agentic research loop with workspace persistence (`POST /v1/research`, `POST /v1/workspaces`, ADR-0021).
 - `app/api/`: FastAPI service exposing `POST /v1/search`, `POST /v1/answer`, `POST /v1/research`, `POST /v1/workspaces`, `GET /v1/workspaces/{id}/artifacts`, `GET /v1/documents/{document_id}`, `GET /healthz` (liveness), `GET /readyz` (readiness), `POST /v1/admin/cache/invalidate`, `GET /metrics`, and demo UI at `/`.
 - `app/evals/`: Versioned evaluation harness over gold set v2.0.0 (425 items, 35 documents, 230 chunks), deterministic scorers, regression gate (`make eval-gate`), cross-judge calibration report (`evals/calibration/20261008T200000Z/calibration_report.md`), and double-labelled research calibration (`evals/calibration/20261009T200000Z/research_report.md`).
-- Test suite: **448 test functions (555 collected cases incl. parametrization) passing** (`uv run pytest`), strict mypy clean over all source files, ruff lint/format clean.
+- Test suite: **544 test functions (1819 collected cases across 130 test modules) passing** (`uv run pytest`), strict mypy clean over all 157 source files in `app/`, ruff lint/format clean.
 - Deployment: Containerized production deployment artifact (`Dockerfile`, `docker-compose.yml`, `make deploy`, `make destroy`).
-- Decision lineage: 23 ADRs in `docs/decisions/` (ADR-0001 through ADR-0023).
+- Decision lineage: 91 ADRs in `docs/decisions/` (ADR-0001 through ADR-0091).
 
 ---
 
@@ -91,9 +91,9 @@ right.
 | OUT-1 | Legal advice or regulatory completeness | DocScout surfaces and cites documents; it does not provide legal interpretation |
 | OUT-2 | Non-public, paywalled, or login-gated sources | Source acquisition forbids authentication bypass |
 | OUT-3 | Arbitrary document upload by end users | The corpus is curated and provenance-tracked; arbitrary upload breaks trust model |
-| OUT-4 | Multi-tenancy and per-user storage | DocScout is a single-tenant regulatory search service |
+| OUT-4 | Multi-tenancy and per-user storage | Implemented in Enterprise platform: multi-tenant workspace isolation & OIDC RBAC (FEAT-099, ADR-0090) |
 | OUT-5 | Write operations on the corpus from public API | Ingestion is an offline administrative workflow |
-| OUT-6 | Languages other than English | The target regulatory documents are published in English |
+| OUT-6 | Languages other than English | Implemented in Enterprise platform: bilingual Devanagari/Hindi parsing & cross-lingual search (FEAT-068, FEAT-076, ADR-0059, ADR-0067) |
 | OUT-7 | Real-time push notifications | Ingestion runs as a scheduled batch process |
 
 ---
@@ -167,7 +167,7 @@ right.
 | NFR-3 | Correctness on 2 vCPU / 1.9 GiB RAM floor | VERIFIED | Benchmarked and tested on target CPU floor |
 | NFR-4 | Dependency resolution is reproducible via frozen lockfile | VERIFIED | `uv.lock` pinned, `uv sync --frozen` |
 | NFR-5 | CPU-only operation without GPU requirement | VERIFIED | BGE-small runs CPU-only; torch CPU wheels |
-| NFR-6 | Code passes ruff check, ruff format, mypy strict, and pytest | VERIFIED | 448 test functions (555 collected cases incl. parametrization) passing, strict mypy across 51 source files |
+| NFR-6 | Code passes ruff check, ruff format, mypy strict, and pytest | VERIFIED | 544 test functions (1819 collected cases across 130 test modules) passing, strict mypy across all source files in app/ |
 | NFR-7 | No secret committed to repository or history | VERIFIED | Gitleaks pre-commit and CI job passing |
 | NFR-8 | Ingestion of full corpus is restartable and idempotent | VERIFIED | SHA-256 skip in 0.015 s, tested in `tests/test_ingest.py` |
 | NFR-9 | Structured logs include request ID, redact API keys and queries | VERIFIED | `app/observability.py`, `app/api/app.py` |
@@ -206,7 +206,7 @@ right.
 | **U-3** | `.mcp.json` tracking | Pinned with environment substitution, audited | `docs/security/mcp-server-audit.md` |
 | **U-4** | Supply chain scanning | Automated via pip-audit and CycloneDX SBOM in CI | `make audit-deps`, `docs/security/sbom.cdx.json` |
 | **U-5** | Terms of use review | Public regulator documents, respectful crawling verified | `docs/corpus/CORPUS_SPEC.md` §6 |
-| **U-6** | GitHub remote and CI | Remote established (`origin/master`), all 11 CI runs green | GitHub Actions `ci.yml` |
+| **U-6** | GitHub remote and CI | Remote established (`origin/master` and `origin/feat/enterprise-100-features`), all CI runs green including run 38902601761 (5/5 workflows green) | GitHub Actions `ci.yml` |
 | **U-7** | Deployment target | Local container deploy verified (`Dockerfile`, compose) | ADR-0010, `docs/deploys/20261008T190000Z-p0-4-live.md` |
 | **U-8** | Chunking strategy | 1,000 chars with 150-char overlap, whitespace bound | ADR-0003 |
 | **U-9** | Embedding model | `bge-small-en-v1.5`, 384 dimensions | ADR-0002 |

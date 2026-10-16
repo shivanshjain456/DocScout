@@ -20,7 +20,7 @@ bad()     { printf "  \033[31mFAIL\033[0m   %-28s %s\n" "$1" "$2"; FAIL=$((FAIL+
 blocked() { printf "  \033[33mBLOCK\033[0m  %-28s %s\n" "$1" "$2"; BLOCKED=$((BLOCKED+1)); }
 
 echo "=============================================================="
-echo " DocScout Phase 0 — verification matrix     $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+echo " DocScout Phase 0 - verification matrix     $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "=============================================================="
 
 # ---------- V1 toolchain ----------
@@ -211,6 +211,6 @@ fi
 
 echo "--------------------------------------------------------------"
 printf " PASS=%d  FAIL=%d  BLOCKED=%d\n" "$PASS" "$FAIL" "$BLOCKED"
-[ "$BLOCKED" -gt 0 ] && echo " BLOCKED items are credential/environment limits — see SETUP_REPORT.md §13."
+[ "$BLOCKED" -gt 0 ] && echo " BLOCKED items are credential/environment limits - see SETUP_REPORT.md §13."
 echo "=============================================================="
 [ "$FAIL" -eq 0 ] || exit 1

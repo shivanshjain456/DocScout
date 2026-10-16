@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# bootstrap.sh — reconstruct the verified DocScout development environment.
+# bootstrap.sh - reconstruct the verified DocScout development environment.
 #
 # WHY THIS EXISTS
 #   Phase 0 produced a verified toolchain, but every piece of it lived OUTSIDE the repository:
@@ -245,7 +245,7 @@ ensure_venv() {
 ensure_hooks() {
   have pre-commit || { record "git hooks" "SKIPPED" "pre-commit missing"; return; }
   if [[ ! -d "${REPO_ROOT}/.git" ]]; then
-    record "git hooks" "DEFERRED" "no .git yet — re-run bootstrap after git init"
+    record "git hooks" "DEFERRED" "no .git yet - re-run bootstrap after git init"
     return
   fi
   if [[ "${CHECK_ONLY}" == "1" ]]; then
@@ -294,7 +294,7 @@ ensure_database_fallback() {
     fi
     return
   fi
-  step "docker unavailable — provisioning Postgres natively"
+  step "docker unavailable - provisioning Postgres natively"
   if bash "${REPO_ROOT}/scripts/dev_db_native.sh" >&2; then
     record "database" "INSTALLED" "native PG cluster (scripts/dev_db_native.sh)"
   else
@@ -386,7 +386,7 @@ ensure_awscli() {
 summary() {
   local fails=0 line name state detail
   printf '\n%s\n' "────────────────────────────────────────────────────────────────"
-  printf ' DocScout bootstrap — tier=%s  mode=%s\n' "${TIER}" "$([[ ${CHECK_ONLY} == 1 ]] && echo check || echo install)"
+  printf ' DocScout bootstrap - tier=%s  mode=%s\n' "${TIER}" "$([[ ${CHECK_ONLY} == 1 ]] && echo check || echo install)"
   printf '%s\n' "────────────────────────────────────────────────────────────────"
   for line in "${RESULTS[@]}"; do
     IFS='|' read -r name state detail <<< "${line}"
@@ -407,7 +407,7 @@ summary() {
 
 # -------------------------------------------------------------------------------------- main ---
 main() {
-  log "DocScout bootstrap — repo: ${REPO_ROOT}"
+  log "DocScout bootstrap - repo: ${REPO_ROOT}"
   ensure_shell_wiring
   ensure_git
   ensure_git_history

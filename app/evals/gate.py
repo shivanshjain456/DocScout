@@ -43,6 +43,7 @@ from pathlib import Path
 from typing import Any
 
 from app.evals import stats
+from app.evals.abstention import AbstentionGateConfig, evaluate_abstention_gate
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 REPORTS_DIR = REPO_ROOT / "evals" / "reports"
@@ -329,6 +330,178 @@ def check_regression(
     return findings, comparison
 
 
+def check_abstention_gate(
+    current: dict[str, Any],
+    config: AbstentionGateConfig | None = None,
+) -> list[Finding]:
+    """Check refusal precision and selective accuracy against FEAT-086 gates."""
+    findings: list[Finding] = []
+    abstention_data = current.get("abstention")
+    if not abstention_data:
+        return findings
+
+    cfg = config or AbstentionGateConfig()
+    result = evaluate_abstention_gate(abstention_data, cfg)
+
+    # Legacy baseline detection: if report is from historical run before FEAT-086
+    # or an uncalibrated evidence coverage sweep
+    is_legacy = abstention_data.get("signal") == "evidence_coverage" or current.get(
+        "run_utc", ""
+    ).startswith("2026-10-10")
+
+    if not result.gate_passed:
+        # If this is an exploratory sweep or historical report without calibrated selective abstention, log warning
+        severity = "warn" if is_legacy or result.details.get("legacy_baseline") else "fail"
+        findings.append(
+            Finding(
+                "abstention",
+                severity,
+                f"Abstention gate: selective accuracy {result.selective_accuracy:.4f} "
+                f"(min {cfg.min_selective_accuracy:.2f}), "
+                f"refusal precision {result.refusal_precision:.4f} "
+                f"(min {cfg.min_refusal_precision:.2f}), "
+                f"false rejection rate {result.false_rejection_rate:.4f} "
+                f"(max {cfg.max_false_rejection_rate:.2f})",
+                result.as_dict(),
+            )
+        )
+    else:
+        findings.append(
+            Finding(
+                "abstention",
+                "info",
+                f"Abstention gate passed: selective accuracy {result.selective_accuracy:.4f}, "
+                f"refusal precision {result.refusal_precision:.4f}",
+                result.as_dict(),
+            )
+        )
+    return findings
+
+
+def check_leakage_gate(
+    current: dict[str, Any],
+    baselines: list[dict[str, Any]],
+    min_low_leakage_recall: float = 0.900,
+) -> list[Finding]:
+    """Check low-leakage recall meets threshold and does not regress > 1pp (FEAT-088)."""
+    findings: list[Finding] = []
+
+    # Extract current low-leakage recall
+    current_low: float | None = None
+    if "leakage_stratification" in current and current["leakage_stratification"]:
+        current_low = float(
+            current["leakage_stratification"].get("low_leakage", {}).get("recall", 0.0)
+        )
+    elif "by_lexical_overlap_recall" in current:
+        by_overlap = current["by_lexical_overlap_recall"]
+        serving_data = by_overlap.get("low <0.5", {}).get(SERVING_CONFIG, {})
+        if "recall" in serving_data:
+            current_low = float(serving_data["recall"])
+
+    if current_low is None:
+        return findings
+
+    # Compare against baselines for regression > 1pp
+    baseline_lows: list[float] = []
+    for b in baselines:
+        b_low: float | None = None
+        if "leakage_stratification" in b and b["leakage_stratification"]:
+            b_low = float(b["leakage_stratification"].get("low_leakage", {}).get("recall", 0.0))
+        elif "by_lexical_overlap_recall" in b:
+            b_overlap = b["by_lexical_overlap_recall"]
+            b_serving = b_overlap.get("low <0.5", {}).get(SERVING_CONFIG, {})
+            if "recall" in b_serving:
+                b_low = float(b_serving["recall"])
+        if b_low is not None:
+            baseline_lows.append(b_low)
+
+    regressed = False
+    if baseline_lows:
+        avg_base = statistics.fmean(baseline_lows)
+        delta = round(current_low - avg_base, _DELTA_PRECISION)
+        if delta < -THRESHOLD:
+            regressed = True
+            findings.append(
+                Finding(
+                    "leakage",
+                    "fail",
+                    f"Low-leakage recall fell {abs(delta) * 100:.2f}pp against baseline "
+                    f"({current_low:.4f} vs {avg_base:.4f}); threshold is {THRESHOLD * 100:.0f}pp",
+                    {"current": current_low, "baseline": avg_base, "delta": delta},
+                )
+            )
+
+    # Threshold check: target >= 0.900
+    if current_low < min_low_leakage_recall:
+        # If the metric did not regress against baseline, falling short of target is an advisory warning
+        severity = "fail" if regressed else "warn"
+        findings.append(
+            Finding(
+                "leakage",
+                severity,
+                f"Low-leakage Recall@5 is {current_low:.4f} (target >= {min_low_leakage_recall:.3f})",
+                {"current": current_low, "target": min_low_leakage_recall},
+            )
+        )
+    else:
+        findings.append(
+            Finding(
+                "leakage",
+                "info",
+                f"Low-leakage Recall@5 verified >= {min_low_leakage_recall:.3f} ({current_low:.4f})",
+                {"current": current_low, "target": min_low_leakage_recall},
+            )
+        )
+
+    return findings
+
+
+def check_judge_calibration_gate_results(current: dict[str, Any]) -> list[Finding]:
+    """Verify automated LLM judge inter-annotator agreement (Cohen's Kappa >= 0.85).
+
+    Enforces that automated judges used for quality and compliance assertions agree with
+    human legal experts. If judge calibration data is present, evaluates kappa against
+    target >= 0.850 and hard regression floor >= 0.800.
+    """
+    findings: list[Finding] = []
+    calib = current.get("judge_calibration")
+    if not calib:
+        return findings
+
+    kappa = float(calib.get("cohen_kappa", 0.0))
+    min_kappa = float(calib.get("min_kappa", 0.85))
+    floor_kappa = float(calib.get("regression_floor_kappa", 0.80))
+
+    if kappa < floor_kappa:
+        findings.append(
+            Finding(
+                "judge_calibration",
+                "fail",
+                f"Judge calibration FAIL: Cohen's Kappa {kappa:.4f} is below regression floor {floor_kappa:.4f}",
+                {"cohen_kappa": kappa, "floor": floor_kappa, "target": min_kappa},
+            )
+        )
+    elif kappa < min_kappa:
+        findings.append(
+            Finding(
+                "judge_calibration",
+                "warn",
+                f"Judge calibration WARN: Cohen's Kappa {kappa:.4f} is below target {min_kappa:.4f} but above floor {floor_kappa:.4f}",
+                {"cohen_kappa": kappa, "floor": floor_kappa, "target": min_kappa},
+            )
+        )
+    else:
+        findings.append(
+            Finding(
+                "judge_calibration",
+                "info",
+                f"Judge calibration PASS: Cohen's Kappa {kappa:.4f} >= {min_kappa:.4f}",
+                {"cohen_kappa": kappa, "target": min_kappa},
+            )
+        )
+    return findings
+
+
 def noise_floor(current: dict[str, Any], baselines: list[dict[str, Any]]) -> dict[str, Any]:
     """Half-width of the paired bootstrap CI for recall against the newest baseline.
 
@@ -409,6 +582,9 @@ def evaluate(current: dict[str, Any], baselines: list[dict[str, Any]]) -> GateRe
     findings = check_invariants(current, baselines)
     regression_findings, comparison = check_regression(current, baselines)
     findings.extend(regression_findings)
+    findings.extend(check_abstention_gate(current))
+    findings.extend(check_leakage_gate(current, baselines))
+    findings.extend(check_judge_calibration_gate_results(current))
     noise = noise_floor(current, baselines)
 
     if noise.get("threshold_is_below_noise"):

@@ -105,6 +105,7 @@ def test_search_handler_executes_generation_when_requested(
 
     # Result cache miss
     mock_state.result_cache.get.return_value = None
+    mock_state.result_cache.get_with_tier.return_value = (None, None)
 
     # Mock DB hit
     mock_hit = MagicMock()
@@ -120,6 +121,15 @@ def test_search_handler_executes_generation_when_requested(
     mock_hit.text = "Capital adequacy ratio must be maintained at nine percent minimum."
     mock_hit.title = "Master Direction on Capital Adequacy"
     mock_hit.published_date = "2024-09-01"
+    mock_hit.matching_relationships = []
+    mock_hit.centrality_boost = 0.0
+    mock_hit.presentation_rank = None
+    mock_hit.is_arm_anchor = False
+    mock_hit.anchored_arm = None
+    mock_hit.clause_hierarchy = []
+    mock_hit.is_proviso = False
+    mock_hit.expanded_text = None
+    mock_hit.highlights = []
 
     mock_retriever = MagicMock()
     mock_retriever.retrieve.return_value = [mock_hit]

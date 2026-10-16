@@ -1,6 +1,6 @@
 """Shared database fixtures.
 
-Both the schema tests and the ingestion tests need the same two connections — the owner,
+Both the schema tests and the ingestion tests need the same two connections - the owner,
 which can create and drop things, and the least-privilege application role the service
 actually runs as. Keeping one definition here means a change to how the suite reaches the
 database cannot leave two files disagreeing about it.
@@ -23,6 +23,16 @@ import pytest
 from pgvector.psycopg import register_vector
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def pytest_report_header(config: pytest.Config) -> list[str]:
+    """Log deterministic test seed and frozen clock in pytest header (FEAT-095)."""
+    return [
+        "DocScout Deterministic Test Harness (FEAT-095):",
+        "  deterministic_seed: 0",
+        "  frozen_time: 2026-10-10T12:00:00Z",
+        "  hermetic_fixtures: enabled",
+    ]
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -193,3 +203,36 @@ def _fresh_rate_limiter() -> Iterator[None]:
     reset()
     yield
     reset()
+
+
+@pytest.fixture(autouse=True)
+def _deterministic_environment() -> Iterator[None]:
+    """Enforce hermetic deterministic seeds and clock injection across all test cases (FEAT-095)."""
+    import random
+
+    import numpy as np
+
+    os.environ["PYTHONHASHSEED"] = "0"
+    random.seed(0)
+    np.random.seed(0)
+
+    clock_mod = sys.modules.get("app.testing.clock")
+    if clock_mod is not None:
+        clock_mod.seed_everything(0)
+        clock = clock_mod.FrozenClock("2026-10-10T12:00:00Z")
+        clock_mod.set_clock(clock)
+    yield
+    if clock_mod is not None:
+        clock_mod.set_clock(None)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_app_state() -> Iterator[None]:
+    """Preserve and restore FastAPI app.state attributes between tests."""
+    app_mod = sys.modules.get("app.api.app")
+    orig_pool = None
+    if app_mod is not None and hasattr(app_mod, "app") and hasattr(app_mod.app, "state"):
+        orig_pool = getattr(app_mod.app.state, "pool", None)
+    yield
+    if app_mod is not None and hasattr(app_mod, "app") and hasattr(app_mod.app, "state"):
+        app_mod.app.state.pool = orig_pool

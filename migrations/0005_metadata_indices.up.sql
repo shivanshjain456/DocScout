@@ -1,4 +1,4 @@
--- 0005: metadata_indices — indices for metadata filtering over documents and versions (P1-2).
+-- 0005: metadata_indices - indices for metadata filtering over documents and versions (P1-2).
 --
 -- Why: P1-2 introduces in-query metadata filtering over regulatory source (RBI vs SEBI),
 -- publication and fetch dates, and version currency. Without indices on documents and

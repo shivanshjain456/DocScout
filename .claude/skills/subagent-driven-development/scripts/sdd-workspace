@@ -6,7 +6,7 @@
 # One directory per plan (.superpowers/sdd/<plan-basename>/) so a follow-up
 # plan in the same working tree can never read or overwrite another plan's
 # artifacts. A stale ledger misread as current progress makes controllers
-# skip whole task sequences — plan-scoping removes that failure structurally.
+# skip whole task sequences - plan-scoping removes that failure structurally.
 #
 # Basename slugs collide when two plans share a filename (docs/alpha/plan.md
 # vs docs/beta/plan.md), so each workspace records its owning plan's path in
@@ -14,12 +14,12 @@
 # owned by a different plan is skipped and the slug disambiguated with the
 # plan's parent-directory name, then a counter. A workspace with no marker
 # predates the marker scheme and is adopted for the current plan so in-flight
-# workspaces keep resolving — which means the first collision on such a
+# workspaces keep resolving - which means the first collision on such a
 # legacy workspace adopts instead of detecting; acceptable, marker-less
 # workspaces age out as plans finish.
 #
 # The workspace lives in the working tree (not under .git/) because Claude Code
-# treats .git/ as a protected path and denies agent writes there — which blocks
+# treats .git/ as a protected path and denies agent writes there - which blocks
 # an implementer subagent from writing its report file. A self-ignoring
 # .gitignore at .superpowers/sdd/ keeps every plan's workspace out of
 # `git status` and out of accidental commits without modifying any tracked file.

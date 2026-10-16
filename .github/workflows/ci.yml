@@ -9,18 +9,30 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DEEPEVAL_TELEMETRY_OPT_OUT: "YES"
+      HF_HOME: ${{ github.workspace }}/.hf_cache
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
         with:
           enable-cache: true
       - run: uv sync --frozen
+      - name: cache embedding model
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.hf_cache
+          key: hf-bge-small-en-v1.5-v1
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       # app AND tests: `mypy app` alone leaves the test suite -- where the fixtures and the
       # scorer assertions live -- entirely unchecked.
       - run: uv run mypy app tests
-      - run: uv run pytest -q
+      - run: uv run pytest --cov=app --cov-report=xml:coverage.xml -q
+      - name: mutation score ratcheting CI gate (FEAT-096)
+        run: uv run python scripts/diff_mutation.py --base origin/main
+      - name: differential patch coverage gate (FEAT-097)
+        run: uv run python scripts/diff_coverage.py --coverage-xml coverage.xml --base origin/main
+      - name: verify cryptographic provenance (FEAT-098)
+        run: uv run python scripts/provenance.py --verify
 
   secrets:
     runs-on: ubuntu-latest

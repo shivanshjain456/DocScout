@@ -1,0 +1,486 @@
+{
+  "schema": "docscout.dataset.hard_negatives/1",
+  "triplet_count": 96,
+  "triplets": [
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Housing Finance Company?",
+      "positive_chunk_id": "chunk-ceq-001-pos",
+      "negative_chunk_id": "chunk-ceq-001-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Housing Finance Company?",
+      "positive_chunk_id": "chunk-ceq-001-pos",
+      "negative_chunk_id": "chunk-ceq-039-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Housing Finance Company?",
+      "positive_chunk_id": "chunk-ceq-001-pos",
+      "negative_chunk_id": "chunk-ceq-011-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Housing Finance Company?",
+      "positive_chunk_id": "chunk-ceq-001-pos",
+      "negative_chunk_id": "chunk-ceq-011-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Housing Finance Company?",
+      "positive_chunk_id": "chunk-ceq-001-pos",
+      "negative_chunk_id": "chunk-ceq-015-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Microfinance Institution?",
+      "positive_chunk_id": "chunk-ceq-001-neg",
+      "negative_chunk_id": "chunk-ceq-001-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Microfinance Institution?",
+      "positive_chunk_id": "chunk-ceq-001-neg",
+      "negative_chunk_id": "chunk-ceq-039-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Microfinance Institution?",
+      "positive_chunk_id": "chunk-ceq-001-neg",
+      "negative_chunk_id": "chunk-ceq-039-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Microfinance Institution?",
+      "positive_chunk_id": "chunk-ceq-001-neg",
+      "negative_chunk_id": "chunk-ceq-011-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Microfinance Institution?",
+      "positive_chunk_id": "chunk-ceq-001-neg",
+      "negative_chunk_id": "chunk-ceq-015-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Housing Finance Company?",
+      "positive_chunk_id": "chunk-ceq-002-pos",
+      "negative_chunk_id": "chunk-ceq-002-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Microfinance Institution?",
+      "positive_chunk_id": "chunk-ceq-002-neg",
+      "negative_chunk_id": "chunk-ceq-002-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Housing Finance Company?",
+      "positive_chunk_id": "chunk-ceq-003-pos",
+      "negative_chunk_id": "chunk-ceq-003-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Microfinance Institution?",
+      "positive_chunk_id": "chunk-ceq-003-neg",
+      "negative_chunk_id": "chunk-ceq-003-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Housing Finance Company?",
+      "positive_chunk_id": "chunk-ceq-004-pos",
+      "negative_chunk_id": "chunk-ceq-004-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-004-neg",
+      "negative_chunk_id": "chunk-ceq-004-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Payments Bank?",
+      "positive_chunk_id": "chunk-ceq-005-pos",
+      "negative_chunk_id": "chunk-ceq-005-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-005-neg",
+      "negative_chunk_id": "chunk-ceq-005-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Payments Bank?",
+      "positive_chunk_id": "chunk-ceq-006-pos",
+      "negative_chunk_id": "chunk-ceq-006-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-006-neg",
+      "negative_chunk_id": "chunk-ceq-006-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Payments Bank?",
+      "positive_chunk_id": "chunk-ceq-007-pos",
+      "negative_chunk_id": "chunk-ceq-007-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-007-neg",
+      "negative_chunk_id": "chunk-ceq-007-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Payments Bank?",
+      "positive_chunk_id": "chunk-ceq-008-pos",
+      "negative_chunk_id": "chunk-ceq-008-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-008-neg",
+      "negative_chunk_id": "chunk-ceq-008-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Small Finance Bank?",
+      "positive_chunk_id": "chunk-ceq-009-pos",
+      "negative_chunk_id": "chunk-ceq-009-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Small Finance Bank?",
+      "positive_chunk_id": "chunk-ceq-009-pos",
+      "negative_chunk_id": "chunk-ceq-016-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-009-neg",
+      "negative_chunk_id": "chunk-ceq-009-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Small Finance Bank?",
+      "positive_chunk_id": "chunk-ceq-010-pos",
+      "negative_chunk_id": "chunk-ceq-010-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-010-neg",
+      "negative_chunk_id": "chunk-ceq-010-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Small Finance Bank?",
+      "positive_chunk_id": "chunk-ceq-011-pos",
+      "negative_chunk_id": "chunk-ceq-011-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Small Finance Bank?",
+      "positive_chunk_id": "chunk-ceq-011-pos",
+      "negative_chunk_id": "chunk-ceq-015-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Small Finance Bank?",
+      "positive_chunk_id": "chunk-ceq-011-pos",
+      "negative_chunk_id": "chunk-ceq-001-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Small Finance Bank?",
+      "positive_chunk_id": "chunk-ceq-011-pos",
+      "negative_chunk_id": "chunk-ceq-035-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Small Finance Bank?",
+      "positive_chunk_id": "chunk-ceq-011-pos",
+      "negative_chunk_id": "chunk-ceq-015-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-011-neg",
+      "negative_chunk_id": "chunk-ceq-011-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-011-neg",
+      "negative_chunk_id": "chunk-ceq-035-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-011-neg",
+      "negative_chunk_id": "chunk-ceq-015-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-011-neg",
+      "negative_chunk_id": "chunk-ceq-001-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-011-neg",
+      "negative_chunk_id": "chunk-ceq-001-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Small Finance Bank?",
+      "positive_chunk_id": "chunk-ceq-012-pos",
+      "negative_chunk_id": "chunk-ceq-012-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-012-neg",
+      "negative_chunk_id": "chunk-ceq-012-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Urban Co-operative Bank?",
+      "positive_chunk_id": "chunk-ceq-013-pos",
+      "negative_chunk_id": "chunk-ceq-013-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-013-neg",
+      "negative_chunk_id": "chunk-ceq-013-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Urban Co-operative Bank?",
+      "positive_chunk_id": "chunk-ceq-014-pos",
+      "negative_chunk_id": "chunk-ceq-014-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-014-neg",
+      "negative_chunk_id": "chunk-ceq-014-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Urban Co-operative Bank?",
+      "positive_chunk_id": "chunk-ceq-015-pos",
+      "negative_chunk_id": "chunk-ceq-011-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Urban Co-operative Bank?",
+      "positive_chunk_id": "chunk-ceq-015-pos",
+      "negative_chunk_id": "chunk-ceq-015-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Urban Co-operative Bank?",
+      "positive_chunk_id": "chunk-ceq-015-pos",
+      "negative_chunk_id": "chunk-ceq-011-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Urban Co-operative Bank?",
+      "positive_chunk_id": "chunk-ceq-015-pos",
+      "negative_chunk_id": "chunk-ceq-035-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Urban Co-operative Bank?",
+      "positive_chunk_id": "chunk-ceq-015-pos",
+      "negative_chunk_id": "chunk-ceq-001-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-015-neg",
+      "negative_chunk_id": "chunk-ceq-011-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-015-neg",
+      "negative_chunk_id": "chunk-ceq-035-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-015-neg",
+      "negative_chunk_id": "chunk-ceq-015-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-015-neg",
+      "negative_chunk_id": "chunk-ceq-001-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-015-neg",
+      "negative_chunk_id": "chunk-ceq-001-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Urban Co-operative Bank?",
+      "positive_chunk_id": "chunk-ceq-016-pos",
+      "negative_chunk_id": "chunk-ceq-016-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Urban Co-operative Bank?",
+      "positive_chunk_id": "chunk-ceq-016-pos",
+      "negative_chunk_id": "chunk-ceq-009-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-016-neg",
+      "negative_chunk_id": "chunk-ceq-016-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Core Investment Company?",
+      "positive_chunk_id": "chunk-ceq-017-pos",
+      "negative_chunk_id": "chunk-ceq-017-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Microfinance Institution?",
+      "positive_chunk_id": "chunk-ceq-017-neg",
+      "negative_chunk_id": "chunk-ceq-017-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Housing Finance Company?",
+      "positive_chunk_id": "chunk-ceq-018-neg",
+      "negative_chunk_id": "chunk-ceq-011-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Payment Aggregator?",
+      "positive_chunk_id": "chunk-ceq-021-pos",
+      "negative_chunk_id": "chunk-ceq-021-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Payment Aggregator?",
+      "positive_chunk_id": "chunk-ceq-022-pos",
+      "negative_chunk_id": "chunk-ceq-022-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Payment Aggregator?",
+      "positive_chunk_id": "chunk-ceq-024-pos",
+      "negative_chunk_id": "chunk-ceq-024-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Asset Reconstruction Company?",
+      "positive_chunk_id": "chunk-ceq-025-pos",
+      "negative_chunk_id": "chunk-ceq-025-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Core Investment Company?",
+      "positive_chunk_id": "chunk-ceq-025-neg",
+      "negative_chunk_id": "chunk-ceq-025-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Asset Reconstruction Company?",
+      "positive_chunk_id": "chunk-ceq-026-pos",
+      "negative_chunk_id": "chunk-ceq-026-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Asset Reconstruction Company?",
+      "positive_chunk_id": "chunk-ceq-027-pos",
+      "negative_chunk_id": "chunk-ceq-027-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Core Investment Company?",
+      "positive_chunk_id": "chunk-ceq-029-pos",
+      "negative_chunk_id": "chunk-ceq-029-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Core Investment Company?",
+      "positive_chunk_id": "chunk-ceq-030-pos",
+      "negative_chunk_id": "chunk-ceq-030-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Core Investment Company?",
+      "positive_chunk_id": "chunk-ceq-031-pos",
+      "negative_chunk_id": "chunk-ceq-031-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Core Investment Company?",
+      "positive_chunk_id": "chunk-ceq-032-pos",
+      "negative_chunk_id": "chunk-ceq-032-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Regional Rural Bank?",
+      "positive_chunk_id": "chunk-ceq-033-pos",
+      "negative_chunk_id": "chunk-ceq-033-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-033-neg",
+      "negative_chunk_id": "chunk-ceq-033-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Regional Rural Bank?",
+      "positive_chunk_id": "chunk-ceq-034-pos",
+      "negative_chunk_id": "chunk-ceq-034-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-034-neg",
+      "negative_chunk_id": "chunk-ceq-034-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Regional Rural Bank?",
+      "positive_chunk_id": "chunk-ceq-035-pos",
+      "negative_chunk_id": "chunk-ceq-035-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Regional Rural Bank?",
+      "positive_chunk_id": "chunk-ceq-035-pos",
+      "negative_chunk_id": "chunk-ceq-011-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Regional Rural Bank?",
+      "positive_chunk_id": "chunk-ceq-035-pos",
+      "negative_chunk_id": "chunk-ceq-015-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Regional Rural Bank?",
+      "positive_chunk_id": "chunk-ceq-035-pos",
+      "negative_chunk_id": "chunk-ceq-011-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Regional Rural Bank?",
+      "positive_chunk_id": "chunk-ceq-035-pos",
+      "negative_chunk_id": "chunk-ceq-001-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-035-neg",
+      "negative_chunk_id": "chunk-ceq-035-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-035-neg",
+      "negative_chunk_id": "chunk-ceq-011-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-035-neg",
+      "negative_chunk_id": "chunk-ceq-015-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-035-neg",
+      "negative_chunk_id": "chunk-ceq-001-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-035-neg",
+      "negative_chunk_id": "chunk-ceq-001-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Regional Rural Bank?",
+      "positive_chunk_id": "chunk-ceq-036-pos",
+      "negative_chunk_id": "chunk-ceq-036-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Commercial Bank?",
+      "positive_chunk_id": "chunk-ceq-036-neg",
+      "negative_chunk_id": "chunk-ceq-036-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Investment and Credit Company?",
+      "positive_chunk_id": "chunk-ceq-038-pos",
+      "negative_chunk_id": "chunk-ceq-038-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Microfinance Institution?",
+      "positive_chunk_id": "chunk-ceq-038-neg",
+      "negative_chunk_id": "chunk-ceq-038-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Investment and Credit Company?",
+      "positive_chunk_id": "chunk-ceq-039-pos",
+      "negative_chunk_id": "chunk-ceq-001-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Investment and Credit Company?",
+      "positive_chunk_id": "chunk-ceq-039-pos",
+      "negative_chunk_id": "chunk-ceq-001-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Investment and Credit Company?",
+      "positive_chunk_id": "chunk-ceq-039-pos",
+      "negative_chunk_id": "chunk-ceq-039-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Housing Finance Company?",
+      "positive_chunk_id": "chunk-ceq-039-neg",
+      "negative_chunk_id": "chunk-ceq-001-neg"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Housing Finance Company?",
+      "positive_chunk_id": "chunk-ceq-039-neg",
+      "negative_chunk_id": "chunk-ceq-039-pos"
+    },
+    {
+      "query": "What are the regulatory guidelines and compliance requirements for Housing Finance Company?",
+      "positive_chunk_id": "chunk-ceq-039-neg",
+      "negative_chunk_id": "chunk-ceq-011-pos"
+    }
+  ]
+}

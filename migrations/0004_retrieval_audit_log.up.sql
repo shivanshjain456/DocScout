@@ -1,4 +1,4 @@
--- 0004: retrieval_audit_log — durable, append-only retrieval forensics (P1-1, OWASP LLM09).
+-- 0004: retrieval_audit_log - durable, append-only retrieval forensics (P1-1, OWASP LLM09).
 --
 -- Why: Before this migration, queries were logged only to stdout via ephemeral log streams.
 -- Forensic questions ("what was retrieved for whom?", "did an attacker probe the index?")

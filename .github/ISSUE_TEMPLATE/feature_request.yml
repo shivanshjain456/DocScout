@@ -1,0 +1,58 @@
+name: Feature Request
+description: Propose a new feature, capability, or architectural enhancement for DocScout
+title: "[Feature]: "
+labels: ["enhancement", "proposal"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        We welcome proposals for new regulatory retrieval, compliance evaluation, and systems features.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: Is your feature request related to a specific operational problem or regulatory challenge?
+      placeholder: Describe the problem or challenge...
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: A clear and concise description of the capability or feature you would like to see implemented.
+      placeholder: Describe the desired behavior or API endpoint...
+    validations:
+      required: true
+  - type: dropdown
+    id: pillar
+    attributes:
+      label: Architectural Pillar Alignment
+      description: Which architectural domain does this feature primarily address?
+      options:
+        - "Pillar 1: Regulatory Knowledge Graph & Ontology"
+        - "Pillar 2: Query Intelligence, Disambiguation & Routing"
+        - "Pillar 3: Regulatory Compliance Formulas & Math"
+        - "Pillar 4: Regulatory Conflicts, Deprecations & Antipatterns"
+        - "Pillar 5: Standards Registry & Governance Cross-Walk"
+        - "Pillar 6: Playbooks & Compliance Workflow Engines"
+        - "Pillar 7: Ingestion, Extraction & Document Intelligence"
+        - "Pillar 8: Advanced Retrieval, Reranking & Synthesis"
+        - "Pillar 9: AI Assurance, Hallucination Prevention & Faithfulness"
+        - "Pillar 10: Enterprise SRE, Reliability & Security"
+        - "Core Platform, CLI or Web UI"
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Any alternative solutions or workarounds you have considered.
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Add any other context, regulatory circular citations, or references here.
+    validations:
+      required: false

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Setup tooling (NOT feature code) — Phase 0 §10.4.
+"""Setup tooling (NOT feature code) - Phase 0 §10.4.
 
 Proves the ingestion MACHINERY works before the pipeline is written: discover → fetch → extract →
 hash → manifest, over a 20-document mixed RBI/SEBI sample, plus one synthetic injection canary.

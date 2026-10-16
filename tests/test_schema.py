@@ -2,7 +2,7 @@
 
 The schema created by `migrations/0001_initial_schema.up.sql` is built on the principle that
 a rule enforced only in prose eventually stops being true. These tests check that the
-database actually refuses the things the specification forbids — so if a future migration
+database actually refuses the things the specification forbids - so if a future migration
 relaxes a constraint, a requirement fails loudly instead of quietly.
 
 Each test names the requirement it covers. They need the compose database to be up and
@@ -169,7 +169,7 @@ def test_migration_recorded_and_file_unchanged(owner_conn: psycopg.Connection[An
 
 
 # --------------------------------------------------------------------------------------
-# FR-4 — supersession retains history and keeps chunk IDs resolvable
+# FR-4 - supersession retains history and keeps chunk IDs resolvable
 # --------------------------------------------------------------------------------------
 def test_fr4_superseded_version_is_retained_and_chunk_ids_still_resolve(
     db: psycopg.Connection[Any],
@@ -228,7 +228,7 @@ def test_fr4_version_with_chunks_cannot_be_deleted(db: psycopg.Connection[Any]) 
 
 
 # --------------------------------------------------------------------------------------
-# FR-5 — de-duplication by content hash first, then canonical URL
+# FR-5 - de-duplication by content hash first, then canonical URL
 # --------------------------------------------------------------------------------------
 def test_fr5_identical_bytes_cannot_be_stored_twice(db: psycopg.Connection[Any]) -> None:
     """One payload fetched from two URLs must not become two stored versions."""
@@ -257,7 +257,7 @@ def test_fr5_canonical_url_is_unique(db: psycopg.Connection[Any]) -> None:
 
 
 # --------------------------------------------------------------------------------------
-# FR-7 — offsets resolve to a byte range in a specific document version
+# FR-7 - offsets resolve to a byte range in a specific document version
 # --------------------------------------------------------------------------------------
 def test_fr7_chunk_cannot_belong_to_a_version_of_another_document(
     db: psycopg.Connection[Any],
@@ -340,7 +340,7 @@ def test_fr7_offsets_reextract_on_real_corpus_documents(db: psycopg.Connection[A
 
 
 # --------------------------------------------------------------------------------------
-# FR-3 — documents below the extraction floor are rejected
+# FR-3 - documents below the extraction floor are rejected
 # --------------------------------------------------------------------------------------
 def test_fr3_short_extraction_is_rejected(db: psycopg.Connection[Any]) -> None:
     """The SEBI detail-page failure mode (~227 chars) must not be storable."""
@@ -359,7 +359,7 @@ def test_fr3_short_extraction_is_rejected(db: psycopg.Connection[Any]) -> None:
 
 
 # --------------------------------------------------------------------------------------
-# ADR-0002 / ADR-0003 — the decisions are enforced by the database, not by convention
+# ADR-0002 / ADR-0003 - the decisions are enforced by the database, not by convention
 # --------------------------------------------------------------------------------------
 def test_adr0002_embedding_dimension_is_fixed_at_384(db: psycopg.Connection[Any]) -> None:
     doc_id, version_id = seed_document(db, url="https://rbi.example/dim", sha=sha(50))
@@ -402,7 +402,7 @@ def test_tsv_is_generated_and_not_writable(db: psycopg.Connection[Any]) -> None:
 
 
 # --------------------------------------------------------------------------------------
-# FR-9 — both retrieval arms are usable against this schema
+# FR-9 - both retrieval arms are usable against this schema
 # --------------------------------------------------------------------------------------
 def test_fr9_both_retrieval_arms_return_the_seeded_chunk(db: psycopg.Connection[Any]) -> None:
     doc_id, version_id = seed_document(db, url="https://rbi.example/arms", sha=sha(60))
@@ -443,7 +443,7 @@ def test_hnsw_and_gin_indexes_exist_with_expected_configuration(
 
 
 # --------------------------------------------------------------------------------------
-# SECURITY.md — least privilege is a property of the role, not a promise
+# SECURITY.md - least privilege is a property of the role, not a promise
 # --------------------------------------------------------------------------------------
 def test_application_role_cannot_delete_corpus_data(app_conn: psycopg.Connection[Any]) -> None:
     """FR-4 retention is enforced by privilege: the service cannot discard history."""

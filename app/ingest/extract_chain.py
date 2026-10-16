@@ -1,4 +1,4 @@
-"""Pluggable extraction chain with fast path and deep structured fallback — ARCHITECTURE §3.1, FR-3 / C-11 (P2-4).
+"""Pluggable extraction chain with fast path and deep structured fallback - ARCHITECTURE §3.1, FR-3 / C-11 (P2-4).
 
 Implements a two-tier extraction pipeline:
 1. Fast path: `pypdf` for clean native documents (zero overhead, sub-second execution).
@@ -15,7 +15,7 @@ import importlib.util
 import io
 import re
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import Any, Protocol
 
 import pypdf
 
@@ -418,3 +418,27 @@ def get_pdf_extractor() -> ExtractionChain:
     if _GLOBAL_CHAIN is None:
         _GLOBAL_CHAIN = ExtractionChain()
     return _GLOBAL_CHAIN
+
+
+def extract_circular_citations(
+    text: str,
+    doc_id: str,
+    config: Any | None = None,
+) -> list[Any]:
+    """Extract formal statutory circular citations as stage 2 of the extraction pipeline (FEAT-005)."""
+    from app.ingest.citation_extractor import CircularCitationExtractor
+
+    extractor = CircularCitationExtractor(config=config)
+    return extractor.extract_citations(text, doc_id)
+
+
+def extract_document_metadata(
+    text: str,
+    filename: str = "",
+    config: Any | None = None,
+) -> Any:
+    """Extract structured administrative regulatory metadata immediately following text extraction (FEAT-069)."""
+    from app.ingest.metadata_extractor import RegulatoryMetadataExtractor
+
+    extractor = RegulatoryMetadataExtractor(config=config)
+    return extractor.extract(text, filename=filename)

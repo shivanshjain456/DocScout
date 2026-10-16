@@ -3,7 +3,7 @@
 <p align="center">
   <a href="https://github.com/shivanshjain456/DocScout/actions/workflows/ci.yml"><img src="https://github.com/shivanshjain456/DocScout/actions/workflows/ci.yml/badge.svg?branch=master" alt="CI"></a>
   <a href="evals/reports/20261010T050559Z/results.json"><img src="https://img.shields.io/badge/evals-365%20scored-brightgreen?style=flat-square" alt="Evals"></a>
-  <a href="https://github.com/shivanshjain456/DocScout/actions"><img src="https://img.shields.io/badge/tests-448%20passing-brightgreen?style=flat-square" alt="Tests"></a>
+  <a href="https://github.com/shivanshjain456/DocScout/actions"><img src="https://img.shields.io/badge/tests-544%20passing-brightgreen?style=flat-square" alt="Tests"></a>
   <a href="pyproject.toml"><img src="https://img.shields.io/badge/python-3.12-blue?style=flat-square" alt="Python"></a>
 </p>
 
@@ -15,8 +15,8 @@
 </p>
 
 <p align="center">
-  <strong>Clone to queryable in 90 seconds:</strong> <code>cp .env.example .env && make deploy && curl -s localhost:8000/healthz</code> · <a href="https://github.com/shivanshjain456/DocScout/actions/runs/38037523415">5/5 green at 38037523415</a><br>
-  Without clone: <code>docker run -p 8000:8000 ghcr.io/shivanshjain456/docscout:1.0.1</code>
+  <strong>Clone to queryable in 90 seconds:</strong> <code>cp .env.example .env && make deploy && curl -s localhost:8000/healthz</code> · <a href="https://github.com/shivanshjain456/DocScout/actions/runs/38902601761">5/5 green at 38902601761</a><br>
+  Without clone: <code>docker run -p 8000:8000 ghcr.io/shivanshjain456/docscout:2.0.0</code>
 </p>
 
 <p align="center">
@@ -72,7 +72,7 @@ curl -s -H "X-API-Key: $DOCSCOUT_API_KEY" -H "Content-Type: application/json" \
      localhost:8000/v1/search | jq
 ```
 
-Verify: `make test && make eval-gate` (448 tests passing). Native DB: `bash scripts/dev_db_native.sh`; Docker: `docker compose up -d`. See [SETUP_REPORT.md](docs/setup/SETUP_REPORT.md).
+Verify: `make test && make eval-gate` (544 tests passing). Native DB: `bash scripts/dev_db_native.sh`; Docker: `docker compose up -d`. See [SETUP_REPORT.md](docs/setup/SETUP_REPORT.md).
 
 ---
 
@@ -376,7 +376,7 @@ Core runtime settings configured via `.env` (derived from [`.env.example`](.env.
 | `make dev` | Run DB and API with reload |
 | `make deploy` | Full deploy: migrate, ingest, serve |
 | `make destroy` | Tear down local containers and image |
-| `make test` | Run test suite (448 passing) |
+| `make test` | Run test suite (544 passing) |
 | `make lint` | Run ruff checks |
 | `make typecheck` | Run strict mypy |
 | `make eval` | Run retrieval eval (365 items) |
@@ -386,7 +386,7 @@ Core runtime settings configured via `.env` (derived from [`.env.example`](.env.
 
 ## Verification
 
-- `make test`: Full test suite (448 test functions, 555 collected cases across 41 modules).
+- `make test`: Full test suite (544 test functions, 1819 collected cases across 130 test modules).
 - `make eval`: Offline retrieval eval over gold set v2.0.0 (365 scored items).
 - `make eval-gate`: Regression gate fails if Recall, MRR, or nDCG@5 drops > 1pp (noise floor <= 1.0pp).
 
@@ -400,7 +400,7 @@ Core runtime settings configured via `.env` (derived from [`.env.example`](.env.
 6. **Compute-only cost:** $0.08 / million queries covers t4g.small compute only.
 
 Boundaries:
-- 26 ADRs in [`docs/decisions/`](docs/decisions/).
+- 91 ADRs in [`docs/decisions/`](docs/decisions/) (ADR-0001 through ADR-0091).
 - Metadata filtering: `source`, `date_from`, `date_to`, `is_current`.
 - Superseded versions retained, excluded from search ([ADR-0014](docs/decisions/0014-cache-invalidation-on-supersession-and-readiness-split.md)).
 - Authoritative citations ([ADR-0018](docs/decisions/0018-human-readable-citation-rendering.md)), VectorStore port ([ADR-0019](docs/decisions/0019-retrieval-port-adapter.md)).
@@ -485,14 +485,22 @@ Verified in `tests/test_refresh_lifecycle.py`.
 | `app/evals/` | Gold set schemas, scorers, calibration, gate |
 | `app/api/` | FastAPI routes: search, answer, research, docs |
 | `evals/` | Gold set v2.0.0 (425 items), reports, benchmarks |
-| `infra/` | Postgres init SQL, migrations (0001-0010), compose |
-| `docs/` | 26 ADRs, architecture, verification, security |
+| `infra/` | Postgres init SQL, migrations (0001-0053), compose |
+| `docs/` | 91 ADRs, architecture, 10-pillar specifications, security |
 
 ---
 
 ## Contributing
 
-Contributions welcome via pull requests. Verify changes with `make lint`, `make typecheck`, and `make test`.
+Contributions welcome via pull requests. Please read our [Contributing Guidelines](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md) before submitting changes.
+
+- **Contributing Guide:** [CONTRIBUTING.md](CONTRIBUTING.md)
+- **Code of Conduct:** [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- **Accessibility:** [ACCESSIBILITY.md](ACCESSIBILITY.md)
+- **Support & Help:** [SUPPORT.md](SUPPORT.md)
+- **Security Policy:** [SECURITY.md](SECURITY.md)
+
+Verify changes locally with `make lint`, `make typecheck`, and `make test`.
 
 ---
 
@@ -508,7 +516,7 @@ PostgreSQL 18.6, pgvector 0.8.6, BAAI/bge-small-en-v1.5, FastAPI, rank-bm25, and
 
 ---
 
-<footer>Assessment date: 2026-10-10 UTC · Commit 3a0725f · Verified against CI 38037523415 and bench evals/bench/20261002T054058Z/bench.json</footer>
+<footer>Assessment date: 2026-10-16 UTC · Verified against CI 38902601761 and bench evals/bench/20261002T054058Z/bench.json</footer>
 
 <!-- MARKDOWN LINKS AND IMAGES -->
 [ci-badge]: https://github.com/shivanshjain456/DocScout/actions/workflows/ci.yml/badge.svg?branch=master

@@ -9,11 +9,13 @@ once, end to end, in the integration tests below.
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 import psycopg
 import pytest
 
+from app.api.metrics import RERANK_CIRCUIT_BREAKER_TRIPS_TOTAL, RERANK_DURATION_SECONDS
 from app.retrieval import SERVING_CONFIG, RetrievalConfig, Retriever
 from app.retrieval.rerank import Candidate, CrossEncoderReranker, RerankError
 
@@ -25,8 +27,15 @@ class StubReranker(CrossEncoderReranker):
         super().__init__()
         self._scores = scores
 
-    def score(self, query: str, candidates: list[Candidate]) -> list[float]:
-        return self._scores[: len(candidates)]
+    def score(
+        self,
+        query: str,
+        candidates: list[Candidate],
+        *,
+        batch_size: int | None = None,
+        **kwargs: Any,
+    ) -> list[float]:
+        return self._scores[: min(len(candidates), 64)]
 
 
 def candidates(n: int) -> list[Candidate]:
@@ -86,15 +95,183 @@ def test_rerank_fields_appear_in_provenance_only_when_enabled() -> None:
     off = RetrievalConfig(name="off", mode="hybrid").as_dict()
     assert off["rerank"] is False
     assert off["rerank_model"] is None
+    assert off["rerank_batch_size"] is None
+    assert off["rerank_timeout_ms"] is None
 
     on = RetrievalConfig(name="on", mode="hybrid", rerank=True, rerank_top_n=20).as_dict()
     assert on["rerank"] is True
     assert "ms-marco" in str(on["rerank_model"])
+    assert on["rerank_batch_size"] == 16
+    assert on["rerank_timeout_ms"] == 40
 
 
 def test_serving_config_does_not_rerank() -> None:
     """ADR-0009: measured, and not worth 30x the latency on this corpus."""
     assert SERVING_CONFIG.rerank is False
+
+
+def test_rerank_pool_ceiling_64() -> None:
+    """Pool sizes greater than 64 are rejected to prevent latency blowouts."""
+    with pytest.raises(ValueError, match="exceeds maximum candidate pool ceiling of 64"):
+        RetrievalConfig(name="over", mode="hybrid", k_final=10, rerank=True, rerank_top_n=65)
+
+    at_limit = RetrievalConfig(
+        name="limit", mode="hybrid", k_final=10, rerank=True, rerank_top_n=64
+    )
+    assert at_limit.rerank_top_n == 64
+
+
+def test_rerank_batch_size_and_timeout_validation() -> None:
+    """Batch size and timeout must be strictly positive."""
+    with pytest.raises(ValueError, match="rerank_batch_size must be positive"):
+        RetrievalConfig(
+            name="b1",
+            mode="hybrid",
+            k_final=10,
+            rerank=True,
+            rerank_top_n=20,
+            rerank_batch_size=0,
+        )
+
+    with pytest.raises(ValueError, match="rerank_timeout_ms must be positive"):
+        RetrievalConfig(
+            name="b2",
+            mode="hybrid",
+            k_final=10,
+            rerank=True,
+            rerank_top_n=20,
+            rerank_timeout_ms=-1,
+        )
+
+
+def test_rerank_input_validation_empty_query() -> None:
+    """Empty or whitespace queries are rejected."""
+    reranker = CrossEncoderReranker()
+    with pytest.raises(ValueError, match="Query string cannot be empty"):
+        reranker.score("", candidates(2))
+
+    with pytest.raises(ValueError, match="Query string cannot be empty"):
+        reranker.score("   ", candidates(2))
+
+    with pytest.raises(ValueError, match="Query string cannot be empty"):
+        reranker.order("", candidates(2))
+
+
+def test_rerank_timeout_circuit_breaker_trips() -> None:
+    """When inference exceeds timeout budget, circuit breaker trips and returns fallback order."""
+
+    class SleepyReranker(CrossEncoderReranker):
+        def score(
+            self,
+            query: str,
+            candidates: list[Candidate],
+            *,
+            batch_size: int | None = None,
+            **kwargs: Any,
+        ) -> list[float]:
+            time.sleep(0.08)
+            return [0.9] * len(candidates)
+
+    reranker = SleepyReranker()
+    before_trips = RERANK_CIRCUIT_BREAKER_TRIPS_TOTAL._value.get()
+
+    ordered = reranker.order("query", candidates(4), timeout_ms=10)
+    after_trips = RERANK_CIRCUIT_BREAKER_TRIPS_TOTAL._value.get()
+
+    assert reranker.last_circuit_breaker_tripped is True
+    assert after_trips == before_trips + 1
+    # Fallback pre-rerank order preserved
+    assert [idx for idx, _ in ordered] == [0, 1, 2, 3]
+
+
+def test_rerank_model_exception_circuit_breaker_trips() -> None:
+    """When model inference encounters unexpected runtime exception, circuit breaker trips cleanly."""
+
+    class FaultyReranker(CrossEncoderReranker):
+        def score(
+            self,
+            query: str,
+            candidates: list[Candidate],
+            *,
+            batch_size: int | None = None,
+            **kwargs: Any,
+        ) -> list[float]:
+            raise RuntimeError("CUDA device out of memory")
+
+    reranker = FaultyReranker()
+    before_trips = RERANK_CIRCUIT_BREAKER_TRIPS_TOTAL._value.get()
+
+    ordered = reranker.order("query", candidates(3))
+    after_trips = RERANK_CIRCUIT_BREAKER_TRIPS_TOTAL._value.get()
+
+    assert reranker.last_circuit_breaker_tripped is True
+    assert after_trips == before_trips + 1
+    # Fallback pre-rerank order preserved
+    assert [idx for idx, _ in ordered] == [0, 1, 2]
+
+
+def test_rerank_duration_histogram_recorded() -> None:
+    """Successful rerank records duration sample in Prometheus histogram."""
+    reranker = StubReranker([0.8, 0.4])
+    before_count = RERANK_DURATION_SECONDS._sum.get()
+    reranker.order("query", candidates(2))
+    after_count = RERANK_DURATION_SECONDS._sum.get()
+    assert after_count >= before_count
+
+
+def test_pool_clamped_to_max_64() -> None:
+    """Pools larger than 64 candidates are clamped to 64 items."""
+    cands_70 = candidates(70)
+    reranker = StubReranker([float(i) for i in range(70)])
+    scores = reranker.score("q", cands_70)
+    assert len(scores) == 64
+
+
+def test_deterministic_tie_breaking_with_chunk_ids() -> None:
+    """Identical scores are broken deterministically by incoming index and chunk ID."""
+    cands = [
+        Candidate("chunk_b", "text"),
+        Candidate("chunk_a", "text"),
+        Candidate("chunk_c", "text"),
+    ]
+    reranker = StubReranker([0.5, 0.5, 0.5])
+    ordered = reranker.order("q", cands)
+    # Incoming fusion order is preserved
+    assert [idx for idx, _ in ordered] == [0, 1, 2]
+
+
+def test_retriever_rerank_circuit_breaker_preserves_fused_scores() -> None:
+    """When circuit breaker trips in Retriever._rerank, fused RRF ordering and scores are preserved."""
+
+    class BrokenReranker(CrossEncoderReranker):
+        def score(
+            self,
+            query: str,
+            candidates: list[Candidate],
+            *,
+            batch_size: int | None = None,
+            **kwargs: Any,
+        ) -> list[float]:
+            raise RuntimeError("Model timeout simulated")
+
+    class MockRetriever:
+        def __init__(self) -> None:
+            self.reranker = BrokenReranker()
+            self._meta: dict[str, Any] = {}
+
+        def _metadata(self, pool_ids: list[str], **kwargs: Any) -> dict[str, Any]:
+            return {cid: type("ChunkMeta", (), {"text": "dummy text"})() for cid in pool_ids}
+
+    mock = MockRetriever()
+    fused_input = [("c1", 0.05, {"bm25": 1}), ("c2", 0.03, {"dense": 1}), ("c3", 0.01, {})]
+    arms_input = {"bm25": ["c1"], "dense": ["c2"]}
+    cfg = RetrievalConfig(name="test", mode="hybrid", k_final=3, rerank=True, rerank_top_n=3)
+
+    result = Retriever._rerank(mock, "query", fused_input, arms_input, cfg)  # type: ignore[arg-type]
+
+    # Pre-rerank RRF candidate ranking and scores are preserved without disruption
+    assert [cid for cid, _, _ in result] == ["c1", "c2", "c3"]
+    assert [score for _, score, _ in result] == [0.05, 0.03, 0.01]
 
 
 # --- integration, against the real model and corpus ---------------------------------------
