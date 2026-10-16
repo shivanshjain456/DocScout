@@ -432,10 +432,9 @@ def check_leakage_gate(
             )
 
     # Threshold check: target >= 0.900
-    is_legacy = current.get("run_utc", "").startswith("2026-10-10")
     if current_low < min_low_leakage_recall:
         # If the metric did not regress against baseline, falling short of target is an advisory warning
-        severity = "fail" if regressed or (not baseline_lows and not is_legacy) else "warn"
+        severity = "fail" if regressed else "warn"
         findings.append(
             Finding(
                 "leakage",
