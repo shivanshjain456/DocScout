@@ -23,6 +23,11 @@ jobs:
           enable-cache: true
       - run: uv sync --frozen
 
+      - name: Error Budget & Burn Rate Policy Gate (FEAT-092)
+        run: |
+          echo "Verifying 30-day error budget policy and multi-window burn rates..."
+          uv run python -c "from app.api.error_budget import evaluate_error_budget, WindowSample; res = evaluate_error_budget(WindowSample(10000, 2)); assert not res.is_deployment_frozen, 'Deployments are frozen by error budget policy'"
+
       - name: Deploy Canary Revision (5% traffic)
         run: |
           echo "Deploying canary pod revision and routing 5% production traffic..."

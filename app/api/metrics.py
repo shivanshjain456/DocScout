@@ -985,9 +985,46 @@ def record_canary_evaluation(decision: str) -> None:
     CANARY_EVALUATIONS_TOTAL.labels(decision=decision).inc()
 
 
+ERROR_BUDGET_REMAINING_RATIO = Gauge(
+    "docscout_error_budget_remaining_ratio",
+    "Remaining 30-day error budget ratio [0.0, 1.0] (FEAT-092).",
+    ["slo"],
+)
+
+ERROR_BUDGET_BURN_RATE = Gauge(
+    "docscout_error_budget_burn_rate",
+    "Error budget burn rate multiplier across observation window (FEAT-092).",
+    ["window"],
+)
+
+ERROR_BUDGET_DEPLOYMENT_FROZEN = Gauge(
+    "docscout_error_budget_deployment_frozen",
+    "Binary indicator: 1 if deployments are frozen due to consumed error budget, 0 otherwise (FEAT-092).",
+)
+
+
+def update_error_budget_metrics(
+    budget_remaining_ratio: float,
+    burn_rate_1h: float,
+    burn_rate_6h: float,
+    is_frozen: bool,
+    slo: str = "availability",
+) -> None:
+    """Update Prometheus error budget gauges (FEAT-092)."""
+    ERROR_BUDGET_REMAINING_RATIO.labels(slo=slo).set(max(0.0, min(1.0, budget_remaining_ratio)))
+    ERROR_BUDGET_BURN_RATE.labels(window="1h").set(max(0.0, burn_rate_1h))
+    ERROR_BUDGET_BURN_RATE.labels(window="6h").set(max(0.0, burn_rate_6h))
+    ERROR_BUDGET_DEPLOYMENT_FROZEN.set(1.0 if is_frozen else 0.0)
+
+
 # Initialize AI assurance gauges to healthy defaults so Prometheus scrapers see them immediately
 CLAIM_SUPPORT_RATIO.set(1.0)
 UNSUPPORTED_CLAIM_ALERTS.labels(severity="critical").set(0.0)
+ERROR_BUDGET_REMAINING_RATIO.labels(slo="availability").set(1.0)
+ERROR_BUDGET_REMAINING_RATIO.labels(slo="latency").set(1.0)
+ERROR_BUDGET_BURN_RATE.labels(window="1h").set(0.0)
+ERROR_BUDGET_BURN_RATE.labels(window="6h").set(0.0)
+ERROR_BUDGET_DEPLOYMENT_FROZEN.set(0.0)
 ABSTENTION_EVENTS_TOTAL.labels(level="LOW")
 ABSTENTION_EVENTS_TOTAL.labels(level="MEDIUM")
 ABSTENTION_EVENTS_TOTAL.labels(level="HIGH")
