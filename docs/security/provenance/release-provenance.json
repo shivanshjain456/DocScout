@@ -1,0 +1,31 @@
+{
+  "schema_version": "https://slsa.dev/provenance/v1",
+  "builder": "docscout-ci/provenance-signer@v1",
+  "subject": {
+    "name": "docscout-release-bundle",
+    "digest": {
+      "sha256": "564cf533248cf20340c923783166273765b41e2b3a1ec2c0db2a9e3379cb442d"
+    }
+  },
+  "materials": [
+    {
+      "uri": "docs/security/sbom.cdx.json",
+      "digest": {
+        "sha256": "cee9fc65a99c020d6ba49bdf991a83990f0b932e07c1bc4e573bc3afc8595364"
+      }
+    },
+    {
+      "uri": "uv.lock",
+      "digest": {
+        "sha256": "e887ac455d978a2abd971acf419a983e95337e8c8d63993082726375cdbd23d3"
+      }
+    }
+  ],
+  "invocation": {
+    "environment": "ci",
+    "timestamp": "2026-10-16T07:48:58Z"
+  },
+  "signature": "twvkFSPoWRbT7c64kcvhbapkPawd2oKNm4Yipq0R0o/7tzc+vusPDQ+AOd+VsP08Qp+rMUIpRDaruKH0L68fBQ==",
+  "signer_identity": "docscout-oidc-signer",
+  "created_at": "2026-10-16T07:48:58Z"
+}

@@ -477,6 +477,26 @@ def store_document(conn: psycopg.Connection[Any], prepared: PreparedDocument) ->
                 chunks=chunk_dicts,
             )
 
+            # FEAT-098: Record immutable cryptographic audit trail
+            from app.provenance import (
+                ArtifactMaterial,
+                generate_provenance_attestation,
+                record_audit_trail,
+            )
+
+            att = generate_provenance_attestation(
+                subject={"name": doc.url, "digest": {"sha256": doc.sha256}},
+                materials=[ArtifactMaterial(uri=doc.url, digest={"sha256": doc.sha256})],
+                invocation={"version_id": str(version_id), "chunks": len(rows)},
+            )
+            record_audit_trail(
+                conn,
+                entity_type="circular",
+                entity_id=str(version_id),
+                sha256_digest=doc.sha256,
+                attestation=att,
+            )
+
             outcome = StoreOutcome(
                 url=doc.url,
                 action=action,

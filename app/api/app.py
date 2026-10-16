@@ -358,6 +358,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.embedding_cache = TTLCache[str, Any](maxsize=EMBEDDING_CACHE_SIZE, ttl=None)
     app.state.manifest_digest = sha256_file(REPO_ROOT / "corpus" / "raw" / "manifest.json")
     app.state.generator = get_generator()
+
+    # FEAT-098: SLSA Level 3 cryptographic provenance verification at startup
+    if os.environ.get("DOCSCOUT_VERIFY_PROVENANCE_STARTUP", "1").lower() in ("1", "true", "yes"):
+        from app.provenance import ProvenanceConfig, verify_startup_provenance
+
+        verify_startup_provenance(ProvenanceConfig())
     app.state.intent_router = get_default_intent_router()
 
     metrics.CORPUS_CHUNKS.set(app.state.corpus_chunks)

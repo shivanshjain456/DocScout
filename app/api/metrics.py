@@ -1206,6 +1206,13 @@ def record_claim_telemetry(supported_claims: int, total_claims: int) -> float:
         return 1.0
 
 
+ATTESTATIONS_VERIFIED_TOTAL = Counter(
+    "docscout_attestations_verified_total",
+    "Total SLSA cryptographic attestations verified at startup or ingest",
+    ["status"],
+)
+
+
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.
 

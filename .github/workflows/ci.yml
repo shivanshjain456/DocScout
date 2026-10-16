@@ -25,6 +25,8 @@ jobs:
         run: uv run python scripts/diff_mutation.py --base origin/main
       - name: differential patch coverage gate (FEAT-097)
         run: uv run python scripts/diff_coverage.py --coverage-xml coverage.xml --base origin/main
+      - name: verify cryptographic provenance (FEAT-098)
+        run: uv run python scripts/provenance.py --verify
 
   secrets:
     runs-on: ubuntu-latest
