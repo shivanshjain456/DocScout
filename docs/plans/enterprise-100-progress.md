@@ -123,7 +123,7 @@
 - [x] FEAT-093: Bulkhead Concurrency Isolation & Adaptive Load Shedding
 - [x] FEAT-094: Chaos Engineering Fault Injection Test Harness
 - [x] FEAT-095: Hermetic Deterministic Test Fixtures with Seeded Randomness
-- [ ] FEAT-096: Mutation Score Ratcheting CI Gate
+- [x] FEAT-096: Mutation Score Ratcheting CI Gate
 - [ ] FEAT-097: Differential / Patch Coverage Gating (100% Diff Coverage)
 - [ ] FEAT-098: Immutable Cryptographic Audit Trail (SLSA Level 3 Provenance)
 - [ ] FEAT-099: OIDC-Federated Zero-Trust Identity & Enterprise RBAC
@@ -230,6 +230,7 @@
 | FEAT-093 | fde3f0e | PASS | Bulkhead concurrency isolation & adaptive load shedding, ADR-0084, BulkheadConfig (query=50, ingest=4, eval=2, internal=10), BulkheadManager with asyncio.Semaphore & adaptive queue timeout Little's Law, Starlette BulkheadMiddleware with HTTP 429 & Retry-After, Prometheus metrics (docscout_bulkhead_active_concurrency, docscout_bulkhead_queue_depth, docscout_bulkhead_shed_requests_total), loadtests/load_bulkhead.py (100% search availability, p95 <= 50ms under saturated ingestion), tests/test_bulkhead.py |
 | FEAT-094 | 9a53563 | PASS | Chaos engineering fault injection test harness, ADR-0085, ChaosHarness with 10 fault scenarios (DB timeout, pgvector crash, OCR timeout, embedder failure, corrupt payload, cache failure, pool exhaustion, latency spike, network partition, invalid upload), 100% graceful degradation (0 unhandled exceptions), recovery <= 500ms, make test-chaos, tests/chaos/test_fault_injection.py |
 | FEAT-095 | 1dad5c1 | PASS | Hermetic deterministic test fixtures with seeded randomness, ADR-0086, Clock protocol (SystemClock, FrozenClock with time-travel), seed_everything(0) PRNG freezing, InMemoryVectorDouble, flakiness detection harness, flakiness rate = 0.000 across 10 runs, fixture overhead <= 0.1ms, tests/test_determinism.py |
+| FEAT-096 | 3662dc5 | PASS | Mutation score ratcheting CI gate, ADR-0087, MutationGateConfig (min_score=0.784, diff_only=True), scripts/diff_mutation.py AST-based mutant generator and scoped test execution, ratchet policy delta >= 0.000, docs/verification/mutation-report.json committed artifact, Makefile test-mutation target, .github/workflows/ci.yml gate step, tests/test_mutation_gate.py |
 
 ---
 
