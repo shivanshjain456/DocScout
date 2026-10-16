@@ -271,7 +271,17 @@ from app.generate.agent import (
 from app.ingest.chunk import CHUNK_OVERLAP, CHUNK_SIZE
 from app.ingest.embed import EMBEDDING_DIM, MODEL_ID, Embedder
 from app.ingest.store import get_sync_state
-from app.observability import configure_logging, get_logger, normalise_request_id
+from app.observability import (
+    calculate_query_complexity,
+    calculate_query_cost,
+    configure_logging,
+    estimate_token_count,
+    get_logger,
+    normalise_request_id,
+    parse_or_mint_traceparent,
+    record_telemetry_access,
+    telemetry_config,
+)
 from app.retrieval import SERVING_CONFIG, RetrievalConfig
 from app.retrieval import Retriever as Retriever
 from app.retrieval.intent_router import get_default_intent_router
@@ -422,47 +432,95 @@ app.add_middleware(BulkheadMiddleware)
 
 @app.middleware("http")
 async def correlate_and_log(request: Request, call_next: Any) -> Any:
-    """Bind a correlation id for the request and emit exactly one access line.
-
-    The id is bound into a contextvar rather than passed around, so every log record
-    emitted anywhere while handling this request carries it without the call sites
-    knowing. It is echoed on the response so a caller reporting a bad answer can quote
-    something that joins to the logs.
-
-    One line per request, after the fact, with the status and duration on it -- rather
-    than a line on entry and another on exit, which doubles log volume and still needs a
-    join to answer "how long did it take".
-    """
+    """Bind W3C trace context, correlation ID, and emit high-cardinality telemetry."""
     request_id = normalise_request_id(request.headers.get("X-Request-ID"))
+    trace_id, span_id, _flags, traceparent = parse_or_mint_traceparent(
+        request.headers.get("traceparent")
+    )
+
     structlog.contextvars.clear_contextvars()
     structlog.contextvars.bind_contextvars(
-        request_id=request_id, method=request.method, path=request.url.path
+        request_id=request_id,
+        trace_id=trace_id,
+        span_id=span_id,
+        method=request.method,
+        path=request.url.path,
     )
     request.state.request_id = request_id
+    request.state.trace_id = trace_id
+    request.state.span_id = span_id
+    request.state.traceparent = traceparent
+
     started = time.perf_counter()
     metrics.IN_FLIGHT.inc()
     try:
         try:
             response = await call_next(request)
         except Exception:
-            # The 500 handler below renders the body; this records the timing and the
-            # metric, then re-raises so that behaviour is unchanged.
             elapsed = time.perf_counter() - started
-            # Routing has run by now, so the matched template is available even on failure.
+            duration_ms = round(elapsed * 1000, 2)
             route = metrics.route_label(request.scope)
             metrics.REQUESTS.labels(request.method, route, "500").inc()
             metrics.REQUEST_DURATION.labels(request.method, route).observe(elapsed)
-            logger.exception("http.request", status=500, duration_ms=round(elapsed * 1000, 2))
+            logger.exception("http.request", status=500, duration_ms=duration_ms)
+
+            cfg = telemetry_config()
+            tenant_id = getattr(request.state, "tenant_id", "default-tenant")
+            user = getattr(request.state, "user", None)
+            user_id = getattr(user, "user_id", "anonymous")
+            tokens = getattr(request.state, "tokens", 25)
+            cost_usd = calculate_query_cost(tokens, cfg.cost_per_1k_tokens)
+            complexity = calculate_query_complexity(tokens, duration_ms=duration_ms)
+
+            record_telemetry_access(
+                logger=logger,
+                status_code=500,
+                duration_ms=duration_ms,
+                tenant_id=tenant_id,
+                user_id=user_id,
+                tokens=tokens,
+                cost_usd=cost_usd,
+                cache_outcome="bypass",
+                query_complexity=complexity,
+                trace_id=trace_id,
+                span_id=span_id,
+            )
             raise
+
         elapsed = time.perf_counter() - started
+        duration_ms = round(elapsed * 1000, 2)
         route = metrics.route_label(request.scope)
         metrics.REQUESTS.labels(request.method, route, str(response.status_code)).inc()
         metrics.REQUEST_DURATION.labels(request.method, route).observe(elapsed)
         if response.status_code == status.HTTP_429_TOO_MANY_REQUESTS:
             metrics.RATE_LIMITED.inc()
+
         response.headers["X-Request-ID"] = request_id
-        logger.info(
-            "http.request", status=response.status_code, duration_ms=round(elapsed * 1000, 2)
+        response.headers["traceparent"] = traceparent
+
+        cfg = telemetry_config()
+        tenant_id = getattr(request.state, "tenant_id", "default-tenant")
+        user = getattr(request.state, "user", None)
+        user_id = getattr(user, "user_id", "anonymous")
+        tokens = getattr(request.state, "tokens", None)
+        if tokens is None:
+            tokens = estimate_token_count(request.url.path, base_tokens=25)
+        cache_outcome = getattr(request.state, "cache_outcome", "bypass")
+        cost_usd = calculate_query_cost(tokens, cfg.cost_per_1k_tokens)
+        complexity = calculate_query_complexity(tokens, duration_ms=duration_ms)
+
+        record_telemetry_access(
+            logger=logger,
+            status_code=response.status_code,
+            duration_ms=duration_ms,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            tokens=tokens,
+            cost_usd=cost_usd,
+            cache_outcome=cache_outcome,
+            query_complexity=complexity,
+            trace_id=trace_id,
+            span_id=span_id,
         )
         return response
     finally:
@@ -860,6 +918,10 @@ def search(
             hit_tier = "tier1" if cached is not None else None
 
     if cached is not None:
+        request.state.cache_outcome = "hit"
+        request.state.tokens = (
+            estimate_token_count(payload.query, base_tokens=20) + len(cached.passages) * 120
+        )
         metrics.CACHE_HITS_TOTAL.labels(tier=hit_tier or "tier1").inc()
         metrics.CACHE_EVENTS.labels("hit").inc()
         total_ms = (time.perf_counter() - started) * 1000.0
@@ -1124,6 +1186,10 @@ def search(
                 current_generation=getattr(state, "corpus_generation", 1),
             )
 
+    request.state.cache_outcome = "miss"
+    request.state.tokens = (
+        estimate_token_count(payload.query, base_tokens=20) + len(result.passages) * 120
+    )
     total_ms = (time.perf_counter() - started) * 1000.0
     try:
         record_retrieval_event(

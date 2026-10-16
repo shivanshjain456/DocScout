@@ -1224,6 +1224,18 @@ AUTH_FAILURES_TOTAL = Counter(
     ["reason"],
 )
 
+QUERY_COST_USD_TOTAL = Counter(
+    "docscout_query_cost_usd_total",
+    "Total computed query and inference cost in USD",
+    ["tenant_id", "cache_outcome"],
+)
+
+QUERY_TOKENS_TOTAL = Counter(
+    "docscout_query_tokens_total",
+    "Total tokens processed across queries and passages",
+    ["tenant_id", "cache_outcome"],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.
