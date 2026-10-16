@@ -19,3 +19,13 @@ CREATE INDEX IF NOT EXISTS idx_canary_tokens_token_string
     ON canary_tokens (token_string);
 
 COMMENT ON TABLE canary_tokens IS 'Cryptographic canary strings planted in synthetic fixtures to assert zero production cross-tenant leakage.';
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'docscout_app') THEN
+        GRANT SELECT, INSERT, UPDATE, DELETE ON canary_tokens TO docscout_app;
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'docscout') THEN
+        GRANT SELECT, INSERT, UPDATE, DELETE ON canary_tokens TO docscout;
+    END IF;
+END $$;

@@ -43,5 +43,16 @@ CREATE INDEX IF NOT EXISTS idx_audit_trail_entity
 CREATE INDEX IF NOT EXISTS idx_audit_trail_sha256
     ON cryptographic_audit_trail (sha256_digest);
 
-GRANT SELECT, INSERT ON cryptographic_audit_trail TO docscout_app;
-GRANT SELECT, INSERT ON audit_trail TO docscout_app;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'docscout_app') THEN
+        GRANT SELECT, INSERT ON cryptographic_audit_trail TO docscout_app;
+        GRANT SELECT, INSERT ON audit_trail TO docscout_app;
+        GRANT USAGE, SELECT ON SEQUENCE cryptographic_audit_trail_id_seq TO docscout_app;
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'docscout') THEN
+        GRANT SELECT, INSERT ON cryptographic_audit_trail TO docscout;
+        GRANT SELECT, INSERT ON audit_trail TO docscout;
+        GRANT USAGE, SELECT ON SEQUENCE cryptographic_audit_trail_id_seq TO docscout;
+    END IF;
+END $$;

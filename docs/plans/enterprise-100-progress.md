@@ -242,3 +242,16 @@
 
 | FEAT | Reason | Retries | Next Action |
 |---|---|---|---|
+
+---
+
+## Remote CI Hardening & Production Verification
+
+1. **Cryptographic Audit Trail Sequence Permissions (eval-gate & deploy-smoke)**:
+   - Added `GRANT USAGE, SELECT ON SEQUENCE cryptographic_audit_trail_id_seq TO docscout_app` in `migrations/0053_audit_trail.up.sql`.
+   - Guaranteed least-privilege role `docscout_app` can insert audit records without sequence permission denial.
+2. **Canary Tokens Least-Privilege Grants**:
+   - Added role checks and grants for `docscout_app` and `docscout` in `migrations/0052_canary_tokens.up.sql`.
+3. **Database Test Isolation & Clean Skipped States (quality job)**:
+   - Refactored `test_annexure_linker.py`, `test_ocr_quality.py`, and `test_offset_matrix.py` to use `db` fixture with `connect_or_skip`.
+   - Replaced direct DB connects in API tests with synthetic UUIDs falling back to memory stores.

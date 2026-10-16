@@ -18,6 +18,7 @@ from __future__ import annotations
 import os
 import time
 import uuid
+from typing import Any
 
 import psycopg
 import pytest
@@ -26,7 +27,6 @@ from fastapi.testclient import TestClient
 from app.api.app import app
 from app.api.metrics import ANNEXURES_LINKED_TOTAL
 from app.api.security import load_keys
-from app.config import database_url
 from app.ingest.annexure_linker import (
     AnnexureLinker,
     AnnexureLinkerConfig,
@@ -131,7 +131,7 @@ def test_config_toggles() -> None:
     assert relationships[0].relationship_type == "ANNEXURE"
 
 
-def test_database_persistence_and_retrieval() -> None:
+def test_database_persistence_and_retrieval(db: psycopg.Connection[Any]) -> None:
     """Verify storing and fetching sections and relationships from PostgreSQL."""
     doc_id = str(uuid.uuid4())
     ver_id = str(uuid.uuid4())
@@ -146,42 +146,40 @@ def test_database_persistence_and_retrieval() -> None:
     linker = get_default_annexure_linker()
     sections, relationships = linker.process_document(text, document_id=doc_id, version_id=ver_id)
 
-    with psycopg.connect(database_url()) as conn:
-        with conn.cursor() as cur:
-            # Seed documents and document_versions to satisfy foreign keys
-            cur.execute(
-                """
-                INSERT INTO documents (document_id, canonical_url, source, title)
-                VALUES (%s, %s, %s, %s)
-                ON CONFLICT DO NOTHING
-                """,
-                (doc_id, f"https://rbi.org.in/test/{doc_id}.pdf", "RBI", "Test Directive"),
-            )
-            import hashlib
+    conn = db
+    with conn.cursor() as cur:
+        # Seed documents and document_versions to satisfy foreign keys
+        cur.execute(
+            """
+            INSERT INTO documents (document_id, canonical_url, source, title)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT DO NOTHING
+            """,
+            (doc_id, f"https://rbi.org.in/test/{doc_id}.pdf", "RBI", "Test Directive"),
+        )
+        import hashlib
 
-            unique_sha = hashlib.sha256(ver_id.encode()).hexdigest()
-            cur.execute(
-                """
-                INSERT INTO document_versions (version_id, document_id, sha256, fetch_ts, bytes, extractor, char_count)
-                VALUES (%s, %s, %s, NOW(), 1024, 'pdfplumber', 600)
-                ON CONFLICT (version_id) DO NOTHING
-                """,
-                (ver_id, doc_id, unique_sha),
-            )
-            conn.commit()
+        unique_sha = hashlib.sha256(ver_id.encode()).hexdigest()
+        cur.execute(
+            """
+            INSERT INTO document_versions (version_id, document_id, sha256, fetch_ts, bytes, extractor, char_count)
+            VALUES (%s, %s, %s, NOW(), 1024, 'pdfplumber', 600)
+            ON CONFLICT (version_id) DO NOTHING
+            """,
+            (ver_id, doc_id, unique_sha),
+        )
 
-        linker.save_sections_and_relationships(conn, doc_id, ver_id, sections, relationships)
-        conn.commit()
+    linker.save_sections_and_relationships(conn, doc_id, ver_id, sections, relationships)
 
-        fetched_rels = linker.get_document_relationships(conn, doc_id)
-        assert len(fetched_rels) == len(relationships)
-        assert fetched_rels[0].relationship_type == "ANNEXURE"
-        assert fetched_rels[0].parent_section_id == relationships[0].parent_section_id
+    fetched_rels = linker.get_document_relationships(conn, doc_id)
+    assert len(fetched_rels) == len(relationships)
+    assert fetched_rels[0].relationship_type == "ANNEXURE"
+    assert fetched_rels[0].parent_section_id == relationships[0].parent_section_id
 
-        fetched_secs = linker.get_document_sections(conn, doc_id)
-        assert len(fetched_secs) == 2
-        assert fetched_secs[0].section_type == "MAIN"
-        assert fetched_secs[1].section_type == "ANNEXURE"
+    fetched_secs = linker.get_document_sections(conn, doc_id)
+    assert len(fetched_secs) == 2
+    assert fetched_secs[0].section_type == "MAIN"
+    assert fetched_secs[1].section_type == "ANNEXURE"
 
 
 def test_benchmark_10_master_directions_with_dense_annexures() -> None:

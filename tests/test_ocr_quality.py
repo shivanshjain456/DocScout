@@ -18,6 +18,7 @@ import base64
 import hashlib
 import io
 import time
+from typing import Any
 
 import numpy as np
 import psycopg
@@ -27,7 +28,6 @@ from PIL import Image, ImageDraw, ImageFilter
 
 from app.api.app import app
 from app.api.security import load_keys
-from app.config import database_url
 from app.ingest.ocr_quality import (
     ImagePreprocessor,
     OCRQualityConfig,
@@ -359,7 +359,7 @@ def test_sla_quality_evaluation_and_preprocessing_duration() -> None:
 # ==============================================================================
 
 
-def test_database_persistence_and_retrieval() -> None:
+def test_database_persistence_and_retrieval(db: psycopg.Connection[Any]) -> None:
     """Verify persisting and retrieving OCR quality scores via PostgreSQL ocr_extractions table."""
     sha256 = hashlib.sha256(b"test_ocr_quality_payload_12345").hexdigest()
     score = OCRQualityScore(
@@ -371,11 +371,8 @@ def test_database_persistence_and_retrieval() -> None:
     )
 
     evaluator = OCRQualityEvaluator()
-    with psycopg.connect(database_url()) as conn:
-        evaluator.save_quality_score(conn, sha256, score)
-
-    with psycopg.connect(database_url()) as conn:
-        retrieved = evaluator.get_quality_score(conn, sha256)
+    evaluator.save_quality_score(db, sha256, score)
+    retrieved = evaluator.get_quality_score(db, sha256)
 
     assert retrieved is not None
     assert retrieved.page_number == 1

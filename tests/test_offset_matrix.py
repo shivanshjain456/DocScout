@@ -27,7 +27,6 @@ from fastapi.testclient import TestClient
 
 from app.api.app import app
 from app.api.security import load_keys
-from app.config import database_url
 from app.ingest.offset_matrix import (
     ChunkCoordinates,
     OffsetTraceabilityMatrix,
@@ -364,10 +363,10 @@ def test_50_regulatory_citations_positional_accuracy() -> None:
 # ==============================================================================
 
 
-def test_database_persistence_and_retrieval() -> None:
+def test_database_persistence_and_retrieval(db: psycopg.Connection[Any]) -> None:
     """Verify coordinate persistence to PostgreSQL chunk_coordinates table."""
-    with psycopg.connect(database_url()) as conn:
-        chunk_id = create_test_chunk(conn)
+    conn = db
+    chunk_id = create_test_chunk(conn)
 
     coords = [
         ChunkCoordinates(
@@ -387,11 +386,9 @@ def test_database_persistence_and_retrieval() -> None:
     ]
 
     matrix = OffsetTraceabilityMatrix()
-    with psycopg.connect(database_url()) as conn:
-        matrix.save_chunk_coordinates(conn, coords)
+    matrix.save_chunk_coordinates(conn, coords)
 
-    with psycopg.connect(database_url()) as conn:
-        retrieved = matrix.get_chunk_coordinates(conn, chunk_id)
+    retrieved = matrix.get_chunk_coordinates(conn, chunk_id)
 
     assert len(retrieved) == 2
     assert retrieved[0].chunk_id == chunk_id
@@ -417,8 +414,7 @@ def test_api_extract_coordinates_endpoint(client: TestClient) -> None:
     pdf_bytes = make_synthetic_pdf(["RBI Master Direction on Governance and Compliance 2026"])
     pdf_b64 = base64.b64encode(pdf_bytes).decode("ascii")
 
-    with psycopg.connect(database_url()) as conn:
-        chunk_id = str(create_test_chunk(conn))
+    chunk_id = str(uuid.uuid4())
 
     payload = {
         "content_base64": pdf_b64,
@@ -452,8 +448,7 @@ def test_api_database_persistence_and_retrieval_endpoint(client: TestClient) -> 
     pdf_bytes = make_synthetic_pdf(["SEBI Alternate Investment Funds AIF Circular"])
     pdf_b64 = base64.b64encode(pdf_bytes).decode("ascii")
 
-    with psycopg.connect(database_url()) as conn:
-        chunk_id = str(create_test_chunk(conn))
+    chunk_id = str(uuid.uuid4())
 
     payload = {
         "content_base64": pdf_b64,
