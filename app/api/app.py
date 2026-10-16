@@ -537,12 +537,24 @@ def healthz(request: Request) -> LivenessResponse:
     """
     state = request.app.state
     uptime = max(0.0, time.monotonic() - getattr(state, "started_at", time.monotonic()))
+
+    degraded = False
+    degraded_components: list[str] = []
+    if os.environ.get("DOCSCOUT_CHAOS_TESTING") in ("1", "true", "yes"):
+        from app.chaos import get_active_faults
+
+        active = get_active_faults()
+        if active:
+            degraded = True
+            degraded_components = active
+
     return LivenessResponse(
-        status="ok",
+        status="degraded" if degraded else "ok",
         uptime_seconds=round(uptime, 2),
         model_loaded=getattr(state, "embedder", None) is not None,
         single_process=True,
         corpus_generation=getattr(state, "corpus_generation", 1),
+        degraded_components=degraded_components,
     )
 
 
@@ -908,23 +920,31 @@ def search(
         metrics.PERSONA_QUERIES_TOTAL.labels(persona_id=persona_applied.id).inc()
 
     retrieval_started = time.perf_counter()
-    with state.pool.connection() as conn:
-        if getattr(state, "bm25_needs_reload", False) is True:
-            with getattr(state, "bm25_lock", Lock()):
-                if getattr(state, "bm25_needs_reload", False) is True:
-                    state.bm25 = BM25Index(conn)
-                    row = conn.execute("SELECT count(*) FROM chunks").fetchone()
-                    state.corpus_chunks = as_int(row[0]) if row else 0
-                    metrics.CORPUS_CHUNKS.set(state.corpus_chunks)
-                    state.bm25_needs_reload = False
-                    logger.info(
-                        "bm25.reloaded",
-                        corpus_chunks=state.corpus_chunks,
-                        generation=state.corpus_generation,
-                    )
-        retriever = Retriever(conn, embedder=state.embedder, bm25=state.bm25)
-        hits = retriever.retrieve(payload.query, config)
-        assessed = retriever.assess_confidence(payload.query, hits)
+    try:
+        with state.pool.connection() as conn:
+            if getattr(state, "bm25_needs_reload", False) is True:
+                with getattr(state, "bm25_lock", Lock()):
+                    if getattr(state, "bm25_needs_reload", False) is True:
+                        state.bm25 = BM25Index(conn)
+                        row = conn.execute("SELECT count(*) FROM chunks").fetchone()
+                        state.corpus_chunks = as_int(row[0]) if row else 0
+                        metrics.CORPUS_CHUNKS.set(state.corpus_chunks)
+                        state.bm25_needs_reload = False
+                        logger.info(
+                            "bm25.reloaded",
+                            corpus_chunks=state.corpus_chunks,
+                            generation=state.corpus_generation,
+                        )
+            retriever = Retriever(conn, embedder=state.embedder, bm25=state.bm25)
+            hits = retriever.retrieve(payload.query, config)
+            assessed = retriever.assess_confidence(payload.query, hits)
+    except psycopg.OperationalError as exc:
+        logger.warning("search.database_unavailable", exc=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database service temporarily unavailable, please retry",
+            headers={"Retry-After": "1"},
+        ) from exc
     retrieval_seconds = time.perf_counter() - retrieval_started
     metrics.RETRIEVAL_DURATION.labels(payload.mode).observe(retrieval_seconds)
     retrieval_ms = retrieval_seconds * 1000.0

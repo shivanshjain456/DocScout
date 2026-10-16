@@ -456,11 +456,12 @@ class LivenessResponse(BaseModel):
     and memory-resident components are intact. Never performs DB I/O.
     """
 
-    status: Literal["ok"]
+    status: Literal["ok", "degraded"] = "ok"
     uptime_seconds: float
     model_loaded: bool
     single_process: bool
     corpus_generation: int
+    degraded_components: list[str] = Field(default_factory=list)
 
 
 class ReadinessResponse(BaseModel):
