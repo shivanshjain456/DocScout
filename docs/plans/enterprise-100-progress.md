@@ -126,7 +126,7 @@
 - [x] FEAT-096: Mutation Score Ratcheting CI Gate
 - [x] FEAT-097: Differential / Patch Coverage Gating (100% Diff Coverage)
 - [x] FEAT-098: Immutable Cryptographic Audit Trail (SLSA Level 3 Provenance)
-- [ ] FEAT-099: OIDC-Federated Zero-Trust Identity & Enterprise RBAC
+- [x] FEAT-099: OIDC-Federated Zero-Trust Identity & Enterprise RBAC
 - [ ] FEAT-100: High-Cardinality Telemetry & Cost-Per-Query Accounting
 
 ---
@@ -233,6 +233,7 @@
 | FEAT-096 | 3662dc5 | PASS | Mutation score ratcheting CI gate, ADR-0087, MutationGateConfig (min_score=0.784, diff_only=True), scripts/diff_mutation.py AST-based mutant generator and scoped test execution, ratchet policy delta >= 0.000, docs/verification/mutation-report.json committed artifact, Makefile test-mutation target, .github/workflows/ci.yml gate step, tests/test_mutation_gate.py |
 | FEAT-097 | 404c6fb | PASS | Differential / patch coverage gating, ADR-0088, DiffCoverageConfig (required_percentage=100.0), DiffCoverageResult, Cobertura XML and git diff mapping, zero uncovered modified executable lines enforcement, docs/verification/diff-coverage-report.json committed artifact, Makefile diff-coverage target, .github/workflows/ci.yml quality gate step, tests/test_diff_coverage.py |
 | FEAT-098 | 8445091 | PASS | SLSA Level 3 immutable cryptographic audit trail, ADR-0089, Ed25519 asymmetric signing & verification, canonical JSON payload serialization, docs/security/provenance/ (corpus & release attestations), migration 0053 append-only cryptographic_audit_trail with trigger guard, app/ingest/store.py audit hook, app/api/app.py startup verification under 15ms, ATTESTATIONS_VERIFIED_TOTAL metric, scripts/provenance.py CLI, Makefile provenance-verify, tests/test_provenance.py |
+| FEAT-099 | 036b9fa | PASS | OIDC-federated zero-trust identity and enterprise RBAC, ADR-0090, Auth0Config, AuthenticatedUser schema with multi-tenant isolation, Auth0TokenVerifier RS256 JWKS validation with sub-0.4ms key caching, fine-grained scopes (compliance:read, compliance:admin, audit:export), require_scope and require_admin_user route dependencies, dual-mode API key fallback, docscout_auth_successes_total & docscout_auth_failures_total metrics, structlog context injection, tests/test_auth0.py (25 test cases) |
 
 ---
 
