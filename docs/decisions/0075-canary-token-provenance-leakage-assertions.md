@@ -38,7 +38,7 @@ FEAT-084 provides a cryptographic Canary Token Provenance & Leakage Assertion pi
    - `docscout_canary_leakage_detected` (Gauge)
 6. **Strict CI Execution Budget:**
    Canary assertion suite completes in <= 5.0 seconds in CI, with zero runtime memory overhead on production serving queries.
-7. **Typographical Invariant:** Zero UTF-8 em-dashes (\xe2\x80\x94).
+7. **Typographical Invariant:** Strict ASCII typographical compliance across all documentation and code.
 
 ---
 

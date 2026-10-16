@@ -30,7 +30,7 @@ FEAT-069 introduces high-performance, deterministic layout-aware regex metadata 
 3. **Strict Validation and Non-Invention:** Never invent or fabricate circular numbers for informal documents, press releases, or synthetic canaries; gracefully fall back to NULL with diagnostic logging.
 4. **Relational Schema Integration:** Persist extracted metadata into dedicated columns on `documents(circular_no, issuing_department, subject, signoff_authority)` with indexed lookup capability.
 5. **Prometheus Observability:** Instrument extraction metrics via `docscout_metadata_fields_extracted_total{field_name}` counter.
-6. **Zero Em-Dash Compliance:** Strict ASCII typographical adherence across all documentation and implementation files.
+6. **Typographical Compliance:** Strict ASCII adherence across all documentation and implementation files.
 
 ---
 

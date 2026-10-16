@@ -26,7 +26,7 @@ FEAT-071 introduces a production-hardened Cross-Encoder Candidate Rerank Ladder 
 4. **Arm-Leader Preservation:** Retain ADR-0007 invariants by guaranteeing that each retrieval arm's top hit is included in the candidate pool.
 5. **Deterministic Ordering:** Break score ties using pre-rerank index and chunk ID, ensuring 100% byte-identical reproducibility across runs.
 6. **Observability:** Track rerank latency via `docscout_rerank_duration_seconds` and circuit breaker trips via `docscout_rerank_circuit_breaker_trips_total`.
-7. **Typographical Compliance:** Strict ASCII typographical compliance with zero UTF-8 em-dashes.
+7. **Typographical Compliance:** Strict ASCII typographical compliance across all documentation and code.
 
 ---
 

@@ -30,7 +30,7 @@ While the baseline evidence coverage heuristic (`app/retrieval/confidence.py`) i
 5. **Fail-Closed Fallback:** If confidence calculation encounters unexpected runtime exceptions, default conservatively to explicit refusal (`is_refusal = True`) to prevent hallucinations.
 6. **Zero Memory Overhead:** Pure in-memory calculation with zero persistent storage requirements.
 7. **Observability:** Track abstention events via `docscout_abstention_events_total{level}` counter and `docscout_confidence_scores` histogram.
-8. **Strict Typographical Compliance:** Zero UTF-8 em-dashes (`\xe2\x80\x94`).
+8. **Strict Typographical Compliance:** Strict ASCII typographical compliance across all documentation and code.
 
 ---
 

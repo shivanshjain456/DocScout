@@ -34,7 +34,7 @@ DocScout requires real-time, low-overhead Prometheus telemetry that tracks claim
    Sliding window must use bounded memory (<= 2 MB) using fixed-capacity deque ring buffers.
 5. **Fail-Open Invariant & Confidentiality Protection:**
    Metric recording must be fail-open (exceptions are logged and never fail search requests). Zero confidential query text or tenant identifiers in metric labels to preserve strict data isolation.
-6. **Typographical Invariant:** Zero UTF-8 em-dashes (\xe2\x80\x94).
+6. **Typographical Invariant:** Strict ASCII typographical compliance across all documentation and code.
 
 ---
 

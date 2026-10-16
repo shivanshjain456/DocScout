@@ -31,7 +31,7 @@ Reporting only macro-averaged retrieval metrics masks performance drops on reali
    Fast Python regex tokenization computing lexical term intersections in <= 5.0 ms for all 425 items without requiring live database connections.
 4. **CI Regression Gating:**
    Enforce that low-leakage Recall@5 maintains target >= 0.900 and does not regress by > 1pp against established baseline averages.
-5. **Typographical Invariant:** Zero UTF-8 em-dashes (\xe2\x80\x94).
+5. **Typographical Invariant:** Strict ASCII typographical compliance across all documentation and code.
 
 ---
 

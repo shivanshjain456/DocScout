@@ -24,7 +24,7 @@ The system requires an automated relational hierarchy parser that detects subsid
 2. **Token Economy and Precision:** Avoid monolithic chunk merging; keep retrievable chunks atomic and structurally bound.
 3. **High-Performance Ingestion:** Execute relational linking in under 1.0 ms per document during ingestion.
 4. **Relational Traceability:** Maintain persistent parent-child relations (`document_sections` and `section_relationships`) indexed per document version.
-5. **Zero Em-Dash Policy:** Strict ASCII compliance across all documentation and codebase artifacts.
+5. **Typographical Policy:** Strict ASCII formatting compliance across all documentation and codebase artifacts.
 
 ---
 

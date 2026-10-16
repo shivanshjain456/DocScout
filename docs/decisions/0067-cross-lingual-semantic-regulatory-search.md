@@ -28,7 +28,7 @@ FEAT-076 implements Cross-Lingual Semantic Regulatory Search via a dedicated `Mu
 6. **Resource Footprint Ceiling:** Memory consumption <= 250 MB for cross-lingual alignment weights and projections.
 7. **Fail-Closed Fallback:** If cross-lingual projection encounters unexpected errors or missing weights, log a warning and fall back cleanly to standard English BGE embedding.
 8. **Observability:** Track cross-lingual search operations with Prometheus counter `docscout_cross_lingual_queries_total{lang}` where `lang` is `"hi"` or `"en"`.
-9. **Strict Typographical Compliance:** Zero UTF-8 em-dashes (`\xe2\x80\x94`).
+9. **Strict Typographical Compliance:** Strict ASCII typographical compliance across all documentation and code.
 
 ---
 

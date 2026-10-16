@@ -27,7 +27,7 @@ FEAT-075 introduces the Section-Aware Context Window Expansion engine (`app/retr
 5. **Configurable Horizon:** Bounded sibling expansion ($1 \le \text{max\_sibling\_clauses} \le 4$, default 2).
 6. **Graceful Fail-Closed Degradation:** If sibling clause lookup encounters unexpected errors or missing connections, return the core passage unexpanded without failing the query.
 7. **Prometheus Observability:** Track expansions via `docscout_section_expansions_total` counter and `docscout_section_expansion_duration_seconds` histogram.
-8. **Typographical Compliance:** Strict ASCII typographical compliance with zero UTF-8 em-dashes.
+8. **Typographical Compliance:** Strict ASCII typographical compliance across all documentation and code.
 
 ---
 

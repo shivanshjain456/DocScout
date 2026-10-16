@@ -39,7 +39,7 @@ FEAT-085 provides an Expected Calibration Error (ECE) and Maximum Calibration Er
    Export Prometheus gauge `docscout_eval_ece_score`.
 6. **Performance Limits:**
    ECE calculation over 1,000 predictions executes in <= 5.0 ms with zero memory overhead.
-7. **Typographical Invariant:** Zero UTF-8 em-dashes (\xe2\x80\x94).
+7. **Typographical Invariant:** Strict ASCII typographical compliance across all documentation and code.
 
 ---
 

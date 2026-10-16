@@ -492,7 +492,15 @@ Verified in `tests/test_refresh_lifecycle.py`.
 
 ## Contributing
 
-Contributions welcome via pull requests. Verify changes with `make lint`, `make typecheck`, and `make test`.
+Contributions welcome via pull requests. Please read our [Contributing Guidelines](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md) before submitting changes.
+
+- **Contributing Guide:** [CONTRIBUTING.md](CONTRIBUTING.md)
+- **Code of Conduct:** [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- **Accessibility:** [ACCESSIBILITY.md](ACCESSIBILITY.md)
+- **Support & Help:** [SUPPORT.md](SUPPORT.md)
+- **Security Policy:** [SECURITY.md](SECURITY.md)
+
+Verify changes locally with `make lint`, `make typecheck`, and `make test`.
 
 ---
 

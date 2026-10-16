@@ -31,7 +31,7 @@ FEAT-086 establishes an automated CI evaluation gate that computes Selective Acc
    Define `AbstentionGateConfig` and `AbstentionGateResult` in `app/evals/abstention.py`.
 4. **Execution Performance:**
    Evaluation executes in <= 100 ms with zero runtime memory overhead.
-5. **Typographical Invariant:** Zero UTF-8 em-dashes (\xe2\x80\x94).
+5. **Typographical Invariant:** Strict ASCII typographical compliance across all documentation and code.
 
 ---
 

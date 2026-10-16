@@ -27,7 +27,7 @@ While ADR-0005 introduced content-derived identifiers via `uuid5(CHUNK_ID_NAMESP
 2. **Permanent Citation Invariance:** Any given `(sha256, char_start, char_end)` must always yield the identical UUIDv5 across all environments and runs.
 3. **High-Speed Execution:** Hashing overhead must not bottle-neck large-scale circular ingestion (target >= 500,000 IDs/sec).
 4. **Fail-Closed Geometry:** Corrupt spans or malformed hashes must raise `ValueError` immediately rather than silently minting invalid identifiers.
-5. **Zero Em-Dash Policy:** Strict ASCII compliance across all documentation and source code.
+5. **Typographical Policy:** Strict ASCII formatting compliance across all documentation and source code.
 
 ---
 

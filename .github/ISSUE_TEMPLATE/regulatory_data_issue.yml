@@ -1,0 +1,43 @@
+name: Regulatory Data Discrepancy
+description: Report an issue with an RBI or SEBI circular citation, text extraction, or metadata
+title: "[Data]: "
+labels: ["data", "corpus"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template to report circular text extraction errors, incorrect notification IDs,
+        unhandled supersessions, or citation discrepancies.
+  - type: input
+    id: circular_id
+    attributes:
+      label: Circular Identifier or Canonical URL
+      description: The official circular number or regulator URL.
+      placeholder: "e.g. RBI/2023-24/102 or https://www.rbi.org.in/..."
+    validations:
+      required: true
+  - type: dropdown
+    id: authority
+    attributes:
+      label: Issuing Authority
+      options:
+        - "Reserve Bank of India (RBI)"
+        - "Securities and Exchange Board of India (SEBI)"
+        - "Other / Inter-regulatory"
+    validations:
+      required: true
+  - type: textarea
+    id: discrepancy
+    attributes:
+      label: Discrepancy Details
+      description: Describe what is incorrect (e.g. table parsing error, character offset drift, missing annexure).
+      placeholder: Describe the discrepancy...
+    validations:
+      required: true
+  - type: textarea
+    id: correct_info
+    attributes:
+      label: Correct Statutory Information
+      description: Verbatim text or expected citation from the primary regulator gazette/portal.
+    validations:
+      required: true

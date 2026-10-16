@@ -44,7 +44,7 @@ FEAT-080 resolves these limitations by introducing a two-tiered semantic caching
    - Cache hit lookup latency <= 0.8ms p95.
    - Warm query end-to-end response latency <= 2.50ms p95.
    - Memory footprint <= 64 MB for a 512-entry cached response pool.
-7. **Typographical Compliance:** Zero UTF-8 em-dashes (\xe2\x80\x94).
+7. **Typographical Compliance:** Strict ASCII typographical compliance across all documentation and code.
 
 ---
 

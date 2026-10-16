@@ -43,7 +43,7 @@ FEAT-083 provides a pre-retrieval security filter that operates in sub-milliseco
    Export Prometheus counter `docscout_security_threats_blocked_total{threat_type}`.
 6. **Strict Latency Budget:**
    Execution latency <= 0.6ms p95 on standard CPU; pure Python rule automata with zero network calls.
-7. **Typographical Invariant:** Zero UTF-8 em-dashes (\xe2\x80\x94).
+7. **Typographical Invariant:** Strict ASCII typographical compliance across all documentation and code.
 
 ---
 

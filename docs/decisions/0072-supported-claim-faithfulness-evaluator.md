@@ -42,7 +42,7 @@ This metric decomposes generated answer prose into atomic factual propositions, 
    - `docscout_unfaithful_answers_rejected_total` (Counter)
 6. **Benchmark Validation:**
    Evaluate across a benchmark of 100 regulatory answers (50 fully grounded, 50 containing subtle hallucinations), verifying hallucination detection accuracy $\ge 98\%$.
-7. **Typographical Invariant:** Zero UTF-8 em-dashes (\xe2\x80\x94).
+7. **Typographical Invariant:** Strict ASCII typographical compliance across all documentation and code.
 
 ---
 

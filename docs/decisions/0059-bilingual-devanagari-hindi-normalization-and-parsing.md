@@ -29,7 +29,7 @@ FEAT-068 introduces full Unicode Devanagari normalization (NFC), bilingual colum
 3. **Bilingual Column Separation:** Identify and decouple parallel Hindi and English text blocks to prevent mixed-column chunking.
 4. **Length-Preserving Offset Invariants:** Maintain compatibility with DocScout's citation offset model (`char_start`/`char_end`).
 5. **High Throughput:** Normalization throughput must exceed 1,000,000 chars/sec to prevent ingestion bottlenecks.
-6. **Zero Em-Dash Policy:** Strict ASCII compliance across all documentation and source code.
+6. **Typographical Policy:** Strict ASCII formatting compliance across all documentation and source code.
 
 ---
 

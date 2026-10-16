@@ -30,7 +30,7 @@ FEAT-070 introduces an automated, high-precision duplicate and reprint deduplica
 3. **Sub-millisecond Performance:** Deduplication check latency <= 2.0 ms per document, maintaining throughput without expensive LLM invocations.
 4. **Relational Canonical Linking:** Store detected duplicates in PostgreSQL with `canonical_document_id` referencing the canonical document, avoiding redundant vector embedding and chunk insertion.
 5. **Observability:** Track deduplications via Prometheus counter `docscout_duplicate_documents_detected_total{match_type}`.
-6. **Typographical Compliance:** Strict ASCII typographical compliance with zero UTF-8 em-dashes.
+6. **Typographical Compliance:** Strict ASCII typographical compliance across all documentation and code.
 
 ---
 

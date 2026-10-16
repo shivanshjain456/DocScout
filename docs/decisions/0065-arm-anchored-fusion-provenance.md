@@ -30,7 +30,7 @@ FEAT-074 formalizes and expands ADR-0007 into an Enterprise-grade arm-anchored f
 4. **Configuration Consistency:** Provide `RetrievalConfig.anchor_arm_leaders: bool = True` while maintaining seamless backward compatibility with `RetrievalConfig.anchor_arm_top1`.
 5. **Observability:** Track arm anchor events via Prometheus counter `docscout_arm_leaders_anchored_total` with `arm_name` label.
 6. **Execution Latency Budget:** Pure Python list surgery with execution overhead <= 0.05 ms.
-7. **Typographical Compliance:** Strict ASCII typographical compliance with zero UTF-8 em-dashes.
+7. **Typographical Compliance:** Strict ASCII typographical compliance across all documentation and code.
 
 ---
 

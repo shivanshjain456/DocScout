@@ -24,7 +24,7 @@ FEAT-073 introduces a Token-Budget Dynamic Context Packing engine (`app/retrieva
 4. **Deterministic Ranking Retention:** Process and pack passages in strictly descending relevance order, keeping the most critical statutory provisions in context.
 5. **Fail-Closed Fallback:** If unexpected parsing or tokenization exceptions arise, fall back gracefully to returning the top-3 untrimmed passages without request failure.
 6. **Prometheus Observability:** Track token utilization via `docscout_context_token_utilization_ratio` gauge and packing runs via `docscout_context_packs_completed_total` counter.
-7. **Typographical Compliance:** Strict ASCII typographical compliance with zero UTF-8 em-dashes.
+7. **Typographical Compliance:** Strict ASCII typographical compliance across all documentation and code.
 
 ---
 

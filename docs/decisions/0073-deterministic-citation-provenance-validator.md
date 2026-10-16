@@ -36,7 +36,7 @@ FEAT-082 resolves this by providing a deterministic, offline Citation Provenance
    Export Prometheus counter `docscout_citations_validated_total` with status labels (`valid`, `invalid`, `ungrounded`, `sanitized`).
 6. **Sub-millisecond Latency Budget:**
    Execution latency <= 0.4ms on multi-core CPU, with zero model downloads or API dependencies.
-7. **Typographical Invariant:** Zero UTF-8 em-dashes (\xe2\x80\x94).
+7. **Typographical Invariant:** Strict ASCII typographical compliance across all documentation and code.
 
 ---
 

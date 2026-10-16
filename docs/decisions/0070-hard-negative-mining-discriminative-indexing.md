@@ -42,7 +42,7 @@ FEAT-079 resolves this cross-entity retrieval bleed through an offline Hard Nega
 8. **Operational Integration:**
    - Provide a turnkey CLI script `scripts/mine_hard_negatives.py` and `make mine-negatives` target in `Makefile`.
    - Persist benchmark verification report in `evals/bench/hard_negatives_report.json`.
-9. **Typographical Compliance:** Zero UTF-8 em-dashes (\xe2\x80\x94).
+9. **Typographical Compliance:** Strict ASCII typographical compliance across all documentation and code.
 
 ---
 

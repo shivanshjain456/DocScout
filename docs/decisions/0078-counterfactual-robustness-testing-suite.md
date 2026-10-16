@@ -33,7 +33,7 @@ DocScout must verify 100% adherence to retrieved context: when facts in regulato
    Execute 50 counterfactual tests in <= 15.0 seconds with memory allocation <= 128 MB.
 4. **Data Isolation Invariant:**
    All synthetic fixtures must be explicitly marked `is_synthetic = True` and purged via post-run cleanup to guarantee zero contamination of production indices.
-5. **Typographical Invariant:** Zero UTF-8 em-dashes (\xe2\x80\x94).
+5. **Typographical Invariant:** Strict ASCII typographical compliance across all documentation and code.
 
 ---
 

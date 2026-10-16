@@ -25,7 +25,7 @@ FEAT-078 introduces sub-sentence evidence highlighting and span pinpointing. By 
 5. **Configurable Boundaries:** Support `HighlightConfig` with `max_highlight_spans = 2` (default) and `min_sentence_score = 0.60` (default).
 6. **Graceful Fail-Safe Fallback:** If sentence scoring fails or text has no discernable sentences, the system defaults cleanly to returning the full passage without highlights.
 7. **Observability:** Track pinpointing events via `docscout_spans_highlighted_total{source}` counter.
-8. **Typographical Compliance:** Zero UTF-8 em-dashes (\xe2\x80\x94).
+8. **Typographical Compliance:** Strict ASCII typographical compliance across all documentation and code.
 
 ---
 

@@ -25,7 +25,7 @@ FEAT-072 introduces a deterministic Lost-in-the-Middle Context Reordering engine
 5. **Negligible Latency Overhead:** Enforce pure in-memory standard library list manipulation with execution latency <= 0.05 ms for 10 passages.
 6. **Graceful Fail-Safe Fallback:** If unexpected exceptions occur during reordering, fall back cleanly to standard descending score order without interrupting search availability.
 7. **Configurability and Observability:** Provide `RetrievalConfig.enable_lost_in_middle_reordering` (default True) and log structured search metadata when reordering is applied.
-8. **Typographical Compliance:** Strict ASCII typographical compliance with zero UTF-8 em-dashes across all files.
+8. **Typographical Compliance:** Strict ASCII typographical compliance across all documentation and code.
 
 ---
 
