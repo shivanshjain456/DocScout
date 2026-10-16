@@ -26,7 +26,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     return TestClient(app)
 
 
-def test_canonical_30_antipatterns_registered():
+def test_canonical_30_antipatterns_registered() -> None:
     """Verify that all 30 taxonomy antipatterns are registered with valid replacements."""
     scanner = get_default_antipattern_scanner()
     rules = scanner.list_rules()
@@ -49,7 +49,7 @@ def test_canonical_30_antipatterns_registered():
         assert len(rule.regex_patterns) > 0 or len(rule.keywords) > 0
 
 
-def test_synthetic_manual_benchmark_accuracy():
+def test_synthetic_manual_benchmark_accuracy() -> None:
     """Verify detection accuracy across synthetic compliance manuals containing seeded antipatterns."""
     scanner = get_default_antipattern_scanner()
     bench = scanner.evaluate_synthetic_benchmark()
@@ -61,7 +61,7 @@ def test_synthetic_manual_benchmark_accuracy():
     assert bench["false_negatives"] <= 1
 
 
-def test_document_scoring_model():
+def test_document_scoring_model() -> None:
     """Verify organizational health score calculation and penalty weighting."""
     scanner = get_default_antipattern_scanner()
 
@@ -83,7 +83,7 @@ def test_document_scoring_model():
     assert risky_res["overall_score"] <= 85.0
 
 
-def test_sub_millisecond_scan_latency():
+def test_sub_millisecond_scan_latency() -> None:
     """Verify that multi-paragraph document scanning executes with p95 <= 0.5ms."""
     scanner = get_default_antipattern_scanner()
     doc = """
@@ -102,7 +102,7 @@ def test_sub_millisecond_scan_latency():
     assert p95_ms <= 2.5, f"Expected fast scan latency, got {p95_ms}ms"
 
 
-def test_api_list_antipatterns_catalog(client: TestClient):
+def test_api_list_antipatterns_catalog(client: TestClient) -> None:
     """Verify GET /v1/compliance/antipatterns/catalog endpoint."""
     res = client.get("/v1/compliance/antipatterns/catalog", headers=auth(PRIMARY_KEY))
     assert res.status_code == 200
@@ -119,7 +119,7 @@ def test_api_list_antipatterns_catalog(client: TestClient):
     assert all(r["domain_category"] == "security" for r in res_sec.json()["rules"])
 
 
-def test_api_scan_antipatterns(client: TestClient):
+def test_api_scan_antipatterns(client: TestClient) -> None:
     """Verify POST /v1/compliance/antipatterns/scan endpoint."""
     payload = {
         "text": "The release gate mandates line coverage as a quality target, and teams mock everything so that tests verify their own assumptions.",
@@ -139,7 +139,7 @@ def test_api_scan_antipatterns(client: TestClient):
     assert "ap-mock-everything" in rule_ids
 
 
-def test_api_antipatterns_benchmark(client: TestClient):
+def test_api_antipatterns_benchmark(client: TestClient) -> None:
     """Verify GET /v1/compliance/antipatterns/benchmark endpoint."""
     res = client.get("/v1/compliance/antipatterns/benchmark", headers=auth(PRIMARY_KEY))
     assert res.status_code == 200

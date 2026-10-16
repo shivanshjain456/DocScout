@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import os
 import time
+from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 
 import psycopg
@@ -44,7 +45,7 @@ from app.ingest.ocr_space import OCRSpaceClient
 
 
 @pytest.fixture(autouse=True)
-def enable_chaos_env() -> None:
+def enable_chaos_env() -> Iterator[None]:
     """Ensure chaos testing is enabled for the suite."""
     old_val = os.environ.get("DOCSCOUT_CHAOS_TESTING")
     os.environ["DOCSCOUT_CHAOS_TESTING"] = "1"
@@ -209,7 +210,11 @@ def test_chaos_harness_all_ten_scenarios() -> None:
         ):
             with patch.object(httpx.Client, "post", return_value=mock_response):
                 result = client_ocr.parse_pdf(b"%PDF-1.4 sample pdf")
-                graceful = result.status == "ERROR" and "Malformed" in result.error_detail
+                graceful = (
+                    result.status == "ERROR"
+                    and result.error_detail is not None
+                    and "Malformed" in result.error_detail
+                )
                 harness.record_scenario(
                     name="Corrupted external OCR payload",
                     fault_type=ChaosFaultType.OCR_CORRUPT_PAYLOAD,
@@ -262,7 +267,7 @@ def test_chaos_harness_all_ten_scenarios() -> None:
         )
         assert graceful
         # Reset bulkhead manager
-        set_bulkhead_manager(None)
+        set_bulkhead_manager(BulkheadManager(BulkheadConfig()))
 
     # -------------------------------------------------------------------------
     # Scenario 8: Latency spike injection bounded by max_fault_duration_ms

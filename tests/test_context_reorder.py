@@ -218,7 +218,7 @@ def test_fallback_on_broken_object() -> None:
 
     broken_list = [FlakyPassage(), FlakyPassage()]
     # Should fall back cleanly to list(passages) without raising
-    result = reorder_context(broken_list)  # type: ignore[arg-type]
+    result = reorder_context(broken_list)
     assert len(result) == 2
 
 

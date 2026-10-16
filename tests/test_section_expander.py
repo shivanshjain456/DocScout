@@ -115,7 +115,7 @@ def test_input_validation_rules() -> None:
         expander.expand(valid_id, max_sibling_clauses=5)
 
     with pytest.raises(ValueError, match="passage must be a Passage, Retrieved, ChunkRow"):
-        expander.expand(12345)  # type: ignore[arg-type]
+        expander.expand(12345)
 
 
 def test_proviso_expansion_pulls_operative_rule(mock_chunks: list[dict[str, object]]) -> None:

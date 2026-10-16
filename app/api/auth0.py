@@ -28,7 +28,9 @@ from jwt import PyJWKClient, PyJWKClientError
 from app.api.metrics import AUTH_FAILURES_TOTAL, AUTH_SUCCESSES_TOTAL
 from app.api.security import rate_limiter
 from app.config import (
-    Auth0Config,
+    Auth0Config as Auth0Config,
+)
+from app.config import (
     auth0_admin_emails,
     auth0_admin_roles,
     auth0_audience,

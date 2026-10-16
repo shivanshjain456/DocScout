@@ -27,7 +27,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     return TestClient(app)
 
 
-def test_extract_variables_from_expression():
+def test_extract_variables_from_expression() -> None:
     """Verify AST extraction of free variable identifiers from mathematical formulas."""
     expr = "(common_shares + retained_earnings + statutory_reserves - deductions) / total_rwa * 100"
     vars_found = extract_variables_from_expression(expr)
@@ -47,7 +47,7 @@ def test_extract_variables_from_expression():
     assert "provision_deductions" in vars_found2
 
 
-def test_build_custom_graph_topological_sort():
+def test_build_custom_graph_topological_sort() -> None:
     """Verify that DependencyGraphBuilder creates correct topological ordering and tiers."""
     formulas = [
         {
@@ -96,7 +96,7 @@ def test_build_custom_graph_topological_sort():
     assert graph.nodes["crar"].tier == 3
 
 
-def test_circular_dependency_detection():
+def test_circular_dependency_detection() -> None:
     """Verify that circular dependencies are caught with CircularDependencyError."""
     cyclic_formulas = [
         {"id": "a", "expression": "b + 10"},
@@ -115,7 +115,7 @@ def test_circular_dependency_detection():
     assert len(exc_info.value.cycle_path) >= 3
 
 
-def test_canonical_templates():
+def test_canonical_templates() -> None:
     """Verify built-in regulatory templates: Basel III, LCR, IRAC, and SCI."""
     templates = DependencyGraphBuilder.list_templates()
     assert len(templates) >= 4
@@ -133,7 +133,7 @@ def test_canonical_templates():
     assert len(b3.topological_order) > 0
 
 
-def test_basel3_cascade_evaluation():
+def test_basel3_cascade_evaluation() -> None:
     """Verify exact cascade numeric evaluation on Basel III CRAR template."""
     b3 = DependencyGraphBuilder.get_template("basel3_crar")
     inputs = {
@@ -165,7 +165,7 @@ def test_basel3_cascade_evaluation():
     assert pytest.approx(outputs["cet1_ratio"], 0.001) == 11.875
 
 
-def test_lcr_framework_evaluation():
+def test_lcr_framework_evaluation() -> None:
     """Verify Liquidity Coverage Ratio cascade evaluation."""
     lcr_graph = DependencyGraphBuilder.get_template("lcr_framework")
     inputs = {
@@ -187,7 +187,7 @@ def test_lcr_framework_evaluation():
     assert pytest.approx(outputs["lcr"], 0.01) == 146.25
 
 
-def test_prerequisite_readiness_checker():
+def test_prerequisite_readiness_checker() -> None:
     """Verify missing inputs identification and completion percentage calculation."""
     irac = DependencyGraphBuilder.get_template("asset_quality_irac")
     # Provide only partial inputs
@@ -216,7 +216,7 @@ def test_prerequisite_readiness_checker():
     assert "gross_npa" in check_full["resolvable_intermediates"]
 
 
-def test_missing_input_blocked_trace():
+def test_missing_input_blocked_trace() -> None:
     """Verify that missing inputs mark dependent nodes as BLOCKED without crashing."""
     b3 = DependencyGraphBuilder.get_template("basel3_crar")
     # Pass empty inputs
@@ -228,7 +228,7 @@ def test_missing_input_blocked_trace():
     assert len(blocked_steps) > 0
 
 
-def test_api_list_templates(client: TestClient):
+def test_api_list_templates(client: TestClient) -> None:
     """Verify GET /v1/compliance/dependency-graphs/templates."""
     response = client.get(
         "/v1/compliance/dependency-graphs/templates",
@@ -242,7 +242,7 @@ def test_api_list_templates(client: TestClient):
     assert "basel3_crar" in template_ids
 
 
-def test_api_get_graph(client: TestClient):
+def test_api_get_graph(client: TestClient) -> None:
     """Verify GET /v1/compliance/dependency-graphs/{graph_id}."""
     response = client.get(
         "/v1/compliance/dependency-graphs/basel3_crar",
@@ -264,7 +264,7 @@ def test_api_get_graph(client: TestClient):
     assert res_404.status_code == 404
 
 
-def test_api_build_graph(client: TestClient):
+def test_api_build_graph(client: TestClient) -> None:
     """Verify POST /v1/compliance/dependency-graphs/build."""
     payload = {
         "graph_id": "test_api_graph",
@@ -306,7 +306,7 @@ def test_api_build_graph(client: TestClient):
     assert "Circular dependency" in res_bad.json()["detail"]
 
 
-def test_api_evaluate_graph(client: TestClient):
+def test_api_evaluate_graph(client: TestClient) -> None:
     """Verify POST /v1/compliance/dependency-graphs/evaluate."""
     payload = {
         "template_id": "software_carbon_intensity",
@@ -332,7 +332,7 @@ def test_api_evaluate_graph(client: TestClient):
     assert len(data["trace"]) > 0
 
 
-def test_api_check_prerequisites(client: TestClient):
+def test_api_check_prerequisites(client: TestClient) -> None:
     """Verify POST /v1/compliance/dependency-graphs/prerequisites."""
     payload = {
         "template_id": "lcr_framework",

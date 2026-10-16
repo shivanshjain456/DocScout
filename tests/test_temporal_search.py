@@ -18,6 +18,7 @@ from collections.abc import Iterator
 from datetime import UTC, date, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
@@ -179,7 +180,7 @@ def test_dense_sql_query_incorporates_bitemporal_condition() -> None:
     mock_conn = MagicMock()
     mock_conn.execute.return_value.fetchall.return_value = [("chunk-123", 0.88)]
 
-    dummy_vector = [0.1] * 384
+    dummy_vector = np.array([0.1] * 384, dtype=np.float32)
     temporal_filter = MetadataFilter(as_of_date=date(2018, 5, 10))
 
     res = search_dense(

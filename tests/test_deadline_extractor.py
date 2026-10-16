@@ -19,11 +19,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app.digests.deadline_notifier import (
-    DeadlineAlertConfig,
-    DeadlineNotifier,
-)
+from app.digests.deadline_notifier import DeadlineNotifier
 from app.ingest.deadline_extractor import (
+    DeadlineAlertConfig,
     DeadlineExtractor,
     RegulatoryDeadline,
     extract_regulatory_deadlines,
@@ -311,13 +309,18 @@ def test_benchmark_transition_circulars_precision_recall() -> None:
     correctly_extracted = 0
 
     for item in BENCHMARK_TRANSITION_CIRCULARS:
-        doc_id = item["doc_id"]
-        text = item["text"]
+        doc_id = str(item["doc_id"])
+        text = str(item["text"])
         ref_date = item["reference_date"]
-        expected_dates = set(item["expected_dates"])
+        expected_raw = item["expected_dates"]
+        expected_dates = set(expected_raw) if isinstance(expected_raw, list) else set()
         total_expected += len(expected_dates)
 
-        results = extractor.extract(text=text, doc_id=doc_id, reference_date=ref_date)
+        results = extractor.extract(
+            text=text,
+            doc_id=doc_id,
+            reference_date=ref_date if isinstance(ref_date, date) else None,
+        )
         extracted_dates = {r.effective_date for r in results}
         total_extracted += len(extracted_dates)
 
@@ -340,17 +343,18 @@ def test_extraction_performance_budget() -> None:
     """PERFORMANCE LIMIT: Deadline extraction <= 2.0 ms per document."""
     extractor = DeadlineExtractor()
     sample = BENCHMARK_TRANSITION_CIRCULARS[0]
-    text = sample["text"]
-    doc_id = sample["doc_id"]
+    text = str(sample["text"])
+    doc_id = str(sample["doc_id"])
     ref_date = sample["reference_date"]
+    ref_date_val = ref_date if isinstance(ref_date, date) else None
 
     # Warmup
-    extractor.extract(text=text, doc_id=doc_id, reference_date=ref_date)
+    extractor.extract(text=text, doc_id=doc_id, reference_date=ref_date_val)
 
     iterations = 50
     t0 = time.perf_counter()
     for _ in range(iterations):
-        extractor.extract(text=text, doc_id=doc_id, reference_date=ref_date)
+        extractor.extract(text=text, doc_id=doc_id, reference_date=ref_date_val)
     duration_per_call_ms = ((time.perf_counter() - t0) / iterations) * 1000.0
 
     assert duration_per_call_ms <= 2.0, (

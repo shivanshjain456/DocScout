@@ -26,7 +26,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     return TestClient(app)
 
 
-def test_canonical_evolution_histories():
+def test_canonical_evolution_histories() -> None:
     """Verify that canonical statutory metrics have populated version timelines."""
     manager = get_default_formula_evolution_manager()
     tracked = manager.list_tracked_formulas()
@@ -46,7 +46,7 @@ def test_canonical_evolution_histories():
         assert crar_hist[i].effective_from <= crar_hist[i + 1].effective_from
 
 
-def test_point_in_time_resolution():
+def test_point_in_time_resolution() -> None:
     """Verify resolution of the legally binding formula for various historical audit dates."""
     manager = get_default_formula_evolution_manager()
 
@@ -72,7 +72,7 @@ def test_point_in_time_resolution():
     assert ver_current.thresholds["total_capital_with_ccb"] == 11.50
 
 
-def test_lcr_phase_in_schedule_resolution():
+def test_lcr_phase_in_schedule_resolution() -> None:
     """Verify statutory LCR phase-in thresholds across annual compliance dates."""
     manager = get_default_formula_evolution_manager()
 
@@ -89,7 +89,7 @@ def test_lcr_phase_in_schedule_resolution():
     assert lcr_now.thresholds["minimum_lcr"] == 100.0
 
 
-def test_compare_versions_breaking_change():
+def test_compare_versions_breaking_change() -> None:
     """Verify diff computation between Basel II and Basel III showing breaking structural changes."""
     manager = get_default_formula_evolution_manager()
     diff = manager.compare_versions("crar_basel2", "crar_basel3_current")
@@ -112,7 +112,7 @@ def test_compare_versions_breaking_change():
     assert "cet1_minimum" in diff.threshold_changes
 
 
-def test_compare_versions_phase_in_change():
+def test_compare_versions_phase_in_change() -> None:
     """Verify diff computation between LCR 2015 and LCR 2019 showing threshold phase-in."""
     manager = get_default_formula_evolution_manager()
     diff = manager.compare_versions("lcr_2015", "lcr_current")
@@ -125,7 +125,7 @@ def test_compare_versions_phase_in_change():
     assert diff.threshold_changes["minimum_lcr"] == {"old": 60.0, "new": 100.0}
 
 
-def test_custom_version_registration():
+def test_custom_version_registration() -> None:
     """Verify dynamic registration of custom formula versions."""
     manager = get_default_formula_evolution_manager()
     custom_ver = FormulaVersion(
@@ -151,7 +151,7 @@ def test_custom_version_registration():
     assert resolved.id == "leverage_ratio_2019"
 
 
-def test_api_list_tracked_histories(client: TestClient):
+def test_api_list_tracked_histories(client: TestClient) -> None:
     """Verify GET /v1/compliance/formulas/history/tracked."""
     response = client.get(
         "/v1/compliance/formulas/history/tracked",
@@ -166,7 +166,7 @@ def test_api_list_tracked_histories(client: TestClient):
     assert "lcr" in fids
 
 
-def test_api_get_formula_history(client: TestClient):
+def test_api_get_formula_history(client: TestClient) -> None:
     """Verify GET /v1/compliance/formulas/{formula_id}/history."""
     response = client.get(
         "/v1/compliance/formulas/crar/history",
@@ -186,7 +186,7 @@ def test_api_get_formula_history(client: TestClient):
     assert res_404.status_code == 404
 
 
-def test_api_resolve_formula_version(client: TestClient):
+def test_api_resolve_formula_version(client: TestClient) -> None:
     """Verify POST /v1/compliance/formulas/{formula_id}/resolve-version."""
     payload = {"as_of_date": "2017-06-15"}
     response = client.post(
@@ -209,7 +209,7 @@ def test_api_resolve_formula_version(client: TestClient):
     assert res_bad.status_code == 422
 
 
-def test_api_compare_formula_versions(client: TestClient):
+def test_api_compare_formula_versions(client: TestClient) -> None:
     """Verify POST /v1/compliance/formulas/compare-versions."""
     payload = {
         "version_a_id": "sci_draft_v1",

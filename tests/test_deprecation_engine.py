@@ -32,7 +32,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     return TestClient(app)
 
 
-def test_canonical_deprecations_catalog():
+def test_canonical_deprecations_catalog() -> None:
     """Verify that statutory and technical deprecations are pre-populated in engine."""
     engine = get_default_deprecation_engine()
     deprecations = engine.list_deprecations()
@@ -49,7 +49,7 @@ def test_canonical_deprecations_catalog():
     assert len(rbi_kyc.replacement) > 0
 
 
-def test_superseded_circular_corpus_flag_rate():
+def test_superseded_circular_corpus_flag_rate() -> None:
     """Verify 100% flag rate on known superseded circular test corpus."""
     engine = get_default_deprecation_engine()
 
@@ -97,7 +97,7 @@ def test_superseded_circular_corpus_flag_rate():
         )
 
 
-def test_technical_antipattern_flag_rate():
+def test_technical_antipattern_flag_rate() -> None:
     """Verify detection of software and compliance antipatterns from term-taxonomy."""
     engine = get_default_deprecation_engine()
 
@@ -126,7 +126,7 @@ def test_technical_antipattern_flag_rate():
         )
 
 
-def test_supersession_chain_resolution():
+def test_supersession_chain_resolution() -> None:
     """Verify multi-step recursive supersession chain resolution to active master direction."""
     engine = get_default_deprecation_engine()
 
@@ -149,7 +149,7 @@ def test_supersession_chain_resolution():
     assert "RBI Master Direction - Know Your Customer" in chain.active_authority
 
 
-def test_supersession_cycle_prevention():
+def test_supersession_cycle_prevention() -> None:
     """Verify that artificial cyclic supersessions terminate safely without infinite recursion."""
     test_engine = StatutoryDeprecationEngine()
 
@@ -197,7 +197,7 @@ def test_supersession_cycle_prevention():
     assert chain.depth == 3
 
 
-def test_sunset_date_and_grandfathering_evaluation():
+def test_sunset_date_and_grandfathering_evaluation() -> None:
     """Verify point-in-time sunset expiration and grandfathering clause extraction."""
     engine = get_default_deprecation_engine()
 
@@ -218,7 +218,7 @@ def test_sunset_date_and_grandfathering_evaluation():
     assert "Existing bilateral loans" in fp.grandfathering_clause
 
 
-def test_scan_latency_performance():
+def test_scan_latency_performance() -> None:
     """Verify that multi-paragraph policy text scanning executes with p95 <= 0.5ms."""
     engine = get_default_deprecation_engine()
     sample_policy = (
@@ -242,7 +242,7 @@ def test_scan_latency_performance():
     assert p95_ms <= 2.5, f"Expected fast scan, got {p95_ms}ms"
 
 
-def test_api_list_deprecations(client: TestClient):
+def test_api_list_deprecations(client: TestClient) -> None:
     """Verify GET /v1/compliance/deprecations catalog endpoint."""
     res = client.get("/v1/compliance/deprecations", headers=auth(PRIMARY_KEY))
     assert res.status_code == 200
@@ -258,7 +258,7 @@ def test_api_list_deprecations(client: TestClient):
     assert all(d["regulator"] == "RBI" for d in data_rbi["deprecations"])
 
 
-def test_api_check_supersession(client: TestClient):
+def test_api_check_supersession(client: TestClient) -> None:
     """Verify POST /v1/compliance/check-supersession endpoint."""
     payload = {
         "text": "Customer onboarding is conducted pursuant to DBOD.AML.BC.18/14.01.001/2002-03 and Clause 49.",
@@ -277,7 +277,7 @@ def test_api_check_supersession(client: TestClient):
     assert any("Clause 49" in s for s in subjects)
 
 
-def test_api_supersession_chain(client: TestClient):
+def test_api_supersession_chain(client: TestClient) -> None:
     """Verify GET /v1/compliance/supersession-chain/{instrument_id} endpoint."""
     res = client.get(
         "/v1/compliance/supersession-chain/rbi-kyc-circular-2002",

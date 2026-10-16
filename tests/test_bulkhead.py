@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import Any
 
 import pytest
@@ -160,9 +161,9 @@ async def test_bulkhead_middleware_passthrough() -> None:
             "headers": [(b"host", b"localhost")],
         }
 
-        sent_messages: list[dict[str, Any]] = []
+        sent_messages: list[MutableMapping[str, Any]] = []
 
-        async def mock_send(msg: dict[str, Any]) -> None:
+        async def mock_send(msg: MutableMapping[str, Any]) -> None:
             sent_messages.append(msg)
 
         async def mock_receive() -> dict[str, Any]:
@@ -197,9 +198,9 @@ async def test_bulkhead_middleware_excluded_paths() -> None:
         "headers": [(b"host", b"localhost")],
     }
 
-    sent_messages: list[dict[str, Any]] = []
+    sent_messages: list[MutableMapping[str, Any]] = []
 
-    async def mock_send(msg: dict[str, Any]) -> None:
+    async def mock_send(msg: MutableMapping[str, Any]) -> None:
         sent_messages.append(msg)
 
     async def mock_receive() -> dict[str, Any]:
@@ -238,9 +239,9 @@ async def test_bulkhead_middleware_rejection_429() -> None:
         "headers": [(b"host", b"localhost")],
     }
 
-    sent_messages: list[dict[str, Any]] = []
+    sent_messages: list[MutableMapping[str, Any]] = []
 
-    async def mock_send(msg: dict[str, Any]) -> None:
+    async def mock_send(msg: MutableMapping[str, Any]) -> None:
         sent_messages.append(msg)
 
     async def mock_receive() -> dict[str, Any]:

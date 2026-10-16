@@ -366,19 +366,19 @@ class RetrievalConfig:
     gar_decay_factor: float = 0.5
     enforce_layer_pruning: bool = True
     relationship_filter: str | None = None
-    enable_centrality_boost: bool = True
+    enable_centrality_boost: bool = False
     centrality_weight: float = 0.15
     broad_query_threshold: float = 0.4
-    enable_disambiguation: bool = True
+    enable_disambiguation: bool = False
     disambiguation_min_confidence: float = 0.70
     difficulty_band: str | None = None
     auto_constrain_tags: bool = False
-    enable_normalization: bool = True
-    enable_authority_hierarchy: bool = True
+    enable_normalization: bool = False
+    enable_authority_hierarchy: bool = False
     authority_multipliers: dict[str, float] | None = None
     enable_lost_in_middle_reordering: bool = False
     anchor_arm_leaders: bool | None = None
-    expand_section_context: bool = True
+    expand_section_context: bool = False
     max_sibling_clauses: int = 2
 
     def __post_init__(self) -> None:

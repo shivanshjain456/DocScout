@@ -23,6 +23,7 @@ from __future__ import annotations
 import os
 import time
 from datetime import date, timedelta
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -59,6 +60,7 @@ def build_100_cipher_dataset() -> list[tuple[EndpointCryptoSpec, str, bool]]:
     dataset: list[tuple[EndpointCryptoSpec, str, bool]] = []
     future_date = date.today() + timedelta(days=365)
     past_date = date.today() - timedelta(days=30)
+    k: str | None = None
 
     # 1. Pure Post-Quantum Ready (20 items: FIPS 203, FIPS 204, FIPS 205, SP 800-208)
     pqc_specs = [
@@ -206,7 +208,7 @@ def build_100_cipher_dataset() -> list[tuple[EndpointCryptoSpec, str, bool]]:
         )
 
     # 2. Hybrid Post-Quantum Key Exchange (20 items: X25519+Kyber, SecP256r1+MLKEM)
-    hybrid_specs = [
+    hybrid_specs: list[tuple[str, str, str, str | None, str, int]] = [
         (
             "hyb1.bank.internal",
             "TLSv1.3",
@@ -606,7 +608,7 @@ def build_100_cipher_dataset() -> list[tuple[EndpointCryptoSpec, str, bool]]:
         )
 
     # 4. Classical Deprecated (25 items: TLS < 1.2, RC4, 3DES, CBC SHA1, static RSA, weak keys, expired certs)
-    deprecated_specs = [
+    deprecated_specs: list[tuple[str, str, str, str | None, str, int, Any]] = [
         (
             "dep1.bank.internal",
             "TLSv1.0",
@@ -851,7 +853,7 @@ def build_100_cipher_dataset() -> list[tuple[EndpointCryptoSpec, str, bool]]:
         )
 
     # 5. Unknown / Audit Required (10 items)
-    unknown_specs = [
+    unknown_specs: list[tuple[str, str, str, str | None, str, int]] = [
         (
             "unk1.partner.internal",
             "TLSv1.3",

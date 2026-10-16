@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import time
+from typing import cast
 
 import pytest
 from fastapi.testclient import TestClient
@@ -363,7 +364,7 @@ def test_25_multi_turn_dialogues_75_followups() -> None:
         initial_msg = str(dlg["initial"])
         entity = str(dlg["entity"])
         cid = str(dlg["cid"])
-        turns = list(dlg["turns"])  # type: ignore[arg-type]
+        turns = cast(list[tuple[str, str]], dlg["turns"])
 
         history: list[ChatMessage] = [
             ChatMessage(role="user", content=initial_msg),

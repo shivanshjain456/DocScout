@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import io
 import time
+from typing import Any
 
 import pypdf
 import pytest
@@ -500,12 +501,12 @@ def test_markdown_and_json_serializers() -> None:
 
 
 @pytest.mark.parametrize(
-    "benchmark", BENCHMARK_MATRICES, ids=[b["name"] for b in BENCHMARK_MATRICES]
+    "benchmark", BENCHMARK_MATRICES, ids=[str(b["name"]) for b in BENCHMARK_MATRICES]
 )
-def test_regulatory_benchmark_matrix_accuracy(benchmark: dict) -> None:
+def test_regulatory_benchmark_matrix_accuracy(benchmark: dict[str, Any]) -> None:
     """Extract and verify accuracy >= 98% on 15 complex regulatory matrices."""
     parser = TableParser(config=TableParserConfig())
-    tables = parser.parse_text(benchmark["text"])
+    tables = parser.parse_text(str(benchmark["text"]))
 
     assert len(tables) == 1, f"Expected 1 table in benchmark {benchmark['name']}"
     tbl = tables[0]
@@ -539,7 +540,7 @@ def test_aggregate_accuracy_exceeds_98_percent() -> None:
     correct_cells = 0
 
     for benchmark in BENCHMARK_MATRICES:
-        tables = parser.parse_text(benchmark["text"])
+        tables = parser.parse_text(str(benchmark["text"]))
         assert len(tables) == 1
         tbl = tables[0]
 
@@ -608,7 +609,7 @@ def test_table_parsing_throughput_sla() -> None:
     """Verify table parser throughput exceeds 30 pages/sec (50,000 chars/sec)."""
     parser = TableParser()
     large_corpus = "\n\n\n".join(
-        "\n\n".join(b["text"] for b in BENCHMARK_MATRICES) for _ in range(10)
+        "\n\n".join(str(b["text"]) for b in BENCHMARK_MATRICES) for _ in range(10)
     )
     total_chars = len(large_corpus)
     # Approx 2,000 chars per page

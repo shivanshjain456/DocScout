@@ -12,6 +12,7 @@ import os
 import time
 from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
+from typing import Any, Literal
 from uuid import uuid4
 
 import psycopg
@@ -25,17 +26,17 @@ from app.compliance.observation_tracker import (
     ObservationConfig,
     ObservationTracker,
 )
-from tests.conftest import PRIMARY_KEY, auth, database_url
+from tests.conftest import PRIMARY_KEY, auth, connect_or_skip, database_url
 
 
 @pytest.fixture
-def db_conn() -> Generator[psycopg.Connection, None, None]:
+def db_conn() -> Generator[psycopg.Connection[Any], None, None]:
     """Provide a database connection to test postgres instance."""
-    url = database_url("MIGRATION_DATABASE_URL", "DATABASE_URL")
-    if not url:
-        pytest.skip("No database URL configured for test")
-    with psycopg.connect(url) as conn:
+    conn = connect_or_skip(database_url("MIGRATION_DATABASE_URL", "DATABASE_URL"))
+    try:
         yield conn
+    finally:
+        conn.close()
 
 
 @pytest.fixture
@@ -255,6 +256,7 @@ def test_evaluation_dataset_10k_events(tracker: ObservationTracker) -> None:
         minute_offset = (i * 1440) % 1440
         obs_time = now - timedelta(days=day_offset, minutes=minute_offset)
         # Failures injected only on days 60-65 to preserve a ~60-day unbroken streak up to day 0
+        result: Literal["PASS", "FAIL"]
         if 60 <= day_offset <= 65 and (i % 20 == 0):
             result = "FAIL"
         else:

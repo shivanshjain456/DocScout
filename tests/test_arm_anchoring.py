@@ -126,8 +126,12 @@ def test_search_pipeline_tuple_anchoring() -> None:
 
 def test_tri_arm_graph_hybrid_anchoring() -> None:
     """When graph-hybrid retrieval has a distinct graph leader, it is also anchored."""
-    top = [("c1", 0.05, {}), ("c2", 0.04, {}), ("c3", 0.03, {})]
-    fused = [
+    top: list[tuple[str, float, dict[str, int]]] = [
+        ("c1", 0.05, {}),
+        ("c2", 0.04, {}),
+        ("c3", 0.03, {}),
+    ]
+    fused: list[tuple[str, float, dict[str, int]]] = [
         ("c1", 0.05, {}),
         ("c2", 0.04, {}),
         ("c3", 0.03, {}),
@@ -148,8 +152,12 @@ def test_tri_arm_graph_hybrid_anchoring() -> None:
 
 def test_duplicate_leaders_across_arms_do_not_duplicate_seat() -> None:
     """If dense and lexical arms agree on top-1, only one seat is reserved."""
-    top = [("c2", 0.04, {}), ("c3", 0.03, {})]
-    fused = [("c2", 0.04, {}), ("c3", 0.03, {}), ("unanimous_leader", 0.01, {})]
+    top: list[tuple[str, float, dict[str, int]]] = [("c2", 0.04, {}), ("c3", 0.03, {})]
+    fused: list[tuple[str, float, dict[str, int]]] = [
+        ("c2", 0.04, {}),
+        ("c3", 0.03, {}),
+        ("unanimous_leader", 0.01, {}),
+    ]
     arms = {
         "dense": ["unanimous_leader"],
         "lexical": ["unanimous_leader"],

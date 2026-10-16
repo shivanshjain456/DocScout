@@ -161,9 +161,16 @@ def test_rerank_timeout_circuit_breaker_trips() -> None:
     """When inference exceeds timeout budget, circuit breaker trips and returns fallback order."""
 
     class SleepyReranker(CrossEncoderReranker):
-        def score(self, query: str, cands: list[Candidate], **kwargs: Any) -> list[float]:
+        def score(
+            self,
+            query: str,
+            candidates: list[Candidate],
+            *,
+            batch_size: int | None = None,
+            **kwargs: Any,
+        ) -> list[float]:
             time.sleep(0.08)
-            return [0.9] * len(cands)
+            return [0.9] * len(candidates)
 
     reranker = SleepyReranker()
     before_trips = RERANK_CIRCUIT_BREAKER_TRIPS_TOTAL._value.get()
@@ -181,7 +188,14 @@ def test_rerank_model_exception_circuit_breaker_trips() -> None:
     """When model inference encounters unexpected runtime exception, circuit breaker trips cleanly."""
 
     class FaultyReranker(CrossEncoderReranker):
-        def score(self, query: str, cands: list[Candidate], **kwargs: Any) -> list[float]:
+        def score(
+            self,
+            query: str,
+            candidates: list[Candidate],
+            *,
+            batch_size: int | None = None,
+            **kwargs: Any,
+        ) -> list[float]:
             raise RuntimeError("CUDA device out of memory")
 
     reranker = FaultyReranker()
@@ -230,7 +244,14 @@ def test_retriever_rerank_circuit_breaker_preserves_fused_scores() -> None:
     """When circuit breaker trips in Retriever._rerank, fused RRF ordering and scores are preserved."""
 
     class BrokenReranker(CrossEncoderReranker):
-        def score(self, query: str, cands: list[Candidate], **kwargs: Any) -> list[float]:
+        def score(
+            self,
+            query: str,
+            candidates: list[Candidate],
+            *,
+            batch_size: int | None = None,
+            **kwargs: Any,
+        ) -> list[float]:
             raise RuntimeError("Model timeout simulated")
 
     class MockRetriever:

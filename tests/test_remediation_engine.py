@@ -28,7 +28,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     return TestClient(app)
 
 
-def test_catalog_completeness():
+def test_catalog_completeness() -> None:
     """Verify that all 30 antipatterns and 8 deprecations (38 total plans) are loaded."""
     engine = get_default_remediation_engine()
     stats = engine.get_stats()
@@ -56,7 +56,7 @@ def test_catalog_completeness():
             assert len(rec.implementation_steps) >= 1
 
 
-def test_lookup_by_antipattern_id_and_practice():
+def test_lookup_by_antipattern_id_and_practice() -> None:
     """Verify looking up remediation plans by rule ID and practice title."""
     engine = get_default_remediation_engine()
 
@@ -79,7 +79,7 @@ def test_lookup_by_antipattern_id_and_practice():
     assert plan_by_name.flaw_id == "ap-line-coverage"
 
 
-def test_lookup_by_deprecation_id_and_subject():
+def test_lookup_by_deprecation_id_and_subject() -> None:
     """Verify looking up deprecation replacements by subject and ID."""
     engine = get_default_remediation_engine()
 
@@ -96,7 +96,7 @@ def test_lookup_by_deprecation_id_and_subject():
     assert plan_by_id.flaw_id == "dep-dread"
 
 
-def test_implementation_steps_toggle():
+def test_implementation_steps_toggle() -> None:
     """Verify include_steps toggle generates or omits implementation checklist."""
     engine = get_default_remediation_engine()
 
@@ -113,7 +113,7 @@ def test_implementation_steps_toggle():
     assert all(len(r.implementation_steps) == 0 for r in plan_without_steps.recommended_practices)
 
 
-def test_finding_conversion_and_fallback():
+def test_finding_conversion_and_fallback() -> None:
     """Verify converting an AntipatternFinding object into a full remediation plan with fallback."""
     engine = get_default_remediation_engine()
 
@@ -145,7 +145,7 @@ def test_finding_conversion_and_fallback():
     assert fallback_plan.recommended_practices[0].name == "Alternative Practice One"
 
 
-def test_remediation_report_batch():
+def test_remediation_report_batch() -> None:
     """Verify batch remediation report formulation across multiple findings."""
     engine = get_default_remediation_engine()
 
@@ -163,7 +163,7 @@ def test_remediation_report_batch():
     assert len(report.unique_recommended_practices) >= 8
 
 
-def test_catalog_filtering():
+def test_catalog_filtering() -> None:
     """Verify filtering the remediation catalog by flaw type and tier."""
     engine = get_default_remediation_engine()
 
@@ -179,7 +179,7 @@ def test_catalog_filtering():
         assert all(r.tier == 1 for r in p.recommended_practices)
 
 
-def test_api_remediation_plan_endpoint(client: TestClient):
+def test_api_remediation_plan_endpoint(client: TestClient) -> None:
     """Verify POST /v1/compliance/remediation/plan endpoint."""
     payload = {
         "flaw_id": "ap-mock-everything",
@@ -199,7 +199,7 @@ def test_api_remediation_plan_endpoint(client: TestClient):
     assert res2.json()["flaw_type"] == "deprecation"
 
 
-def test_api_remediation_batch_endpoint(client: TestClient):
+def test_api_remediation_batch_endpoint(client: TestClient) -> None:
     """Verify POST /v1/compliance/remediation/batch endpoint."""
     payload = {
         "flaw_ids": ["ap-line-coverage", "dep-dread", "ap-error-budget-ignored"],
@@ -214,7 +214,7 @@ def test_api_remediation_batch_endpoint(client: TestClient):
     assert len(data["unique_recommended_practices"]) >= 6
 
 
-def test_api_remediation_catalog_endpoint(client: TestClient):
+def test_api_remediation_catalog_endpoint(client: TestClient) -> None:
     """Verify GET /v1/compliance/remediation/catalog endpoint."""
     res = client.get("/v1/compliance/remediation/catalog", headers=auth(PRIMARY_KEY))
     assert res.status_code == 200

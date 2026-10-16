@@ -15,6 +15,7 @@ from __future__ import annotations
 import os
 from unittest.mock import MagicMock
 
+import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
@@ -154,7 +155,7 @@ def test_dense_sql_query_with_taxonomy_layer_filter() -> None:
     f = MetadataFilter(taxonomy_layers=["security-and-trust"])
     dense_search(
         conn=mock_conn,
-        query_vector=[0.1] * 768,
+        query_vector=np.array([0.1] * 768, dtype=np.float32),
         k=5,
         filter=f,
     )

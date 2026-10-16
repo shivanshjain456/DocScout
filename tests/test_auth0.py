@@ -128,7 +128,9 @@ def test_auth0_verifier_rejects_expired_token(
             verifier.verify_token(token)
         assert exc_info.value.status_code == 401
         assert "expired" in str(exc_info.value.detail).lower()
-        assert "invalid_token" in exc_info.value.headers.get("WWW-Authenticate", "")
+        assert exc_info.value.headers is not None and "invalid_token" in exc_info.value.headers.get(
+            "WWW-Authenticate", ""
+        )
 
 
 # 3. Wrong audience rejection
@@ -419,7 +421,7 @@ def test_require_scope_dependency_authorized() -> None:
         scopes=["compliance:read", "audit:export"],
     )
     dep = require_scope("audit:export")
-    assert dep(user=user) == user
+    assert dep(user) == user
 
 
 # 18. require_scope dependency forbidden (403)
@@ -434,7 +436,7 @@ def test_require_scope_dependency_forbidden_403() -> None:
     )
     dep = require_scope("audit:export")
     with pytest.raises(HTTPException) as exc_info:
-        dep(user=user)
+        dep(user)
     assert exc_info.value.status_code == 403
     assert "audit:export" in str(exc_info.value.detail)
 
@@ -502,7 +504,7 @@ def test_authenticate_request_missing_credentials_fails_401() -> None:
     with pytest.raises(HTTPException) as exc_info:
         authenticate_request(req, authorization=None, x_api_key=None)
     assert exc_info.value.status_code == 401
-    assert "WWW-Authenticate" in exc_info.value.headers
+    assert exc_info.value.headers is not None and "WWW-Authenticate" in exc_info.value.headers
 
 
 # 23. Sub-0.4ms cached JWKS key verification latency

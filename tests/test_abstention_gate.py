@@ -166,10 +166,10 @@ def test_selective_refusal_on_unanswerable_canary_queries() -> None:
             score=0.88,
             arm_ranks={},
             char_start=0,
-            char_end=len(canary["passage_text"]),
-            text=canary["passage_text"],
+            char_end=len(str(canary["passage_text"])),
+            text=str(canary["passage_text"]),
         )
-        conf = assess_passages(canary["query"], [passage])
+        conf = assess_passages(str(canary["query"]), [passage])
         assert conf.is_refusal is True, (
             f"Query should have been refused: {canary['query']}, score={conf.score}"
         )

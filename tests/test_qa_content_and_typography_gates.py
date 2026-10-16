@@ -10,6 +10,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from scripts.qa_content_gate import (
     REPO_ROOT,
     check_forbidden_terms,
@@ -33,7 +35,9 @@ def test_repo_has_zero_em_dashes_in_documentation_and_code() -> None:
     assert not violations, "Em-dash violations detected:\n" + "\n".join(violations)
 
 
-def test_qa_gate_scanner_catches_synthetic_forbidden_term(tmp_path: Path, monkeypatch) -> None:
+def test_qa_gate_scanner_catches_synthetic_forbidden_term(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Verify the QA gate detector correctly flags forbidden resume/recruiter language."""
     synthetic_file = tmp_path / "synthetic_bad_doc.md"
     synthetic_file.write_text(
@@ -48,7 +52,9 @@ def test_qa_gate_scanner_catches_synthetic_forbidden_term(tmp_path: Path, monkey
     assert any("recruiter" in v for v in violations)
 
 
-def test_qa_gate_scanner_catches_synthetic_em_dash(tmp_path: Path, monkeypatch) -> None:
+def test_qa_gate_scanner_catches_synthetic_em_dash(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Verify the QA gate detector correctly flags em-dashes."""
     synthetic_file = tmp_path / "synthetic_em_dash.md"
     synthetic_file.write_text(

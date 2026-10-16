@@ -224,7 +224,7 @@ def test_dense_search_standard_isolation(
     """Dense search with standard filter returns ONLY chunks mapped to that standard."""
     pci_id = multi_standard_chunks["pci_chunk_id"]
     iso_id = multi_standard_chunks["iso_chunk_id"]
-    query_vector = [0.1] * EMBEDDING_DIM
+    query_vector = np.array([0.1] * EMBEDDING_DIM, dtype=np.float32)
 
     # Filter to PCI DSS
     hits_pci = dense_search(db, query_vector, k=10, filter=MetadataFilter(standard="PCI DSS 4.0"))
@@ -272,7 +272,7 @@ def test_standard_filter_zero_results_fallback(
     db: psycopg.Connection[Any], multi_standard_chunks: dict[str, str]
 ) -> None:
     """When a valid standard has 0 mapped chunks, returns empty list with confidence 0.0."""
-    query_vector = [0.1] * EMBEDDING_DIM
+    query_vector = np.array([0.1] * EMBEDDING_DIM, dtype=np.float32)
     # RTCA DO-178C is in registry but has 0 test chunks mapped
     hits = dense_search(db, query_vector, k=10, filter=MetadataFilter(standard="DO-178C"))
     assert hits == []

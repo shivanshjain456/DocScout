@@ -30,7 +30,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     return TestClient(app)
 
 
-def test_synthetic_contradiction_benchmark_rate():
+def test_synthetic_contradiction_benchmark_rate() -> None:
     """Verify synthetic contradiction test set detection rate exceeds the 90% threshold."""
     detector = get_default_clause_conflict_detector()
     bench = detector.evaluate_synthetic_benchmark()
@@ -42,7 +42,7 @@ def test_synthetic_contradiction_benchmark_rate():
     assert bench["false_positives"] == 0
 
 
-def test_canonical_clauses_and_preloaded_conflicts():
+def test_canonical_clauses_and_preloaded_conflicts() -> None:
     """Verify preloaded canonical clauses and detected conflicts across domains."""
     detector = get_default_clause_conflict_detector()
     clauses = detector.list_clauses()
@@ -74,7 +74,7 @@ def test_canonical_clauses_and_preloaded_conflicts():
     assert incident_conflicts[0].conflict_type == ConflictType.THRESHOLD_CONTRADICTION
 
 
-def test_modality_clash_detection():
+def test_modality_clash_detection() -> None:
     """Verify detection of normative contradictions (MANDATORY vs PROHIBITED)."""
     detector = get_default_clause_conflict_detector()
 
@@ -106,7 +106,7 @@ def test_modality_clash_detection():
     assert "Direct normative contradiction" in conflict.explanation
 
 
-def test_harmonious_clauses_no_false_positives():
+def test_harmonious_clauses_no_false_positives() -> None:
     """Verify that harmonious or distinct domain clauses do not trigger false conflicts."""
     detector = get_default_clause_conflict_detector()
 
@@ -159,7 +159,7 @@ def test_harmonious_clauses_no_false_positives():
     assert detector.compare_clauses(clause_a, clause_c) is None
 
 
-def test_scan_clause_pair_helper():
+def test_scan_clause_pair_helper() -> None:
     """Verify dictionary-based ad-hoc comparison helper."""
     detector = get_default_clause_conflict_detector()
 
@@ -192,7 +192,7 @@ def test_scan_clause_pair_helper():
     assert conflict.parameter_name == "window_hours"
 
 
-def test_clause_comparison_latency():
+def test_clause_comparison_latency() -> None:
     """Verify pairwise comparison executes with p95 <= 0.1ms."""
     detector = get_default_clause_conflict_detector()
     clauses = detector.list_clauses()
@@ -211,7 +211,7 @@ def test_clause_comparison_latency():
     assert p95_ms <= 0.5, f"Expected sub-millisecond check, got {p95_ms}ms"
 
 
-def test_api_list_clauses(client: TestClient):
+def test_api_list_clauses(client: TestClient) -> None:
     """Verify GET /v1/compliance/conflicts/clauses endpoint."""
     res = client.get("/v1/compliance/conflicts/clauses", headers=auth(PRIMARY_KEY))
     assert res.status_code == 200
@@ -227,7 +227,7 @@ def test_api_list_clauses(client: TestClient):
     assert all(c["domain_category"] == "fldg" for c in res_fldg.json())
 
 
-def test_api_detect_conflicts(client: TestClient):
+def test_api_detect_conflicts(client: TestClient) -> None:
     """Verify POST /v1/compliance/detect-conflicts endpoint."""
     payload = {"domain_category": "fldg"}
     res = client.post("/v1/compliance/detect-conflicts", json=payload, headers=auth(PRIMARY_KEY))
@@ -239,7 +239,7 @@ def test_api_detect_conflicts(client: TestClient):
     assert data["latency_ms"] < 25.0
 
 
-def test_api_compare_clause_pair(client: TestClient):
+def test_api_compare_clause_pair(client: TestClient) -> None:
     """Verify POST /v1/compliance/compare-clause-pair endpoint."""
     payload = {
         "clause_a": {
@@ -283,7 +283,7 @@ def test_api_compare_clause_pair(client: TestClient):
     assert data["conflict"]["conflict_type"] == "threshold_contradiction"
 
 
-def test_api_conflicts_benchmark(client: TestClient):
+def test_api_conflicts_benchmark(client: TestClient) -> None:
     """Verify GET /v1/compliance/conflicts/benchmark endpoint."""
     res = client.get("/v1/compliance/conflicts/benchmark", headers=auth(PRIMARY_KEY))
     assert res.status_code == 200
