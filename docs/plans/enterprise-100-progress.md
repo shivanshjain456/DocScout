@@ -127,7 +127,7 @@
 - [x] FEAT-097: Differential / Patch Coverage Gating (100% Diff Coverage)
 - [x] FEAT-098: Immutable Cryptographic Audit Trail (SLSA Level 3 Provenance)
 - [x] FEAT-099: OIDC-Federated Zero-Trust Identity & Enterprise RBAC
-- [ ] FEAT-100: High-Cardinality Telemetry & Cost-Per-Query Accounting
+- [x] FEAT-100: High-Cardinality Telemetry & Cost-Per-Query Accounting
 
 ---
 
@@ -234,6 +234,7 @@
 | FEAT-097 | 404c6fb | PASS | Differential / patch coverage gating, ADR-0088, DiffCoverageConfig (required_percentage=100.0), DiffCoverageResult, Cobertura XML and git diff mapping, zero uncovered modified executable lines enforcement, docs/verification/diff-coverage-report.json committed artifact, Makefile diff-coverage target, .github/workflows/ci.yml quality gate step, tests/test_diff_coverage.py |
 | FEAT-098 | 8445091 | PASS | SLSA Level 3 immutable cryptographic audit trail, ADR-0089, Ed25519 asymmetric signing & verification, canonical JSON payload serialization, docs/security/provenance/ (corpus & release attestations), migration 0053 append-only cryptographic_audit_trail with trigger guard, app/ingest/store.py audit hook, app/api/app.py startup verification under 15ms, ATTESTATIONS_VERIFIED_TOTAL metric, scripts/provenance.py CLI, Makefile provenance-verify, tests/test_provenance.py |
 | FEAT-099 | 036b9fa | PASS | OIDC-federated zero-trust identity and enterprise RBAC, ADR-0090, Auth0Config, AuthenticatedUser schema with multi-tenant isolation, Auth0TokenVerifier RS256 JWKS validation with sub-0.4ms key caching, fine-grained scopes (compliance:read, compliance:admin, audit:export), require_scope and require_admin_user route dependencies, dual-mode API key fallback, docscout_auth_successes_total & docscout_auth_failures_total metrics, structlog context injection, tests/test_auth0.py (25 test cases) |
+| FEAT-100 | c031f2f | PASS | High-cardinality telemetry and cost-per-query accounting, ADR-0091, TelemetryConfig, W3C Trace Context (parse_or_mint_traceparent) traceparent header injection, estimate_token_count and calculate_query_cost per query, calculate_query_complexity, automated query hashing and redaction (_redact_sensitive), correlate_and_log ASGI middleware with http.access structured logging, Prometheus docscout_query_cost_usd_total and docscout_query_tokens_total metrics, trace_span context manager, tests/test_observability.py (40 tests including 1000 synthetic multi-tenant queries dataset) |
 
 ---
 
