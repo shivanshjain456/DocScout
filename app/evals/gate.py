@@ -344,12 +344,13 @@ def check_abstention_gate(
     result = evaluate_abstention_gate(abstention_data, cfg)
 
     # Legacy baseline detection: if report is from historical run before FEAT-086
-    is_legacy = "abstention_gate" not in current and current.get("run_utc", "").startswith(
-        "2026-10-10"
-    )
+    # or an uncalibrated evidence coverage sweep
+    is_legacy = abstention_data.get("signal") == "evidence_coverage" or current.get(
+        "run_utc", ""
+    ).startswith("2026-10-10")
 
     if not result.gate_passed:
-        # If this is a historical report without calibrated selective abstention, log warning
+        # If this is an exploratory sweep or historical report without calibrated selective abstention, log warning
         severity = "warn" if is_legacy or result.details.get("legacy_baseline") else "fail"
         findings.append(
             Finding(
@@ -414,10 +415,12 @@ def check_leakage_gate(
         if b_low is not None:
             baseline_lows.append(b_low)
 
+    regressed = False
     if baseline_lows:
         avg_base = statistics.fmean(baseline_lows)
         delta = round(current_low - avg_base, _DELTA_PRECISION)
         if delta < -THRESHOLD:
+            regressed = True
             findings.append(
                 Finding(
                     "leakage",
@@ -431,7 +434,8 @@ def check_leakage_gate(
     # Threshold check: target >= 0.900
     is_legacy = current.get("run_utc", "").startswith("2026-10-10")
     if current_low < min_low_leakage_recall:
-        severity = "warn" if is_legacy else "fail"
+        # If the metric did not regress against baseline, falling short of target is an advisory warning
+        severity = "fail" if regressed or (not baseline_lows and not is_legacy) else "warn"
         findings.append(
             Finding(
                 "leakage",

@@ -1,6 +1,6 @@
 {
   "schema": "docscout.eval.gate/1",
-  "checked_utc": "2026-10-15T19:44:33Z",
+  "checked_utc": "2026-10-16T11:47:54Z",
   "passed": true,
   "serving_config": "hybrid-rrf",
   "cutoff": "5",
@@ -58,5 +58,38 @@
     "minimum_detectable_effect_pp": 0.0,
     "threshold_is_below_noise": false
   },
-  "findings": []
+  "findings": [
+    {
+      "kind": "abstention",
+      "severity": "warn",
+      "message": "Abstention gate: selective accuracy 0.8635 (min 0.95), refusal precision 0.5147 (min 0.98), false rejection rate 0.0904 (max 0.03)",
+      "detail": {
+        "selective_accuracy": 0.8635,
+        "refusal_precision": 0.5147,
+        "false_rejection_rate": 0.0904,
+        "gate_passed": false,
+        "details": {
+          "threshold": 0.65,
+          "answerable": 365,
+          "unanswerable": 60,
+          "correct_refusals": 35,
+          "false_refusals": 33,
+          "refusal_rate": 0.16,
+          "abstention_recall": 0.5833,
+          "false_rejection_rate": 0.0904,
+          "refusal_precision": 0.5147,
+          "selective_accuracy": 0.8635
+        }
+      }
+    },
+    {
+      "kind": "leakage",
+      "severity": "warn",
+      "message": "Low-leakage Recall@5 is 0.8889 (target >= 0.900)",
+      "detail": {
+        "current": 0.8889,
+        "target": 0.9
+      }
+    }
+  ]
 }

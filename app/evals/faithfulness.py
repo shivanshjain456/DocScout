@@ -23,8 +23,8 @@ from app.evals.scorers import faithfulness_score
 
 logger = structlog.get_logger("docscout.evals.faithfulness")
 
-# Regex to strip citation references like [ID:1], [ID: 1], [1], (1)
-CITATION_TAG_RE = re.compile(r"\[(?:ID:?\s*)?\d+\]|\(\d+\)", re.IGNORECASE)
+# Regex to strip citation references like [ID:1], [ID: 1], [1], (1), [chunk-uuid]
+CITATION_TAG_RE = re.compile(r"\[(?:ID:?\s*)?[a-zA-Z0-9_\-\.:]+\]|\(\d+\)", re.IGNORECASE)
 
 # Conversational preambles to strip
 PREAMBLE_PATTERNS = [

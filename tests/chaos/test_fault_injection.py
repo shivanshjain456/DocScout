@@ -81,6 +81,10 @@ def test_chaos_harness_all_ten_scenarios() -> None:
     app.state.corpus_chunks = 100
     app.state.corpus_generation = 1
 
+    orig_pool = getattr(app.state, "pool", None)
+    orig_embedder = getattr(app.state, "embedder", None)
+    orig_bm25 = getattr(app.state, "bm25", None)
+
     mock_pool = MagicMock()
     app.state.pool = mock_pool
     mock_embedder = MagicMock()
@@ -338,8 +342,13 @@ def test_chaos_harness_all_ten_scenarios() -> None:
     # -------------------------------------------------------------------------
     # Final Report Assertion
     # -------------------------------------------------------------------------
-    report: ChaosTestReport = harness.evaluate()
-    assert report.faults_injected == 10
-    assert report.graceful_degradations == 10
-    assert report.unhandled_exceptions == 0
-    assert report.passed is True
+    try:
+        report: ChaosTestReport = harness.evaluate()
+        assert report.faults_injected == 10
+        assert report.graceful_degradations == 10
+        assert report.unhandled_exceptions == 0
+        assert report.passed is True
+    finally:
+        app.state.pool = orig_pool
+        app.state.embedder = orig_embedder
+        app.state.bm25 = orig_bm25

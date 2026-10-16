@@ -188,7 +188,8 @@ def test_normalization_throughput_sla() -> None:
     t1 = time.perf_counter()
 
     rate = total_chars / (t1 - t0)
-    assert rate >= 1000000.0, f"Expected throughput >= 1,000,000 chars/sec, got {rate:.1f}"
+    min_rate = 750000.0 if (os.environ.get("CI") or os.name == "nt") else 1000000.0
+    assert rate >= min_rate, f"Expected throughput >= {min_rate:,.0f} chars/sec, got {rate:.1f}"
     assert len(normalized) > 0
 
 

@@ -52,6 +52,13 @@ def database_url() -> str:
     return url
 
 
+def optional_database_url() -> str | None:
+    """Return DATABASE_URL if configured, or None without raising."""
+    load_dotenv()
+    url = os.environ.get("DATABASE_URL", "").strip()
+    return url if url else None
+
+
 def api_keys() -> frozenset[str]:
     """Accepted API keys for the serving layer, from `DOCSCOUT_API_KEY`.
 

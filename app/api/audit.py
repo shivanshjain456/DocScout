@@ -92,7 +92,12 @@ def append_file_audit(record: RetrievalAuditRecord, path: Path | None = None) ->
 def record_audit_to_db(conn: psycopg.Connection[Any], record: RetrievalAuditRecord) -> int | None:
     """Insert audit record into retrieval_audit_log table. Returns record id."""
     # Convert string chunk IDs to UUID instances for psycopg
-    chunk_uuids = [UUID(cid) for cid in record.returned_chunk_ids]
+    chunk_uuids: list[UUID] = []
+    for cid in record.returned_chunk_ids:
+        try:
+            chunk_uuids.append(UUID(cid))
+        except (ValueError, TypeError, AttributeError):
+            continue
 
     row = conn.execute(
         """

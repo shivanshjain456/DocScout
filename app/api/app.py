@@ -259,7 +259,12 @@ from app.api.models import (
 )
 from app.api.security import RATE_LIMIT_REQUESTS, load_keys, require_api_key
 from app.compliance.debt_register import router as compliance_debt_router
-from app.config import database_url, sha256_file, staleness_budget_hours
+from app.config import (
+    database_url,
+    optional_database_url,
+    sha256_file,
+    staleness_budget_hours,
+)
 from app.generate import GeneratedAnswer, get_generator
 from app.generate.agent import (
     ResearchAgent,
@@ -896,7 +901,9 @@ def search(
 
     if payload.use_cache:
         if hasattr(state.result_cache, "get_with_tier"):
-            cached, hit_tier = state.result_cache.get_with_tier(cache_key)
+            tier_res = state.result_cache.get_with_tier(cache_key)
+            if isinstance(tier_res, tuple) and len(tier_res) == 2:
+                cached, hit_tier = tier_res
             if cached is None and getattr(
                 getattr(state.result_cache, "config", None),
                 "enable_semantic_matching",
@@ -907,12 +914,14 @@ def search(
                     q_vec = state.embedder.encode_query(payload.query)
                     state.embedding_cache.put(payload.query, q_vec)
                 if q_vec is not None:
-                    cached, hit_tier = state.result_cache.get_with_tier(
+                    sem_res = state.result_cache.get_with_tier(
                         cache_key,
                         query_text=payload.query,
                         query_vector=q_vec,
                         search_params=search_params,
                     )
+                    if isinstance(sem_res, tuple) and len(sem_res) == 2:
+                        cached, hit_tier = sem_res
         else:
             cached = state.result_cache.get(cache_key)
             hit_tier = "tier1" if cached is not None else None
@@ -1035,16 +1044,34 @@ def search(
                 if isinstance(getattr(hit, "published_date", None), str)
                 else None
             ),
-            matching_relationships=hit.matching_relationships,
-            centrality_boost=round(hit.centrality_boost, 6),
+            matching_relationships=(
+                hit.matching_relationships
+                if isinstance(getattr(hit, "matching_relationships", None), list)
+                else []
+            ),
+            centrality_boost=round(float(getattr(hit, "centrality_boost", 0.0) or 0.0), 6),
             difficulty_level=payload.difficulty_band,
-            presentation_rank=hit.presentation_rank,
-            is_arm_anchor=hit.is_arm_anchor,
-            anchored_arm=hit.anchored_arm,
-            clause_hierarchy=hit.clause_hierarchy,
-            is_proviso=hit.is_proviso,
-            expanded_text=hit.expanded_text,
-            highlights=hit.highlights,
+            presentation_rank=(
+                hit.presentation_rank
+                if isinstance(getattr(hit, "presentation_rank", None), int)
+                else None
+            ),
+            is_arm_anchor=bool(getattr(hit, "is_arm_anchor", False)),
+            anchored_arm=(
+                hit.anchored_arm if isinstance(getattr(hit, "anchored_arm", None), str) else None
+            ),
+            clause_hierarchy=(
+                hit.clause_hierarchy
+                if isinstance(getattr(hit, "clause_hierarchy", None), list)
+                else []
+            ),
+            is_proviso=bool(getattr(hit, "is_proviso", False)),
+            expanded_text=(
+                hit.expanded_text if isinstance(getattr(hit, "expanded_text", None), str) else None
+            ),
+            highlights=(
+                hit.highlights if isinstance(getattr(hit, "highlights", None), list) else []
+            ),
         )
         for hit in hits
     ]
@@ -4700,7 +4727,7 @@ async def get_document_standard_mentions(
         with request.app.state.pool.connection() as conn:
             mentions = fetch_mentions_for_document(conn, doc_uuid)
     else:
-        db_u = database_url()
+        db_u = optional_database_url()
         if db_u:
             try:
                 with psycopg.connect(db_u, connect_timeout=1) as conn:
@@ -4754,7 +4781,7 @@ async def export_audit_evidence(
         with request.app.state.pool.connection() as conn:
             passages = exporter.resolve_passages_from_db(conn, payload.passage_ids)
     else:
-        db_u = database_url()
+        db_u = optional_database_url()
         if db_u:
             try:
                 with psycopg.connect(db_u, connect_timeout=1) as conn:
@@ -4854,7 +4881,7 @@ async def ingest_compliance_telemetry(
             with pool.connection() as conn:
                 event_ids = tracker.ingest_batch(events, conn=conn)
         else:
-            db_u = database_url()
+            db_u = optional_database_url()
             if db_u:
                 try:
                     with psycopg.connect(db_u, connect_timeout=1) as conn:
@@ -4914,7 +4941,7 @@ async def get_observation_window_status(
                 conn=conn,
             )
     else:
-        db_u = database_url()
+        db_u = optional_database_url()
         if db_u:
             try:
                 with psycopg.connect(db_u, connect_timeout=1) as conn:
@@ -6442,7 +6469,7 @@ async def extract_tables_endpoint(
                             )
                     conn.commit()
             else:
-                db_u = database_url()
+                db_u = optional_database_url()
                 if db_u:
                     with psycopg.connect(db_u, connect_timeout=1) as conn:
                         with conn.cursor() as cur:
@@ -6533,7 +6560,7 @@ async def get_extracted_table_endpoint(
             logger.debug("table_get.pool_error", error=str(err))
 
     if row is None:
-        db_u = database_url()
+        db_u = optional_database_url()
         if db_u:
             try:
                 with psycopg.connect(db_u, connect_timeout=1) as conn:
@@ -6645,7 +6672,7 @@ async def extract_coordinates_endpoint(
                 with pool.connection() as conn:
                     matrix_engine.save_chunk_coordinates(conn, raw_coords)
             else:
-                db_u = database_url()
+                db_u = optional_database_url()
                 if db_u:
                     with psycopg.connect(db_u, connect_timeout=1) as conn:
                         matrix_engine.save_chunk_coordinates(conn, raw_coords)
@@ -6704,7 +6731,7 @@ async def get_chunk_coordinates_endpoint(
             logger.debug("coordinates_get.pool_error", error=str(err))
 
     if not coords:
-        db_u = database_url()
+        db_u = optional_database_url()
         if db_u:
             try:
                 with psycopg.connect(db_u, connect_timeout=1) as conn:
@@ -6796,7 +6823,7 @@ async def assess_ocr_quality_endpoint(
             with pool.connection() as conn:
                 evaluator.save_quality_score(conn, content_sha256, score)
         else:
-            db_u = database_url()
+            db_u = optional_database_url()
             if db_u:
                 with psycopg.connect(db_u, connect_timeout=1) as conn:
                     evaluator.save_quality_score(conn, content_sha256, score)
@@ -6845,7 +6872,7 @@ async def get_ocr_quality_endpoint(
             logger.debug("ocr_quality_get.pool_error", error=str(err))
 
     if score is None:
-        db_u = database_url()
+        db_u = optional_database_url()
         if db_u:
             try:
                 with psycopg.connect(db_u, connect_timeout=1) as conn:
@@ -6968,7 +6995,7 @@ async def link_annexures_endpoint(
                         conn, payload.document_id, payload.version_id, sections, relationships
                     )
             else:
-                db_u = database_url()
+                db_u = optional_database_url()
                 if db_u:
                     with psycopg.connect(db_u, connect_timeout=1) as conn:
                         linker.save_sections_and_relationships(
@@ -7037,7 +7064,7 @@ async def get_document_relationships_endpoint(
             with pool.connection() as conn:
                 relationships = linker.get_document_relationships(conn, document_id)
         else:
-            db_u = database_url()
+            db_u = optional_database_url()
             if db_u:
                 with psycopg.connect(db_u, connect_timeout=1) as conn:
                     relationships = linker.get_document_relationships(conn, document_id)

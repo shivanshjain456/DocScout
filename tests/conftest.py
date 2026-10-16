@@ -224,3 +224,15 @@ def _deterministic_environment() -> Iterator[None]:
     yield
     if clock_mod is not None:
         clock_mod.set_clock(None)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_app_state() -> Iterator[None]:
+    """Preserve and restore FastAPI app.state attributes between tests."""
+    app_mod = sys.modules.get("app.api.app")
+    orig_pool = None
+    if app_mod is not None and hasattr(app_mod, "app") and hasattr(app_mod.app, "state"):
+        orig_pool = getattr(app_mod.app.state, "pool", None)
+    yield
+    if app_mod is not None and hasattr(app_mod, "app") and hasattr(app_mod.app, "state"):
+        app_mod.app.state.pool = orig_pool

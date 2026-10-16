@@ -42,6 +42,15 @@ def fresh_engine() -> PlaybookEngine:
     return PlaybookEngine()
 
 
+@pytest.fixture(autouse=True)
+def _reset_default_playbook_engine() -> None:
+    from app.workflows.engine import BUILTIN_PLAYBOOKS, get_default_playbook_engine
+
+    engine = get_default_playbook_engine()
+    engine._templates = {t.playbook_id: t for t in BUILTIN_PLAYBOOKS}
+    engine._runs.clear()
+
+
 # ==============================================================================
 # 1. Template Catalog & Statutory Coverage Tests
 # ==============================================================================
