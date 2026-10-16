@@ -120,7 +120,7 @@
 ### Pillar 10: Enterprise Reliability, Security, Observability & Continuous Compliance
 - [x] FEAT-091: Automated Canary Analysis (ACA) Deployment Gate
 - [x] FEAT-092: Error Budget Policy & Multi-Window Burn Rate Alerting
-- [ ] FEAT-093: Bulkhead Concurrency Isolation & Adaptive Load Shedding
+- [x] FEAT-093: Bulkhead Concurrency Isolation & Adaptive Load Shedding
 - [ ] FEAT-094: Chaos Engineering Fault Injection Test Harness
 - [ ] FEAT-095: Hermetic Deterministic Test Fixtures with Seeded Randomness
 - [ ] FEAT-096: Mutation Score Ratcheting CI Gate
@@ -227,6 +227,7 @@
 | FEAT-090 | e66fdde | PASS | Automated LLM judge calibration with Cohen's Kappa, ADR-0081, JudgeCalibrationConfig (min_kappa=0.85, floor=0.80), CalibrationReport with p-value (erfc) & z-score, binary & multiclass Kappa in stats.py, 100-pair gold benchmark (kappa=0.8746, 100% pass), goldset calibrate CLI, check_judge_calibration_gate in gate.py, tests/test_judge_calibration.py |
 | FEAT-091 | 146bd73 | PASS | Automated canary analysis (ACA) deployment gate, ADR-0082, ACAConfig (eval_window_minutes=15, max_latency_increase=5%, max_error_rate=0.001, min_queries=100), Mann-Whitney U test on latency, Fisher's exact test on error rates, fail-safe abort on unreachable Prometheus, docscout_canary_evaluations_total metric, .github/workflows/deploy.yml, infra/canary/analysis.py CLI, tests/test_canary_analysis.py |
 | FEAT-092 | 0953f2f | PASS | Error budget policy & multi-window burn rate alerting, ADR-0083, SLOConfig (availability=99.9%, latency p95 < 50ms, freeze threshold 10%), ErrorBudgetStatus, WindowSample, compute_burn_rate (1h 14.4x rapid burn, 6h 6.0x elevated burn), evaluate_error_budget, fail-safe blackout freeze, docscout_error_budget_* Prometheus metrics, infra/prometheus/rules/alerts.yml (DocScoutErrorBudgetRapidBurn, DocScoutErrorBudgetElevatedBurn, DocScoutDeploymentFrozen), deploy.yml check, tests/test_error_budget.py |
+| FEAT-093 | fde3f0e | PASS | Bulkhead concurrency isolation & adaptive load shedding, ADR-0084, BulkheadConfig (query=50, ingest=4, eval=2, internal=10), BulkheadManager with asyncio.Semaphore & adaptive queue timeout Little's Law, Starlette BulkheadMiddleware with HTTP 429 & Retry-After, Prometheus metrics (docscout_bulkhead_active_concurrency, docscout_bulkhead_queue_depth, docscout_bulkhead_shed_requests_total), loadtests/load_bulkhead.py (100% search availability, p95 <= 50ms under saturated ingestion), tests/test_bulkhead.py |
 
 ---
 
