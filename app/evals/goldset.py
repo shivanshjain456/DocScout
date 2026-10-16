@@ -502,7 +502,9 @@ def summarise(items: list[dict[str, Any]]) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.evals.goldset")
-    parser.add_argument("command", choices=["pin", "lint", "stats", "review", "leakage"])
+    parser.add_argument(
+        "command", choices=["pin", "lint", "stats", "review", "leakage", "calibrate"]
+    )
     parser.add_argument("--path", type=Path, default=DEFAULT_GOLDSET)
     parser.add_argument(
         "--no-resolve",
@@ -512,6 +514,28 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     items = load_goldset(args.path)
+
+    if args.command == "calibrate":
+        from app.evals.judge_calibration import (
+            GOLD_JUDGE_HUMAN_BENCHMARK_100,
+            JudgeCalibrationConfig,
+            calibrate_judge,
+        )
+
+        judge_scores = [it["judge_score"] for it in GOLD_JUDGE_HUMAN_BENCHMARK_100]
+        human_scores = [it["human_score"] for it in GOLD_JUDGE_HUMAN_BENCHMARK_100]
+        calib_cfg = JudgeCalibrationConfig()
+        report = calibrate_judge(judge_scores, human_scores, calib_cfg)
+        print("Judge Calibration Report (Gold 100 Benchmark):")
+        print(
+            f"  Cohen's Kappa:      {report.cohen_kappa:.4f} (target >= {calib_cfg.min_kappa:.2f})"
+        )
+        print(f"  Observed Agreement: {report.agreement_rate:.2%}")
+        print(f"  Expected Agreement: {report.expected_agreement:.2%}")
+        print(f"  Z-score / p-value:  z={report.z_score:.2f}, p={report.p_value:.6f}")
+        print(f"  Status:             {report.status}")
+        print(f"  Verdict:            {report.message}")
+        return 0 if report.is_calibrated else 1
 
     if args.command == "leakage":
         from app.evals.leakage import LeakageConfig, stratify_goldset_items

@@ -453,6 +453,52 @@ def check_leakage_gate(
     return findings
 
 
+def check_judge_calibration_gate_results(current: dict[str, Any]) -> list[Finding]:
+    """Verify automated LLM judge inter-annotator agreement (Cohen's Kappa >= 0.85).
+
+    Enforces that automated judges used for quality and compliance assertions agree with
+    human legal experts. If judge calibration data is present, evaluates kappa against
+    target >= 0.850 and hard regression floor >= 0.800.
+    """
+    findings: list[Finding] = []
+    calib = current.get("judge_calibration")
+    if not calib:
+        return findings
+
+    kappa = float(calib.get("cohen_kappa", 0.0))
+    min_kappa = float(calib.get("min_kappa", 0.85))
+    floor_kappa = float(calib.get("regression_floor_kappa", 0.80))
+
+    if kappa < floor_kappa:
+        findings.append(
+            Finding(
+                "judge_calibration",
+                "fail",
+                f"Judge calibration FAIL: Cohen's Kappa {kappa:.4f} is below regression floor {floor_kappa:.4f}",
+                {"cohen_kappa": kappa, "floor": floor_kappa, "target": min_kappa},
+            )
+        )
+    elif kappa < min_kappa:
+        findings.append(
+            Finding(
+                "judge_calibration",
+                "warn",
+                f"Judge calibration WARN: Cohen's Kappa {kappa:.4f} is below target {min_kappa:.4f} but above floor {floor_kappa:.4f}",
+                {"cohen_kappa": kappa, "floor": floor_kappa, "target": min_kappa},
+            )
+        )
+    else:
+        findings.append(
+            Finding(
+                "judge_calibration",
+                "info",
+                f"Judge calibration PASS: Cohen's Kappa {kappa:.4f} >= {min_kappa:.4f}",
+                {"cohen_kappa": kappa, "target": min_kappa},
+            )
+        )
+    return findings
+
+
 def noise_floor(current: dict[str, Any], baselines: list[dict[str, Any]]) -> dict[str, Any]:
     """Half-width of the paired bootstrap CI for recall against the newest baseline.
 
@@ -535,6 +581,7 @@ def evaluate(current: dict[str, Any], baselines: list[dict[str, Any]]) -> GateRe
     findings.extend(regression_findings)
     findings.extend(check_abstention_gate(current))
     findings.extend(check_leakage_gate(current, baselines))
+    findings.extend(check_judge_calibration_gate_results(current))
     noise = noise_floor(current, baselines)
 
     if noise.get("threshold_is_below_noise"):
