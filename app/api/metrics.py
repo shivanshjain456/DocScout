@@ -973,6 +973,18 @@ TOTAL_CLAIMS_EVALUATED_TOTAL = Counter(
     ["status"],
 )
 
+CANARY_EVALUATIONS_TOTAL = Counter(
+    "docscout_canary_evaluations_total",
+    "Total automated canary analysis deployment evaluations (FEAT-091).",
+    ["decision"],
+)
+
+
+def record_canary_evaluation(decision: str) -> None:
+    """Record an automated canary analysis deployment evaluation (FEAT-091)."""
+    CANARY_EVALUATIONS_TOTAL.labels(decision=decision).inc()
+
+
 # Initialize AI assurance gauges to healthy defaults so Prometheus scrapers see them immediately
 CLAIM_SUPPORT_RATIO.set(1.0)
 UNSUPPORTED_CLAIM_ALERTS.labels(severity="critical").set(0.0)
