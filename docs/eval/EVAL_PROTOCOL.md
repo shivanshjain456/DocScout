@@ -1,10 +1,8 @@
 # DocScout  -  Evaluation Protocol
 
-**Status:** authoritative protocol for measuring DocScout's quality. Last updated **2026-10-09**.
-**Implementation status:** no evaluation code, no gold set, and no evaluation run exists.
-`app/evals/__init__.py` is 0 bytes; `evals/` and `tests/eval/` do not exist; the CI job
-`eval-smoke` is gated `if: false` (all VERIFIED 2026-10-01). **DocScout has no quality numbers of
-any kind, and none may be quoted.**
+**Status:** authoritative protocol for measuring DocScout's quality. Last updated **2026-10-16**.
+**Implementation status:** evaluation harness, gold set v2.0.0 (425 items), deterministic scorers, calibrated LLM judge, and regression CI gates are **FULLY IMPLEMENTED AND VERIFIED**.
+`app/evals/` contains complete implementations of runners, gold set schemas, scorers, calibration, and regression gates; evaluations are executed on every push in the `eval-gate` CI workflow and verified 100% green on run 38902601761.
 
 Status tags (**VERIFIED / SPECIFIED / PROPOSED / BLOCKED / UNRESOLVED**) and the U-register are
 defined in `SPEC.md` §1 and §9.

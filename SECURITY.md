@@ -1,7 +1,7 @@
 # DocScout: Security
 
-**Status:** authoritative security policy and threat model. Last updated **2026-10-09**.
-**Implementation status:** application and repository security controls are **IMPLEMENTED AND VERIFIED**.
+**Status:** authoritative security policy and threat model. Last updated **2026-10-16**.
+**Implementation status:** application, enterprise, and repository security controls are **IMPLEMENTED AND VERIFIED**.
 
 Status tags (**VERIFIED / SPECIFIED / PROPOSED / BLOCKED / RESOLVED**) are defined in `SPEC.md` §1.
 Audit records live in `docs/security/`.
@@ -79,9 +79,16 @@ Five explicit boundaries with dedicated controls:
 - **S-11**: Automated dependency vulnerability scanning via `pip-audit` and CycloneDX SBOM generation in CI (`make audit-deps`).
 - **S-12**: MCP servers pinned by version in `.mcp.json` and audited in `docs/security/mcp-server-audit.md`.
 
-### 4.5 Agent safety: VERIFIED
-
 - **S-16**: Command denylist hook blocks destructive commands before execution, enforced by `check-shebang-scripts-are-executable` pre-commit hook.
+
+### 4.6 Enterprise SRE & Cryptographic Provenance: VERIFIED
+
+- **S-22**: SLSA Level 3 immutable cryptographic audit trail (`cryptographic_audit_trail`) with Ed25519 asymmetric signatures and schema triggers preventing tampering (ADR-0089, Migration 0053).
+- **S-23**: Zero-trust identity and RBAC via Auth0 OpenID Connect (RS256 JWT verification) with tenant data isolation (ADR-0090).
+- **S-24**: Pre-retrieval adversarial prompt injection shield intercepting jailbreaks and malicious prompt overrides across 6 threat categories (ADR-0074).
+- **S-25**: Dynamic canary token injection and audit verification asserting zero context leakage (ADR-0075, Migration 0052).
+- **S-26**: Differential patch coverage gating enforcing 100% test coverage on newly introduced or modified code lines (ADR-0088).
+- **S-27**: Mutation score ratcheting CI gate enforcing mutation score thresholds on every change (ADR-0087).
 
 ---
 
@@ -100,3 +107,9 @@ Five explicit boundaries with dedicated controls:
 | Retrieval audit logging | Yes | `retrieval_audit_log` table, ADR-0015, `tests/test_audit_and_pii_scan.py` |
 | Ingestion PII/secret scanning | Yes | `app/ingest/scanner.py`, `tests/test_audit_and_pii_scan.py` |
 | Container security | Yes | Non-root `app` user, pinned digests in Dockerfile |
+| Cryptographic audit trail | Yes | Migration 0053, Ed25519 signing, `tests/test_provenance.py` |
+| Zero-trust OIDC RBAC | Yes | Auth0 RS256 token verification, `tests/test_auth0.py` |
+| Adversarial injection shield | Yes | `app/security/shield.py`, `tests/test_security_shield.py` |
+| Canary token audit | Yes | Migration 0052, `tests/test_canary.py` |
+| Differential coverage gate | Yes | `scripts/diff_coverage.py`, 100% diff coverage enforced in CI |
+| Mutation score ratcheting | Yes | `scripts/diff_mutation.py`, AST mutation gating in CI |

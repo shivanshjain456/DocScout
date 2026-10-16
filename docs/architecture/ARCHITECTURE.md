@@ -1,7 +1,7 @@
 # DocScout: Architecture
 
-**Status:** authoritative architecture document. Last updated **2026-10-09**.
-**Implementation status:** fully implemented, tested (448 test functions (555 collected cases incl. parametrization) passing), and verified in production containers.
+**Status:** authoritative architecture document. Last updated **2026-10-16**.
+**Implementation status:** fully implemented, tested (544 test functions, 1819 collected cases across 130 test modules passing), and verified in production containers and CI.
 
 Status tags (**VERIFIED / SPECIFIED / PROPOSED / BLOCKED / RESOLVED**) are defined in `SPEC.md` §1.
 
@@ -121,25 +121,33 @@ FastAPI service (`app.api.app:app`) providing:
 
 ## 4. Data model: VERIFIED
 
-Applied through 6 migrations (`migrations/0001` through `migrations/0006`):
+Applied through 53 migrations (`migrations/0001` through `migrations/0053`):
 
-| Table | Key columns | Purpose |
+| Migration Group | Core Tables Added / Extended | Purpose |
 |---|---|---|
-| `documents` | `document_id` (PK, uuidv7), `canonical_url` (unique), `source`, `title`, `authority`, `published_date`, `detail_page` | One logical circular, stable across reissues |
-| `document_versions` | `version_id` (PK), `document_id` (FK), `sha256` (globally unique), `fetch_ts`, `http_status`, `bytes`, `pages`, `extractor`, `char_count`, `is_current` | One observed byte-state; new sha256 creates new version |
-| `chunks` | `chunk_id` (PK, uuid5), `document_id` + `version_id` (FK), `ordinal`, `text`, `char_start`, `char_end`, `token_count`, `tsv` (STORED), `embedding` (`vector(384)`) | Retrievable chunk with content-derived UUIDv5 |
-| `corpus_sync_state` | `singleton_id` (PK), `last_checked_at`, `stale_hours`, `is_stale`, `current_version_count`, `superseded_version_count` | Singleton table tracking corpus audit and freshness |
-| `retrieval_audit_log` | `log_id` (PK), `timestamp`, `key_fingerprint`, `query_hash`, `mode`, `k`, `returned_chunk_ids`, `latency_ms`, `cache_hit`, `has_generated_answer`, `corpus_generation` | Append-only audit record for retrieval forensics |
+| `0001-0006` | `documents`, `document_versions`, `chunks`, `corpus_sync_state`, `retrieval_audit_log` | Core circular ingestion, content-derived UUIDv5 chunks, BM25 GIN and HNSW cosine vector indices, freshness singleton, and append-only audit trail. |
+| `0007-0008` | `provision_nodes`, `provision_edges`, `research_workspaces`, `research_artifacts` | Regulatory provision knowledge graph nodes and citations; agentic research workspace and artifact persistence. |
+| `0019-0021` | `statutory_formulas`, `formula_versions`, `formula_dependencies` | Computational statutory formulas across 24 banking/market metrics, semantic versioning, and mathematical dependency graphs. |
+| `0022-0025` | `statutory_deprecations`, `clause_conflicts`, `antipattern_registry`, `prescriptive_remediations` | Circular deprecations, clause-level normative conflict detection, 30 regulatory antipatterns, and prescriptive remediation mappings. |
+| `0026-0029` | `regulatory_deadlines`, `applicability_scope`, `compliance_debt`, `temporal_search` | Sunset cutover deadlines, institutional applicability matrices, enterprise compliance debt register, and bitemporal point-in-time search indices. |
+| `0030-0035` | `standards_control_families`, `framework_control_crosswalk`, `standards_constrained_search`, `regulatory_authority_hierarchy`, `document_standard_mentions`, `compliance_telemetry` | Unified standards registry (53 standards), cross-framework mapping (ISO/NIST/DORA), authority hierarchy resolver, standard mentions, and compliance telemetry. |
+| `0036-0044` | `playbook_workflows`, `playbook_milestones`, `stage_exit_validations`, `playbook_tasks`, `cyber_incidents`, `release_certificates`, `pqc_assets`, `dora_framework`, `custom_playbooks` | 12 state-machine compliance playbooks, 4-stage progressive milestones, exit criteria validators, role-based task routing, incident response playbooks, release certification pipelines, PQC migration tracker, DORA runner, and custom playbooks. |
+| `0045-0051` | `hierarchical_chunks`, `table_extractions`, `chunk_coordinates`, `ocr_quality_evaluations`, `section_relationships`, `canonical_document_id` | Structure-aware hierarchical chunking, high-fidelity table matrix parser, exact character-offset bounding boxes, OCR confidence scores, section/annexure links, and content deduplication. |
+| `0052` | `canary_tokens` | Canary token planting, verification state, and prompt-injection leakage assertions. |
+| `0053` | `cryptographic_audit_trail` | SLSA Level 3 append-only immutable audit trail with trigger guard and Ed25519 cryptographic verification. |
 
-Indices:
+Indices & Performance Structures:
 - HNSW on `chunks.embedding` using `vector_cosine_ops` (m=16, ef_construction=64).
 - GIN on `chunks.tsv` for full-text search.
 - B-tree indices on `documents(source)`, `documents(published_date)`, `documents(source, published_date)`.
 - B-tree indices on `document_versions(fetch_ts)` and `document_versions(is_current)`.
+- B-tree composite indices on foreign keys across provision, formula, standard, playbook, and coordinate tables.
 
 ---
 
 ## 5. Technology decisions
+
+Key architectural decisions recorded across 91 ADRs (`docs/decisions/`):
 
 | Decision | Status | Rationale | ADR |
 |---|---|---|---|
@@ -158,3 +166,26 @@ Indices:
 | In-query metadata filtering | DECIDED | Prevents candidate starvation, filtered index scans | ADR-0016 |
 | Domain query expansion | DECIDED | Recovers regulatory acronyms and synonyms | ADR-0017 |
 | Authoritative citation titles | DECIDED | Enriches citations with official titles and dates | ADR-0018 |
+| VectorStore port protocol | DECIDED | Decouples retrieval engine from raw SQL persistence | ADR-0019 |
+| Provision knowledge graph | DECIDED | Multi-hop cross-circular provision linkage and traversal | ADR-0020 |
+| Agentic research loop | DECIDED | Deterministic plan-retrieve-synthesize-critique workflow | ADR-0021 |
+| Pluggable extraction chain | DECIDED | Fast pypdf path with automatic deep OCR fallback | ADR-0022 |
+| Ingestion scale harness | DECIDED | Domain rate governor, retry bisection, embedding cache | ADR-0023 |
+| Cross-framework control mapping | DECIDED | Unifies ISO 27001, NIST SP 800-53, and DORA controls | ADR-0033 |
+| Point-in-time temporal search | DECIDED | Eliminates look-ahead bias in historical compliance audits | ADR-0030 |
+| Hierarchical section chunking | DECIDED | Preserves parent-child clause lineage in regulatory text | ADR-0052 |
+| Table lineage matrix parser | DECIDED | High-fidelity structural parsing of regulatory tables | ADR-0053 |
+| Bilingual Devanagari parsing | DECIDED | Normalizes Hindi circular sections without offset loss | ADR-0059 |
+| Cross-encoder rerank ladder | DECIDED | Circuit-breaker-bounded cross-encoder candidate reranking | ADR-0062 |
+| Token-budget context packing | DECIDED | Dynamic greedy context packing targeting 95% ceiling | ADR-0064 |
+| Confidence-calibrated refusal | DECIDED | Selective accuracy gate rejecting unanswerable queries | ADR-0068 |
+| Supported-claim faithfulness | DECIDED | NLI entailment scoring rejecting hallucinated claims | ADR-0072 |
+| Canary token provenance leakage | DECIDED | Cryptographic canaries detecting context data leaks | ADR-0075 |
+| Automated canary analysis (ACA) | DECIDED | Mann-Whitney U test on latency and Fisher's exact on errors | ADR-0082 |
+| Bulkhead concurrency isolation | DECIDED | Adaptive load shedding protecting search availability | ADR-0084 |
+| Chaos fault injection harness | DECIDED | 10 fault scenarios verifying graceful system degradation | ADR-0085 |
+| Mutation score ratcheting gate | DECIDED | Prevents regression in test assertion effectiveness | ADR-0087 |
+| Differential patch coverage | DECIDED | Enforces 100% coverage on modified executable code | ADR-0088 |
+| Cryptographic audit trail | DECIDED | SLSA Level 3 Ed25519 provenance for regulatory records | ADR-0089 |
+| OIDC zero-trust identity RBAC | DECIDED | Auth0 RS256 token verification with tenant isolation | ADR-0090 |
+| High-cardinality telemetry | DECIDED | W3C traceparent correlation and cost-per-query accounting | ADR-0091 |

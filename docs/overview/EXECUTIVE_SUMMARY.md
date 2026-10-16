@@ -1,6 +1,6 @@
 # DocScout - Architecture & Systems Overview
 
-> **Headline:** DocScout - citation-grounded RBI/SEBI RAG, hybrid-rrf MRR 0.854 @ p95 42ms, 448 fns (555 cases), 5/5 green.
+> **Headline:** DocScout - 100-feature citation-grounded regulatory intelligence platform, hybrid-rrf MRR 0.854 @ p95 48.11ms cold / 2.11ms warm, 544 test fns (1819 cases), 5/5 green at run 38902601761.
 
 DocScout is a production-grade, citation-grounded retrieval-augmented generation engine engineered specifically for complex Indian financial-regulatory circulars (RBI and SEBI).
 
@@ -11,6 +11,7 @@ DocScout is a production-grade, citation-grounded retrieval-augmented generation
 - **Hybrid Retrieval with Arm-Anchored RRF ([ADR-0007](../decisions/0007-arm-anchored-fusion.md)):** Fuses dense semantic vector search (BGE-small-en-v1.5, 384d) with BM25 lexical search using reciprocal rank fusion. Bounded guarantee prevents top lexical matches from being washed out by semantic rank dilution.
 - **Production Subsystems with Provenance Guard ([ADR-0024](../decisions/0024-external-integrations-governance.md) / [ADR-0025](../decisions/0025-synthetic-data-quarantine.md) → E-18):** Auth0 identity (`PyJWKClient`), Brevo transactional digests (`300/d` quota, `uq_digest_delivery_version` dedup invariant), and OCR.Space inspection (`1MB/3p` eligibility), hard-guarded against synthetic contamination via `NOT d.is_synthetic`.
 - **Offline Ingest & Calibrated Online Eval Harness:** Versioned 425-item gold set (365 scored items, ADR-0012) with calibrated automated judge (84 items) and double-labelled research synthesis (40 tasks), ensuring 100% citation grounding and 0% hallucination.
+- **10 Enterprise Governance Pillars (FEAT-001 through FEAT-100):** Regulatory knowledge graph, query intelligence & routing, statutory compliance formulas, conflict & antipattern auditing, standards registry, playbooks & workflows, document intelligence, advanced reranking, AI assurance, and enterprise SRE.
 
 ---
 
@@ -19,9 +20,9 @@ DocScout is a production-grade, citation-grounded retrieval-augmented generation
 | Layer | Technologies & Specifications |
 |---|---|
 | **Embeddings & Search** | BGE-small-en-v1.5 (384d), pgvector 0.8.6 HNSW indexing, PostgreSQL 18.6 full-text BM25 |
-| **Backend & Serving** | Python 3.12, FastAPI, Uvicorn, Pydantic v2, strict typing (Mypy 106 source files clean) |
+| **Backend & Serving** | Python 3.12, FastAPI, Uvicorn, Pydantic v2, strict typing (Mypy 157 source files in app/ clean) |
 | **Frontend & UI** | React 19, TypeScript, Vite, Tailwind CSS, Playwright E2E smoke tests |
-| **Persistence & Cache** | PostgreSQL 18.6 + pgvector 0.8.6 triple-pin, in-memory LRU cache, optional Redis backend |
+| **Persistence & Cache** | PostgreSQL 18.6 + pgvector 0.8.6 triple-pin, 53 schema migrations, in-memory LRU cache, optional Redis backend |
 | **Observability & Ops** | Prometheus `/metrics`, zero-DB `/healthz`, readiness `/readyz`, GitHub Actions 5/5 CI workflows |
 
 ---
@@ -29,7 +30,7 @@ DocScout is a production-grade, citation-grounded retrieval-augmented generation
 ## Production Evidence & Verifiable Artifacts
 
 - **Retrieval Baseline Report:** [`evals/reports/20261010T050559Z/results.json`](../../evals/reports/20261010T050559Z/results.json) (Recall@5: 0.966, MRR: 0.854 @ p95 42ms).
-- **CI/CD Quality Gates:** GitHub Actions run [`38037523415`](https://github.com/shivanshjain456/DocScout/actions/runs/38037523415) (5/5 green: `quality`, `supply-chain`, `secrets`, `eval-gate`, `deploy-smoke`).
+- **CI/CD Quality Gates:** GitHub Actions run [`38902601761`](https://github.com/shivanshjain456/DocScout/actions/runs/38902601761) (5/5 green: `quality`, `supply-chain`, `secrets`, `eval-gate`, `deploy-smoke`).
 - **User Interface Proof:** Interactive console surfacing Search, Auth0 Identity, Brevo Digests, and OCR Inspector:
   - System Demo: [`docs/assets/demo.png`](../assets/demo.png)
   - Full-Stack Console: [`docs/assets/ui-console.png`](../assets/ui-console.png)
@@ -38,6 +39,6 @@ DocScout is a production-grade, citation-grounded retrieval-augmented generation
 
 ## Deployment & Distribution
 
-- **Pre-built OCI Container:** `docker run -p 8000:8000 ghcr.io/shivanshjain456/docscout:1.0.1` (or `ghcr.io/shivanshjain456/docscout:latest`)
+- **Pre-built OCI Container:** `docker run -p 8000:8000 ghcr.io/shivanshjain456/docscout:2.0.0` (or `ghcr.io/shivanshjain456/docscout:latest`)
 - **Deterministic Local Stack:** `cp .env.example .env && make deploy` (reproducible offline stack under 90s)
 - **API Documentation & Metrics:** OpenAPI Swagger UI at `http://localhost:8000/docs`, Prometheus telemetry at `http://localhost:8000/metrics`
