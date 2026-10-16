@@ -1017,6 +1017,36 @@ def update_error_budget_metrics(
     ERROR_BUDGET_DEPLOYMENT_FROZEN.set(1.0 if is_frozen else 0.0)
 
 
+BULKHEAD_ACTIVE_CONCURRENCY = Gauge(
+    "docscout_bulkhead_active_concurrency",
+    "Active requests currently executing per bulkhead pool (FEAT-093).",
+    ["pool"],
+)
+
+BULKHEAD_QUEUE_DEPTH = Gauge(
+    "docscout_bulkhead_queue_depth",
+    "Queued requests waiting for admission per bulkhead pool (FEAT-093).",
+    ["pool"],
+)
+
+BULKHEAD_SHED_REQUESTS_TOTAL = Counter(
+    "docscout_bulkhead_shed_requests_total",
+    "Total requests shed due to bulkhead saturation or latency breach (FEAT-093).",
+    ["pool", "reason"],
+)
+
+
+def record_bulkhead_admission(pool: str, active: int, queued: int) -> None:
+    """Record active concurrency and queued depth for a bulkhead pool (FEAT-093)."""
+    BULKHEAD_ACTIVE_CONCURRENCY.labels(pool=pool).set(active)
+    BULKHEAD_QUEUE_DEPTH.labels(pool=pool).set(queued)
+
+
+def record_bulkhead_shed(pool: str, reason: str = "queue_wait_timeout") -> None:
+    """Record a shed request under adaptive load shedding (FEAT-093)."""
+    BULKHEAD_SHED_REQUESTS_TOTAL.labels(pool=pool, reason=reason).inc()
+
+
 # Initialize AI assurance gauges to healthy defaults so Prometheus scrapers see them immediately
 CLAIM_SUPPORT_RATIO.set(1.0)
 UNSUPPORTED_CLAIM_ALERTS.labels(severity="critical").set(0.0)
@@ -1028,6 +1058,10 @@ ERROR_BUDGET_DEPLOYMENT_FROZEN.set(0.0)
 ABSTENTION_EVENTS_TOTAL.labels(level="LOW")
 ABSTENTION_EVENTS_TOTAL.labels(level="MEDIUM")
 ABSTENTION_EVENTS_TOTAL.labels(level="HIGH")
+
+for _p in ("query", "ingest", "eval", "internal"):
+    BULKHEAD_ACTIVE_CONCURRENCY.labels(pool=_p).set(0.0)
+    BULKHEAD_QUEUE_DEPTH.labels(pool=_p).set(0.0)
 
 
 @dataclass
