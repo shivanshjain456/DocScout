@@ -122,7 +122,7 @@
 - [x] FEAT-092: Error Budget Policy & Multi-Window Burn Rate Alerting
 - [x] FEAT-093: Bulkhead Concurrency Isolation & Adaptive Load Shedding
 - [x] FEAT-094: Chaos Engineering Fault Injection Test Harness
-- [ ] FEAT-095: Hermetic Deterministic Test Fixtures with Seeded Randomness
+- [x] FEAT-095: Hermetic Deterministic Test Fixtures with Seeded Randomness
 - [ ] FEAT-096: Mutation Score Ratcheting CI Gate
 - [ ] FEAT-097: Differential / Patch Coverage Gating (100% Diff Coverage)
 - [ ] FEAT-098: Immutable Cryptographic Audit Trail (SLSA Level 3 Provenance)
@@ -229,6 +229,7 @@
 | FEAT-092 | 0953f2f | PASS | Error budget policy & multi-window burn rate alerting, ADR-0083, SLOConfig (availability=99.9%, latency p95 < 50ms, freeze threshold 10%), ErrorBudgetStatus, WindowSample, compute_burn_rate (1h 14.4x rapid burn, 6h 6.0x elevated burn), evaluate_error_budget, fail-safe blackout freeze, docscout_error_budget_* Prometheus metrics, infra/prometheus/rules/alerts.yml (DocScoutErrorBudgetRapidBurn, DocScoutErrorBudgetElevatedBurn, DocScoutDeploymentFrozen), deploy.yml check, tests/test_error_budget.py |
 | FEAT-093 | fde3f0e | PASS | Bulkhead concurrency isolation & adaptive load shedding, ADR-0084, BulkheadConfig (query=50, ingest=4, eval=2, internal=10), BulkheadManager with asyncio.Semaphore & adaptive queue timeout Little's Law, Starlette BulkheadMiddleware with HTTP 429 & Retry-After, Prometheus metrics (docscout_bulkhead_active_concurrency, docscout_bulkhead_queue_depth, docscout_bulkhead_shed_requests_total), loadtests/load_bulkhead.py (100% search availability, p95 <= 50ms under saturated ingestion), tests/test_bulkhead.py |
 | FEAT-094 | 9a53563 | PASS | Chaos engineering fault injection test harness, ADR-0085, ChaosHarness with 10 fault scenarios (DB timeout, pgvector crash, OCR timeout, embedder failure, corrupt payload, cache failure, pool exhaustion, latency spike, network partition, invalid upload), 100% graceful degradation (0 unhandled exceptions), recovery <= 500ms, make test-chaos, tests/chaos/test_fault_injection.py |
+| FEAT-095 | 1dad5c1 | PASS | Hermetic deterministic test fixtures with seeded randomness, ADR-0086, Clock protocol (SystemClock, FrozenClock with time-travel), seed_everything(0) PRNG freezing, InMemoryVectorDouble, flakiness detection harness, flakiness rate = 0.000 across 10 runs, fixture overhead <= 0.1ms, tests/test_determinism.py |
 
 ---
 
