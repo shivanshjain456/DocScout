@@ -1212,6 +1212,18 @@ ATTESTATIONS_VERIFIED_TOTAL = Counter(
     ["status"],
 )
 
+AUTH_SUCCESSES_TOTAL = Counter(
+    "docscout_auth_successes_total",
+    "Total successful authentications partitioned by scope",
+    ["scope"],
+)
+
+AUTH_FAILURES_TOTAL = Counter(
+    "docscout_auth_failures_total",
+    "Total authentication failures partitioned by failure reason",
+    ["reason"],
+)
+
 
 def route_label(request_scope: Mapping[str, Any]) -> str:
     """The matched route template, or a fixed placeholder.

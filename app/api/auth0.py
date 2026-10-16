@@ -1,21 +1,23 @@
-"""Auth0 OAuth 2.0 / OpenID Connect authentication and server-side RBAC.
+"""Auth0 OAuth 2.0 / OpenID Connect authentication and server-side RBAC (FEAT-099).
 
 Enforces analyst identity and least-privilege role boundaries:
 1. Validates JWT Bearer tokens signed with RS256 using Auth0 JSON Web Key Sets (JWKS).
 2. Supports key rotation dynamically by querying `https://{AUTH0_DOMAIN}/.well-known/jwks.json`.
-3. Validates issuer, audience, lifetime (exp, nbf), and signature.
-4. Derives user identity strictly from validated token claims (`sub`, `email`, custom role claims).
+3. Validates issuer, audience, lifetime (exp, nbf, iat), and signature.
+4. Derives user identity strictly from validated token claims (`sub`, `email`, tenant, scopes).
 5. Synchronizes analyst profiles into PostgreSQL `users` table upon authenticated request.
-6. Enforces strict reader vs administrator authorization boundaries on sensitive operations.
-7. Preserves backward-compatible API-key authentication for CLI and service automation,
-   mapping configured keys to explicit service identities.
+6. Enforces strict RBAC (`compliance:read`, `compliance:admin`, `audit:export`) across endpoints.
+7. Preserves backward-compatible dual-mode API-key authentication for CLI and service automation.
+8. Exposes Prometheus metrics `docscout_auth_successes_total` and `docscout_auth_failures_total`.
 """
 
 from __future__ import annotations
 
 import secrets
 import threading
-from dataclasses import dataclass
+import time
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
@@ -23,13 +25,14 @@ import jwt
 from fastapi import Depends, Header, HTTPException, Request, status
 from jwt import PyJWKClient, PyJWKClientError
 
-from app.api.security import (
-    rate_limiter,
-)
+from app.api.metrics import AUTH_FAILURES_TOTAL, AUTH_SUCCESSES_TOTAL
+from app.api.security import rate_limiter
 from app.config import (
+    Auth0Config,
     auth0_admin_emails,
     auth0_admin_roles,
     auth0_audience,
+    auth0_config,
     auth0_domain,
     auth0_issuer,
     key_fingerprint,
@@ -39,30 +42,106 @@ from app.observability import get_logger
 logger = get_logger("docscout.auth0")
 
 
-@dataclass(frozen=True)
-class UserIdentity:
-    """Authenticated analyst identity and role permissions."""
+def _record_failure(reason: str) -> None:
+    """Safely increment the authentication failure metric."""
+    try:
+        AUTH_FAILURES_TOTAL.labels(reason=reason).inc()
+    except Exception as exc:
+        logger.debug("auth.failure_metric_error", reason=reason, error=str(exc))
 
-    user_id: UUID
-    auth0_sub: str
+
+def _record_success(scope: str) -> None:
+    """Safely increment the authentication success metric."""
+    try:
+        AUTH_SUCCESSES_TOTAL.labels(scope=scope).inc()
+    except Exception as exc:
+        logger.debug("auth.success_metric_error", scope=scope, error=str(exc))
+
+
+def _bind_context(identity: AuthenticatedUser) -> None:
+    """Safely inject identity claims into structlog request context."""
+    try:
+        import structlog.contextvars
+
+        structlog.contextvars.bind_contextvars(
+            user_id=identity.user_id,
+            tenant_id=identity.tenant_id,
+            auth_method=identity.auth_method,
+        )
+    except Exception as exc:
+        logger.debug("auth.contextvars_bind_error", error=str(exc))
+
+
+def _try_parse_pem_public_key(key_val: Any) -> Any:
+    """Pre-parse PEM string/bytes into RSA public key object to eliminate repeated parse overhead."""
+    if isinstance(key_val, str) and "BEGIN" in key_val:
+        from cryptography.hazmat.primitives.serialization import load_pem_public_key
+
+        try:
+            return load_pem_public_key(key_val.encode("utf-8"))
+        except Exception as exc:
+            logger.debug("auth.pem_parse_str_fallback", error=str(exc))
+            return key_val
+    elif isinstance(key_val, bytes) and b"BEGIN" in key_val:
+        from cryptography.hazmat.primitives.serialization import load_pem_public_key
+
+        try:
+            return load_pem_public_key(key_val)
+        except Exception as exc:
+            logger.debug("auth.pem_parse_bytes_fallback", error=str(exc))
+            return key_val
+    return key_val
+
+
+@dataclass
+class AuthenticatedUser:
+    """Authenticated analyst or service workload identity and RBAC permissions."""
+
+    user_id: str
     email: str
-    role: str  # 'reader' | 'admin'
+    tenant_id: str = "default-tenant"
+    scopes: list[str] = field(default_factory=list)
+    is_admin: bool = False
+    role: str = "reader"
+    auth0_sub: str = ""
     display_name: str | None = None
     is_service_key: bool = False
+    auth_method: str = "oidc"  # 'oidc' | 'api_key'
+
+    def has_scope(self, scope: str) -> bool:
+        """Check whether user holds the requested scope or administrative override."""
+        return self.is_admin or scope in self.scopes or "admin" in self.scopes
 
     @property
-    def is_admin(self) -> bool:
-        return self.role == "admin"
+    def user_uuid(self) -> UUID:
+        """Parse or derive a valid UUID representation of the user ID."""
+        try:
+            return UUID(self.user_id)
+        except ValueError:
+            import hashlib
+
+            h = hashlib.sha256(self.user_id.encode("utf-8")).digest()[:16]
+            return UUID(bytes=h)
+
+
+# Backward compatibility alias
+UserIdentity = AuthenticatedUser
 
 
 class TokenVerificationError(HTTPException):
     """Raised when token validation fails. Preserves WWW-Authenticate headers."""
 
-    def __init__(self, detail: str, status_code: int = status.HTTP_401_UNAUTHORIZED) -> None:
+    def __init__(
+        self,
+        detail: str,
+        status_code: int = status.HTTP_401_UNAUTHORIZED,
+        headers: dict[str, str] | None = None,
+    ) -> None:
+        auth_headers = headers or {"WWW-Authenticate": 'Bearer error="invalid_token"'}
         super().__init__(
             status_code=status_code,
             detail=detail,
-            headers={"WWW-Authenticate": 'Bearer error="invalid_token"'},
+            headers=auth_headers,
         )
 
 
@@ -76,6 +155,80 @@ class InsufficientPermissionsError(HTTPException):
         )
 
 
+def parse_scopes_and_roles(payload: dict[str, Any]) -> tuple[list[str], bool, str]:
+    """Extract fine-grained scopes, admin flag, and display role from JWT claims."""
+    extracted_scopes: set[str] = set()
+
+    # 1. Standard OAuth2 space-delimited scope string
+    raw_scope = payload.get("scope")
+    if isinstance(raw_scope, str):
+        for s in raw_scope.split():
+            clean = s.strip()
+            if clean:
+                extracted_scopes.add(clean)
+
+    # 2. Auth0 API permissions array
+    raw_permissions = payload.get("permissions")
+    if isinstance(raw_permissions, list):
+        for p in raw_permissions:
+            if isinstance(p, str) and p.strip():
+                extracted_scopes.add(p.strip())
+
+    # 3. Custom roles or custom scopes claims
+    for claim_key in (
+        "https://docscout.com/scopes",
+        "https://docscout.local/scopes",
+        "https://docscout.com/roles",
+        "https://docscout.local/roles",
+        "roles",
+    ):
+        val = payload.get(claim_key)
+        if isinstance(val, list):
+            for item in val:
+                if isinstance(item, str) and item.strip():
+                    extracted_scopes.add(item.strip())
+        elif isinstance(val, str) and val.strip():
+            extracted_scopes.add(val.strip())
+
+    admin_roles = auth0_admin_roles()
+    admin_emails = auth0_admin_emails()
+    email = str(payload.get("email") or payload.get("https://docscout.local/email") or "").lower()
+
+    is_admin = (
+        "admin" in extracted_scopes
+        or "compliance:admin" in extracted_scopes
+        or bool(payload.get("is_admin"))
+        or any(r in extracted_scopes for r in admin_roles)
+        or (bool(email) and email in admin_emails)
+    )
+
+    if is_admin:
+        extracted_scopes.add("compliance:admin")
+        extracted_scopes.add("compliance:read")
+        extracted_scopes.add("audit:export")
+        role = "admin"
+    else:
+        extracted_scopes.add("compliance:read")
+        role = "reader"
+
+    return sorted(extracted_scopes), is_admin, role
+
+
+def parse_tenant_id(payload: dict[str, Any]) -> str:
+    """Extract tenant identifier from enterprise claims, defaulting safely."""
+    for key in (
+        "https://docscout.com/tenant_id",
+        "https://docscout.local/tenant_id",
+        "tenant_id",
+        "org_id",
+        "organization_id",
+    ):
+        val = payload.get(key)
+        if isinstance(val, str) and val.strip():
+            return val.strip()
+    return "default-tenant"
+
+
 class Auth0TokenVerifier:
     """RS256 JWT verifier with cached JWKS retrieval and key rotation support."""
 
@@ -84,11 +237,17 @@ class Auth0TokenVerifier:
         domain: str | None = None,
         audience: str | None = None,
         issuer: str | None = None,
+        jwks_cache_ttl_seconds: int = 3600,
+        config: Auth0Config | None = None,
     ) -> None:
-        self.domain = (domain or auth0_domain()).strip()
-        self.audience = (audience or auth0_audience()).strip()
-        self.issuer = (issuer or auth0_issuer()).strip()
+        cfg = config or auth0_config()
+        self.domain = (domain or cfg.domain or auth0_domain()).strip()
+        self.audience = (audience or cfg.audience or auth0_audience()).strip()
+        self.issuer = (issuer or cfg.issuer or auth0_issuer()).strip()
+        self.jwks_cache_ttl_seconds = jwks_cache_ttl_seconds or cfg.jwks_cache_ttl_seconds
+
         self._jwks_client: PyJWKClient | None = None
+        self._key_cache: dict[str, tuple[Any, float]] = {}
         self._lock = threading.Lock()
         self._jwks_url: str = ""
         if self.domain:
@@ -100,21 +259,61 @@ class Auth0TokenVerifier:
             if self._jwks_client is None:
                 if not self._jwks_url:
                     raise TokenVerificationError("Auth0 domain is not configured")
-                # PyJWKClient supports caching and key refresh on unknown kid
-                self._jwks_client = PyJWKClient(self._jwks_url, cache_jwk_set=True, lifespan=3600)
+                self._jwks_client = PyJWKClient(
+                    self._jwks_url,
+                    cache_jwk_set=True,
+                    cache_keys=True,
+                    lifespan=float(self.jwks_cache_ttl_seconds),
+                )
             return self._jwks_client
+
+    def _resolve_signing_key(self, token: str, header: dict[str, Any] | None = None) -> Any:
+        """Resolve signing key from in-memory cache (< 0.05ms) or PyJWKClient."""
+        now = time.monotonic()
+        try:
+            unverified_header = header or jwt.get_unverified_header(token)
+            kid = unverified_header.get("kid")
+        except Exception as exc:
+            _record_failure("malformed_token")
+            raise TokenVerificationError(f"malformed token header: {exc}") from exc
+
+        if kid:
+            with self._lock:
+                cached = self._key_cache.get(kid)
+                if cached:
+                    key_obj, expiry = cached
+                    if now < expiry:
+                        return key_obj
+
+        client = self._get_client()
+        try:
+            signing_key = client.get_signing_key_from_jwt(token)
+            key_val = _try_parse_pem_public_key(signing_key.key)
+            if kid:
+                with self._lock:
+                    self._key_cache[kid] = (key_val, now + self.jwks_cache_ttl_seconds)
+            return key_val
+        except Exception as exc:
+            _record_failure("jwks_resolution_error")
+            raise TokenVerificationError(f"unable to resolve signing key: {exc}") from exc
 
     def verify_token(self, token: str) -> dict[str, Any]:
         """Verify an RS256 token against Auth0 JWKS and return claims payload."""
         if not token:
+            _record_failure("missing_token")
             raise TokenVerificationError("missing bearer token")
 
         try:
-            client = self._get_client()
-            signing_key = client.get_signing_key_from_jwt(token)
+            header = jwt.get_unverified_header(token)
+            alg = header.get("alg")
+            if alg != "RS256":
+                _record_failure("invalid_algorithm")
+                raise TokenVerificationError(f"unsupported algorithm '{alg}'; RS256 required")
+
+            key_val = self._resolve_signing_key(token, header=header)
             payload: dict[str, Any] = jwt.decode(
                 token,
-                signing_key.key,
+                key_val,
                 algorithms=["RS256"],
                 audience=self.audience if self.audience else None,
                 issuer=self.issuer if self.issuer else None,
@@ -129,14 +328,28 @@ class Auth0TokenVerifier:
             )
             return payload
         except jwt.ExpiredSignatureError as exc:
-            raise TokenVerificationError("token has expired") from exc
+            _record_failure("expired_token")
+            raise TokenVerificationError(
+                "token has expired",
+                headers={
+                    "WWW-Authenticate": (
+                        'Bearer error="invalid_token", error_description="The token has expired"'
+                    )
+                },
+            ) from exc
         except jwt.InvalidAudienceError as exc:
+            _record_failure("invalid_audience")
             raise TokenVerificationError(
                 "token audience does not match configured audience"
             ) from exc
         except jwt.InvalidIssuerError as exc:
+            _record_failure("invalid_issuer")
             raise TokenVerificationError("token issuer does not match configured issuer") from exc
+        except jwt.InvalidSignatureError as exc:
+            _record_failure("invalid_signature")
+            raise TokenVerificationError("invalid token signature") from exc
         except (PyJWKClientError, jwt.PyJWTError) as exc:
+            _record_failure("invalid_token")
             raise TokenVerificationError(f"invalid bearer token: {exc}") from exc
 
 
@@ -159,17 +372,16 @@ def sync_user_in_db(
     email: str,
     display_name: str | None = None,
     claim_roles: list[str] | None = None,
-) -> UserIdentity:
-    """Synchronize user record in PostgreSQL and return UserIdentity."""
-    admin_emails = auth0_admin_emails()
-    admin_roles = auth0_admin_roles()
-
-    has_admin_claim = False
-    if claim_roles:
-        has_admin_claim = any(r.lower() in admin_roles for r in claim_roles)
-
-    is_admin = has_admin_claim or (email.lower() in admin_emails)
-    assigned_role = "admin" if is_admin else "reader"
+    tenant_id: str = "default-tenant",
+) -> AuthenticatedUser:
+    """Synchronize user record in PostgreSQL and return AuthenticatedUser."""
+    scopes, is_admin, role = parse_scopes_and_roles(
+        {
+            "email": email,
+            "roles": claim_roles or [],
+            "tenant_id": tenant_id,
+        }
+    )
 
     with pool.connection() as conn:
         with conn.transaction():
@@ -183,9 +395,8 @@ def sync_user_in_db(
             ).fetchone()
 
             if row is not None:
-                user_id = UUID(str(row[0]))
+                user_id = str(row[0])
                 existing_role = str(row[3])
-                # Promote to admin if email or claim now grants it
                 final_role = "admin" if (is_admin or existing_role == "admin") else "reader"
                 if final_role != existing_role or (display_name and display_name != row[4]):
                     conn.execute(
@@ -196,12 +407,15 @@ def sync_user_in_db(
                                updated_at = now()
                          WHERE user_id = %s
                         """,
-                        (final_role, display_name, user_id),
+                        (final_role, display_name, UUID(user_id)),
                     )
-                return UserIdentity(
+                return AuthenticatedUser(
                     user_id=user_id,
                     auth0_sub=auth0_sub,
                     email=str(row[2]),
+                    tenant_id=tenant_id,
+                    scopes=scopes,
+                    is_admin=(final_role == "admin"),
                     role=final_role,
                     display_name=str(row[4]) if row[4] else display_name,
                 )
@@ -213,16 +427,19 @@ def sync_user_in_db(
                 VALUES (%s, %s, %s, %s)
                 RETURNING user_id, auth0_sub, email, role, display_name
                 """,
-                (auth0_sub, email, display_name, assigned_role),
+                (auth0_sub, email, display_name, role),
             ).fetchone()
 
             if inserted is None:
                 raise RuntimeError("failed to insert user")
 
-            return UserIdentity(
-                user_id=UUID(str(inserted[0])),
+            return AuthenticatedUser(
+                user_id=str(inserted[0]),
                 auth0_sub=str(inserted[1]),
                 email=str(inserted[2]),
+                tenant_id=tenant_id,
+                scopes=scopes,
+                is_admin=is_admin,
                 role=str(inserted[3]),
                 display_name=str(inserted[4]) if inserted[4] else None,
             )
@@ -232,7 +449,7 @@ def authenticate_request(
     request: Request,
     authorization: str | None = Header(None, alias="Authorization"),
     x_api_key: str | None = Header(None, alias="X-API-Key"),
-) -> UserIdentity:
+) -> AuthenticatedUser:
     """Authenticate incoming HTTP request via Auth0 Bearer token or fallback API Key."""
     # 1. Bearer Token path (Auth0 OAuth 2.0 / OIDC)
     if authorization and authorization.startswith("Bearer "):
@@ -242,6 +459,7 @@ def authenticate_request(
 
         sub = payload.get("sub")
         if not sub or not isinstance(sub, str):
+            _record_failure("missing_sub")
             raise TokenVerificationError("token missing sub claim")
 
         email = payload.get("email") or payload.get("https://docscout.local/email")
@@ -254,31 +472,33 @@ def authenticate_request(
             or payload.get("https://docscout.local/name")
         )
 
-        roles: list[str] = []
-        raw_roles = (
-            payload.get("https://docscout.local/roles")
-            or payload.get("roles")
-            or payload.get("permissions")
-        )
-        if isinstance(raw_roles, list):
-            roles = [str(r) for r in raw_roles]
+        tenant_id = parse_tenant_id(payload)
+        scopes, is_admin, role = parse_scopes_and_roles(payload)
 
         pool = getattr(request.app.state, "pool", None)
-        if pool is None:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="database connection pool not available",
+        if pool is not None:
+            identity = sync_user_in_db(
+                pool=pool,
+                auth0_sub=sub,
+                email=email,
+                display_name=str(display_name) if display_name else None,
+                claim_roles=scopes,
+                tenant_id=tenant_id,
+            )
+        else:
+            identity = AuthenticatedUser(
+                user_id=sub,
+                auth0_sub=sub,
+                email=email,
+                tenant_id=tenant_id,
+                scopes=scopes,
+                is_admin=is_admin,
+                role=role,
+                display_name=str(display_name) if display_name else None,
+                auth_method="oidc",
             )
 
-        identity = sync_user_in_db(
-            pool=pool,
-            auth0_sub=sub,
-            email=email,
-            display_name=str(display_name) if display_name else None,
-            claim_roles=roles,
-        )
-
-        # Apply rate limiting per user subject
+        # Rate limiting per user subject
         allowed, remaining, retry_after = rate_limiter.check(f"user:{identity.auth0_sub}")
         if not allowed:
             raise HTTPException(
@@ -288,9 +508,16 @@ def authenticate_request(
             )
         request.state.rate_limit_remaining = remaining
         request.state.user = identity
+        request.state.tenant_id = identity.tenant_id
+
+        _bind_context(identity)
+
+        for s in identity.scopes:
+            _record_success(s)
+
         return identity
 
-    # 2. Backward compatibility: X-API-Key or Bearer <api_key>
+    # 2. Backward compatibility fallback: X-API-Key or Bearer <api_key>
     candidate_key: str | None = x_api_key
     if not candidate_key and authorization and not authorization.startswith("Bearer "):
         candidate_key = authorization.strip()
@@ -304,6 +531,7 @@ def authenticate_request(
                 break
 
         if matched is None:
+            _record_failure("invalid_api_key")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="invalid API key or bearer token",
@@ -320,8 +548,8 @@ def authenticate_request(
             )
         request.state.rate_limit_remaining = remaining
 
-        # Service identity for automated systems / test harness
         service_sub = f"system:api-key:{fingerprint}"
+        admin_scopes = ["compliance:read", "compliance:admin", "audit:export"]
         pool = getattr(request.app.state, "pool", None)
         if pool is not None:
             identity = sync_user_in_db(
@@ -329,30 +557,44 @@ def authenticate_request(
                 auth0_sub=service_sub,
                 email=f"service-{fingerprint}@docscout.internal",
                 display_name=f"Service Key ({fingerprint})",
-                claim_roles=["admin"],  # Service key holds operational admin capability
+                claim_roles=["admin"],
+                tenant_id="default-tenant",
             )
-            identity = UserIdentity(
+            identity = AuthenticatedUser(
                 user_id=identity.user_id,
                 auth0_sub=identity.auth0_sub,
                 email=identity.email,
-                role=identity.role,
+                tenant_id="default-tenant",
+                scopes=admin_scopes,
+                is_admin=True,
+                role="admin",
                 display_name=identity.display_name,
                 is_service_key=True,
+                auth_method="api_key",
             )
         else:
-            # Fallback when database is disconnected (e.g. mock probe)
-            identity = UserIdentity(
-                user_id=UUID("00000000-0000-0000-0000-000000000000"),
+            identity = AuthenticatedUser(
+                user_id=f"service-{fingerprint[:8]}",
                 auth0_sub=service_sub,
-                email=f"service-{fingerprint}@docscout.internal",
+                email=f"service-{fingerprint[:8]}@docscout.internal",
+                tenant_id="default-tenant",
+                scopes=admin_scopes,
+                is_admin=True,
                 role="admin",
-                display_name=f"Service Key ({fingerprint})",
+                display_name=f"Service Key ({fingerprint[:8]})",
                 is_service_key=True,
+                auth_method="api_key",
             )
 
         request.state.user = identity
+        request.state.tenant_id = identity.tenant_id
+
+        _bind_context(identity)
+        _record_success("api_key")
+
         return identity
 
+    _record_failure("missing_token")
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="missing Authorization Bearer token or X-API-Key header",
@@ -364,17 +606,35 @@ def require_authenticated_user(
     request: Request,
     authorization: str | None = Header(None, alias="Authorization"),
     x_api_key: str | None = Header(None, alias="X-API-Key"),
-) -> UserIdentity:
+) -> AuthenticatedUser:
     """Dependency: Require a valid Auth0 analyst identity or authorized service key."""
     return authenticate_request(request, authorization, x_api_key)
 
 
 def require_admin_user(
-    user: UserIdentity = Depends(require_authenticated_user),
-) -> UserIdentity:
+    user: AuthenticatedUser = Depends(require_authenticated_user),
+) -> AuthenticatedUser:
     """Dependency: Enforce administrator privileges on protected operational endpoints."""
     if not user.is_admin:
+        _record_failure("insufficient_scope")
         raise InsufficientPermissionsError(
             f"user {user.email} (sub: {user.auth0_sub}) has role '{user.role}'; 'admin' required"
         )
     return user
+
+
+def require_scope(required_scope: str) -> Callable[[AuthenticatedUser], AuthenticatedUser]:
+    """Dependency factory: Enforce required RBAC scope on route."""
+
+    def _scope_dependency(
+        user: AuthenticatedUser = Depends(require_authenticated_user),
+    ) -> AuthenticatedUser:
+        if not user.has_scope(required_scope):
+            _record_failure("insufficient_scope")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Forbidden: insufficient permissions, required scope '{required_scope}'",
+            )
+        return user
+
+    return _scope_dependency

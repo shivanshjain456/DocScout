@@ -3831,7 +3831,7 @@ def get_subscription_endpoint(
 
     state = request.app.state
     engine = DigestEngine(state.pool)
-    sub = engine.get_user_subscription(user.user_id)
+    sub = engine.get_user_subscription(user.user_uuid)
     if sub is None:
         raise StarletteHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -3878,7 +3878,7 @@ def create_subscription_endpoint(
     client_ip = request.client.host if request.client else None
     engine = DigestEngine(state.pool)
     sub = engine.upsert_subscription(
-        user_id=user.user_id,
+        user_id=user.user_uuid,
         email=user.email,
         frequency=payload.frequency,
         topics=payload.topics,

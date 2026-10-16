@@ -179,6 +179,37 @@ def auth0_admin_emails() -> frozenset[str]:
     return frozenset(email.strip().lower() for email in raw.split(",") if email.strip())
 
 
+@dataclass(frozen=True)
+class Auth0Config:
+    """Configuration for Auth0 OIDC RS256 JWT authentication and JWKS cache."""
+
+    domain: str = ""
+    audience: str = "https://api.docscout.local"
+    issuer: str = ""
+    jwks_cache_ttl_seconds: int = 3600
+    enabled: bool = False
+
+
+def auth0_config() -> Auth0Config:
+    """Return structured Auth0Config instance from environment."""
+    load_dotenv()
+    domain = auth0_domain()
+    audience = auth0_audience()
+    issuer = auth0_issuer()
+    try:
+        ttl = int(os.environ.get("AUTH0_JWKS_CACHE_TTL_SECONDS", "3600").strip())
+    except ValueError:
+        ttl = 3600
+    enabled = bool(domain and issuer)
+    return Auth0Config(
+        domain=domain,
+        audience=audience,
+        issuer=issuer,
+        jwks_cache_ttl_seconds=ttl,
+        enabled=enabled,
+    )
+
+
 # --- Brevo Transactional Email Configuration ---
 
 DEFAULT_BREVO_API_URL = "https://api.brevo.com/v3"
