@@ -66,7 +66,13 @@ def parse_diff_lines(diff_text: str) -> dict[str, set[int]]:
 
     for line in diff_text.splitlines():
         if line.startswith("diff --git "):
-            current_file = None
+            parts = line.split()
+            if len(parts) >= 4 and parts[3].startswith("b/"):
+                current_file = parts[3][2:].strip()
+                if current_file not in modified_lines:
+                    modified_lines[current_file] = set()
+            else:
+                current_file = None
         elif line.startswith("+++ b/"):
             raw_path = line[6:].strip()
             if raw_path != "/dev/null":

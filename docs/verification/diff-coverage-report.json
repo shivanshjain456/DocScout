@@ -1,0 +1,20 @@
+{
+  "lines_modified": 6,
+  "lines_covered": 5,
+  "diff_coverage_pct": 83.33,
+  "uncovered_lines": [
+    51
+  ],
+  "passed": false,
+  "uncovered_by_file": {
+    "app/c.py": [
+      51
+    ]
+  },
+  "files_evaluated": [
+    "app/a.py",
+    "app/b.py",
+    "app/c.py"
+  ],
+  "summary": "Diff coverage: 83.3% (5/6 executable lines covered). Required: 100.0%."
+}

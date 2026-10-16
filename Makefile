@@ -2,7 +2,7 @@
 SHELL := /bin/bash
 TS := $(shell date -u +%Y%m%dT%H%M%SZ)
 
-.PHONY: help setup dev test test-counterfactual test-chaos test-mutation lint typecheck secret-scan eval load deploy destroy verify-setup down \
+.PHONY: help setup dev test test-counterfactual test-chaos test-mutation diff-coverage lint typecheck secret-scan eval load deploy destroy verify-setup down \
 	gold-lint gold-pin gold-review gold-stats eval-quick eval-gate eval-baseline \
 	mutation mutation-clean audit-deps \
 	serve bench \
@@ -73,6 +73,9 @@ test-chaos:  ## run chaos engineering fault injection test harness (FEAT-094)
 
 test-mutation:  ## run mutation score ratcheting CI gate (FEAT-096)
 	uv run python scripts/diff_mutation.py
+
+diff-coverage:  ## run differential patch coverage gate (FEAT-097)
+	uv run python scripts/diff_coverage.py
 
 lint:  ## ruff check + format check
 	uv run ruff check .
