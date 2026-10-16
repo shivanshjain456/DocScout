@@ -124,7 +124,7 @@
 - [x] FEAT-094: Chaos Engineering Fault Injection Test Harness
 - [x] FEAT-095: Hermetic Deterministic Test Fixtures with Seeded Randomness
 - [x] FEAT-096: Mutation Score Ratcheting CI Gate
-- [ ] FEAT-097: Differential / Patch Coverage Gating (100% Diff Coverage)
+- [x] FEAT-097: Differential / Patch Coverage Gating (100% Diff Coverage)
 - [ ] FEAT-098: Immutable Cryptographic Audit Trail (SLSA Level 3 Provenance)
 - [ ] FEAT-099: OIDC-Federated Zero-Trust Identity & Enterprise RBAC
 - [ ] FEAT-100: High-Cardinality Telemetry & Cost-Per-Query Accounting
@@ -231,6 +231,7 @@
 | FEAT-094 | 9a53563 | PASS | Chaos engineering fault injection test harness, ADR-0085, ChaosHarness with 10 fault scenarios (DB timeout, pgvector crash, OCR timeout, embedder failure, corrupt payload, cache failure, pool exhaustion, latency spike, network partition, invalid upload), 100% graceful degradation (0 unhandled exceptions), recovery <= 500ms, make test-chaos, tests/chaos/test_fault_injection.py |
 | FEAT-095 | 1dad5c1 | PASS | Hermetic deterministic test fixtures with seeded randomness, ADR-0086, Clock protocol (SystemClock, FrozenClock with time-travel), seed_everything(0) PRNG freezing, InMemoryVectorDouble, flakiness detection harness, flakiness rate = 0.000 across 10 runs, fixture overhead <= 0.1ms, tests/test_determinism.py |
 | FEAT-096 | 3662dc5 | PASS | Mutation score ratcheting CI gate, ADR-0087, MutationGateConfig (min_score=0.784, diff_only=True), scripts/diff_mutation.py AST-based mutant generator and scoped test execution, ratchet policy delta >= 0.000, docs/verification/mutation-report.json committed artifact, Makefile test-mutation target, .github/workflows/ci.yml gate step, tests/test_mutation_gate.py |
+| FEAT-097 | 404c6fb | PASS | Differential / patch coverage gating, ADR-0088, DiffCoverageConfig (required_percentage=100.0), DiffCoverageResult, Cobertura XML and git diff mapping, zero uncovered modified executable lines enforcement, docs/verification/diff-coverage-report.json committed artifact, Makefile diff-coverage target, .github/workflows/ci.yml quality gate step, tests/test_diff_coverage.py |
 
 ---
 
