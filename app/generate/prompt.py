@@ -52,8 +52,11 @@ def format_evidence_context(
             f' presentation_rank="{p.presentation_rank}"' if p.presentation_rank is not None else ""
         )
         content_text = getattr(p, "expanded_text", None) or p.text
+        from app.retrieval.hidden_channel_sanitizer import sanitize_hidden_channels
+
+        clean_content = sanitize_hidden_channels(content_text)
         # Sanitize any closing tag attempts within the chunk text to prevent delimiter breakout
-        safe_text = content_text.replace("</retrieved_evidence>", "[ESCAPED_CLOSING_TAG]").replace(
+        safe_text = clean_content.replace("</retrieved_evidence>", "[ESCAPED_CLOSING_TAG]").replace(
             "</document_chunk>", "[ESCAPED_CHUNK_TAG]"
         )
         chunks_xml.append(
