@@ -4,14 +4,14 @@
   "subject": {
     "name": "docscout-release-bundle",
     "digest": {
-      "sha256": "b21da30bc267437ec604293e932a9698396855a8b1bb447857d702f6a749d24a"
+      "sha256": "29da017bd9d9c4800dfd62fb81eaa6410fc76e56b0092b8207bf3b2e595b37cc"
     }
   },
   "materials": [
     {
       "uri": "docs/security/sbom.cdx.json",
       "digest": {
-        "sha256": "eb518c95d0d8fa100cb86781cacf7a4674f22434b03a0467f56df25c18bf8b18"
+        "sha256": "3aecd3c294f994fbd29c94826e2e44a887202314107d51565ff33dc8c32c1d88"
       }
     },
     {
@@ -23,9 +23,9 @@
   ],
   "invocation": {
     "environment": "ci",
-    "timestamp": "2026-10-19T23:20:49Z"
+    "timestamp": "2026-10-20T08:25:08Z"
   },
-  "signature": "hezFAny8PQFenSHpFj5dYCz42MYdz7eSNcFS7Z2EPTxYV3OkGVzRLnDiF25FhKR90UUcxdBedhZbJ7awTCulDQ==",
+  "signature": "MgbWk8n/YjjxWNBc/7CGWXFq7sxo0fqZ9nn4ywhPvlKcd/9U2nLObxNk9dxLfH+VyRwzjjLBBLu/2p3eWbU2Cg==",
   "signer_identity": "docscout-oidc-signer",
-  "created_at": "2026-10-19T23:20:49Z"
+  "created_at": "2026-10-20T08:25:08Z"
 }

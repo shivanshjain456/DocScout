@@ -289,6 +289,9 @@ def search_client() -> Iterator[Any]:
     from app.api.security import load_keys
     from tests.conftest import PRIMARY_KEY, ROTATION_KEY
 
+    if not os.environ.get("DATABASE_URL"):
+        pytest.skip("no database URL configured")
+
     os.environ["DOCSCOUT_API_KEY"] = f"{PRIMARY_KEY},{ROTATION_KEY}"
     fastapi_app.state.api_keys = load_keys()
     with TestClient(fastapi_app) as c:
