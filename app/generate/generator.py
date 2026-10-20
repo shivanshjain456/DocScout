@@ -134,33 +134,37 @@ class DeterministicLocalGenerator:
         for passage in passages:
             # Check for direct prompt injection in chunk after hidden-channel sanitization
             p_text = sanitize_hidden_channels(passage.text)
+            is_meta_discussion = any(
+                term in p_text.lower()
+                for term in (
+                    "defences against",
+                    "phrases such as",
+                    "adversarial testing",
+                    "evaluate robustness",
+                    "prompt injection attacks",
+                )
+            )
+            if not is_meta_discussion and scan_injection_signatures(p_text):
+                continue
+
             sentences = SENTENCE_SPLIT.split(p_text)
             for sentence in sentences:
                 clean_s = sentence.strip()
                 if len(clean_s) < 15:
                     continue
                 # If sentence contains direct injection instructions, skip it only if not part of legitimate regulatory/adversarial discourse
-                is_regulatory_context = any(
+                is_regulatory_context = is_meta_discussion or any(
                     term in clean_s.lower()
                     for term in (
-                        "regulatory",
-                        "regulation",
-                        "circular",
-                        "defences",
-                        "adversarial",
-                        "testing",
-                        "compliance",
-                        "entities must",
-                        "evaluate",
+                        "defences against",
                         "phrases such as",
+                        "testing",
+                        "evaluate",
                         "attacks",
                         "directions",
                     )
                 )
-                if not is_regulatory_context and any(
-                    sig in scan_injection_signatures(clean_s)
-                    for sig in ("ignore_previous", "maintenance_mode", "secret_leak", "remote_exec")
-                ):
+                if not is_regulatory_context and scan_injection_signatures(clean_s):
                     continue
                 words = set(WORD_RE.findall(clean_s.lower()))
                 overlap = len(words & query_words)

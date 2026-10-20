@@ -78,3 +78,19 @@ def sanitize_hidden_channels(text: str) -> str:
             res_chars.append(ch)
 
     return "".join(res_chars)
+
+
+def detect_concealed_characters(text: str) -> list[str]:
+    """Inspect text and return list of detected concealed/smuggled character classes."""
+    detected: list[str] = []
+    if _ZERO_WIDTH_RE.search(text):
+        detected.append("zero_width")
+    if _UNICODE_TAGS_RE.search(text):
+        detected.append("unicode_tags")
+    if _BIDI_RE.search(text):
+        detected.append("bidi_overrides")
+    if _ANSI_ESCAPE_RE.search(text):
+        detected.append("ansi_escapes")
+    if _CONTROL_CHARS_RE.search(text):
+        detected.append("control_chars")
+    return detected

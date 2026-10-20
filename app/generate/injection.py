@@ -17,12 +17,24 @@ DEFAULT_CANARY_FORBIDDEN = (
 )
 
 INJECTION_SIGNATURES: tuple[tuple[str, re.Pattern[str]], ...] = (
-    ("ignore_previous", re.compile(r"ignore\s+all\s+previous\s+instructions", re.IGNORECASE)),
+    (
+        "ignore_previous",
+        re.compile(
+            r"ignore\s+(?:all\s+)?(?:previous\s+instructions|requirements|rules)", re.IGNORECASE
+        ),
+    ),
     (
         "maintenance_mode",
         re.compile(r"(?:enter|switch\s+to|in)\s+maintenance\s+mode", re.IGNORECASE),
     ),
-    ("system_override", re.compile(r"(?:system|audit)\s+override", re.IGNORECASE)),
+    (
+        "system_override",
+        re.compile(r"(?:system|audit|directive)\s+(?:directive\s+)?override", re.IGNORECASE),
+    ),
+    (
+        "output_hijack",
+        re.compile(r"(?:output|respond\s+with|print|say):\s*['\"][^'\"]*['\"]", re.IGNORECASE),
+    ),
     (
         "secret_leak",
         re.compile(r"(?:cat|print|read|show)\s+(?:\.env|credentials|secret)", re.IGNORECASE),
