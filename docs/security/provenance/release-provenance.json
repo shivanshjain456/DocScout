@@ -4,28 +4,28 @@
   "subject": {
     "name": "docscout-release-bundle",
     "digest": {
-      "sha256": "2878b67a101843ae85e4882293c7fdf2c5cf0d7416b6ebb5fd847e3401023bb2"
+      "sha256": "b21da30bc267437ec604293e932a9698396855a8b1bb447857d702f6a749d24a"
     }
   },
   "materials": [
     {
       "uri": "docs/security/sbom.cdx.json",
       "digest": {
-        "sha256": "d03313950b2f3d76d485edfc21ab7f6ce76d101d1bdf8549335fa6737de7e4cc"
+        "sha256": "eb518c95d0d8fa100cb86781cacf7a4674f22434b03a0467f56df25c18bf8b18"
       }
     },
     {
       "uri": "uv.lock",
       "digest": {
-        "sha256": "e887ac455d978a2abd971acf419a983e95337e8c8d63993082726375cdbd23d3"
+        "sha256": "ea4cf9041fc769d3e2ed5dacccd1935ff2fe3f29fe39e68650327cffb9eb2cdd"
       }
     }
   ],
   "invocation": {
     "environment": "ci",
-    "timestamp": "2026-10-16T11:05:26Z"
+    "timestamp": "2026-10-19T23:20:49Z"
   },
-  "signature": "nj07aYIA6tH4tVtbSqt09RRPbp4bzWYK9VKH9V0fhLg8eoZO8bNO7BdeDp4/h5EDcwCSoETh5ogLoCl0Xyx7Bg==",
+  "signature": "hezFAny8PQFenSHpFj5dYCz42MYdz7eSNcFS7Z2EPTxYV3OkGVzRLnDiF25FhKR90UUcxdBedhZbJ7awTCulDQ==",
   "signer_identity": "docscout-oidc-signer",
-  "created_at": "2026-10-16T11:05:26Z"
+  "created_at": "2026-10-19T23:20:49Z"
 }
