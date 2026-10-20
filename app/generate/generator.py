@@ -144,8 +144,6 @@ class DeterministicLocalGenerator:
                     "prompt injection attacks",
                 )
             )
-            if not is_meta_discussion and scan_injection_signatures(p_text):
-                continue
 
             sentences = SENTENCE_SPLIT.split(p_text)
             for sentence in sentences:
