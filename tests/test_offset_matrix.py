@@ -143,7 +143,6 @@ def create_test_chunk(conn: psycopg.Connection[Any]) -> UUID:
         row_chunk = cur.fetchone()
         assert row_chunk is not None
         ret_chunk_id: UUID = row_chunk[0]
-    conn.commit()
     return ret_chunk_id
 
 

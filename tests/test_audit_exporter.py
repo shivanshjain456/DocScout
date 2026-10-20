@@ -271,68 +271,66 @@ def test_performance_sla_50_passages_under_3_seconds(
 def test_api_export_evidence_and_download_flow() -> None:
     os.environ["DOCSCOUT_API_KEY"] = f"{PRIMARY_KEY}"
     app.state.api_keys = load_keys()
-    client = TestClient(app)
+    with TestClient(app) as client:
+        payload = {
+            "query": "Regulatory compliance audit",
+            "passage_ids": ["clause-uuid-1", "clause-uuid-2"],
+            "format": "ZIP",
+            "audit_reference_id": "AUDIT-API-2026",
+            "include_control_mappings": True,
+        }
 
-    payload = {
-        "query": "Regulatory compliance audit",
-        "passage_ids": ["clause-uuid-1", "clause-uuid-2"],
-        "format": "ZIP",
-        "audit_reference_id": "AUDIT-API-2026",
-        "include_control_mappings": True,
-    }
+        resp = client.post(
+            "/v1/compliance/export-evidence",
+            json=payload,
+            headers=auth(PRIMARY_KEY),
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["items_included"] == 2
+        assert data["format"] == "ZIP"
+        assert data["audit_reference_id"] == "AUDIT-API-2026"
+        assert data["download_url"].startswith("/v1/compliance/export-download/")
+        assert len(data["file_sha256"]) == 64
 
-    resp = client.post(
-        "/v1/compliance/export-evidence",
-        json=payload,
-        headers=auth(PRIMARY_KEY),
-    )
-    assert resp.status_code == 200, resp.text
-    data = resp.json()
-    assert data["items_included"] == 2
-    assert data["format"] == "ZIP"
-    assert data["audit_reference_id"] == "AUDIT-API-2026"
-    assert data["download_url"].startswith("/v1/compliance/export-download/")
-    assert len(data["file_sha256"]) == 64
+        # Download file
+        download_url = data["download_url"]
+        dl_resp = client.get(download_url, headers=auth(PRIMARY_KEY))
+        assert dl_resp.status_code == 200
+        assert dl_resp.headers["Content-Type"] == "application/zip"
+        assert dl_resp.headers["X-DocScout-SHA256"] == data["file_sha256"]
 
-    # Download file
-    download_url = data["download_url"]
-    dl_resp = client.get(download_url, headers=auth(PRIMARY_KEY))
-    assert dl_resp.status_code == 200
-    assert dl_resp.headers["Content-Type"] == "application/zip"
-    assert dl_resp.headers["X-DocScout-SHA256"] == data["file_sha256"]
-
-    # Verify download zip bytes
-    zip_bytes = dl_resp.content
-    assert hashlib.sha256(zip_bytes).hexdigest() == data["file_sha256"]
+        # Verify download zip bytes
+        zip_bytes = dl_resp.content
+        assert hashlib.sha256(zip_bytes).hexdigest() == data["file_sha256"]
 
 
 def test_api_export_validation_errors() -> None:
     os.environ["DOCSCOUT_API_KEY"] = f"{PRIMARY_KEY}"
     app.state.api_keys = load_keys()
-    client = TestClient(app)
+    with TestClient(app) as client:
+        # Empty passage_ids
+        resp_empty = client.post(
+            "/v1/compliance/export-evidence",
+            json={
+                "query": "test",
+                "passage_ids": [],
+                "format": "PDF",
+                "audit_reference_id": "REF-1",
+            },
+            headers=auth(PRIMARY_KEY),
+        )
+        assert resp_empty.status_code == 422
 
-    # Empty passage_ids
-    resp_empty = client.post(
-        "/v1/compliance/export-evidence",
-        json={
-            "query": "test",
-            "passage_ids": [],
-            "format": "PDF",
-            "audit_reference_id": "REF-1",
-        },
-        headers=auth(PRIMARY_KEY),
-    )
-    assert resp_empty.status_code == 422
-
-    # More than 50 passage_ids
-    resp_overflow = client.post(
-        "/v1/compliance/export-evidence",
-        json={
-            "query": "test",
-            "passage_ids": [f"id-{i}" for i in range(51)],
-            "format": "PDF",
-            "audit_reference_id": "REF-1",
-        },
-        headers=auth(PRIMARY_KEY),
-    )
-    assert resp_overflow.status_code == 422
+        # More than 50 passage_ids
+        resp_overflow = client.post(
+            "/v1/compliance/export-evidence",
+            json={
+                "query": "test",
+                "passage_ids": [f"id-{i}" for i in range(51)],
+                "format": "PDF",
+                "audit_reference_id": "REF-1",
+            },
+            headers=auth(PRIMARY_KEY),
+        )
+        assert resp_overflow.status_code == 422

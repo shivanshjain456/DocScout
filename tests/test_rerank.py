@@ -286,7 +286,7 @@ def retriever(app_conn: psycopg.Connection[Any]) -> Retriever:
 QUESTION = "What are the KYC requirements for foreign portfolio investors?"
 
 
-def reranked_config(k_final: int = 3, top_n: int = 5) -> RetrievalConfig:
+def reranked_config(k_final: int = 3, top_n: int = 5, timeout_ms: int = 2000) -> RetrievalConfig:
     """Deliberately tiny: the cross-encoder costs ~100 ms per real chunk on 2 vCPU."""
     return RetrievalConfig(
         name="rerank-test",
@@ -298,6 +298,7 @@ def reranked_config(k_final: int = 3, top_n: int = 5) -> RetrievalConfig:
         anchor_arm_top1=True,
         rerank=True,
         rerank_top_n=top_n,
+        rerank_timeout_ms=timeout_ms,
     )
 
 

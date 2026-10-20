@@ -233,6 +233,12 @@ def _isolate_app_state() -> Iterator[None]:
     orig_pool = None
     if app_mod is not None and hasattr(app_mod, "app") and hasattr(app_mod.app, "state"):
         orig_pool = getattr(app_mod.app.state, "pool", None)
+        if orig_pool is not None and getattr(orig_pool, "closed", False):
+            orig_pool = None
     yield
     if app_mod is not None and hasattr(app_mod, "app") and hasattr(app_mod.app, "state"):
-        app_mod.app.state.pool = orig_pool
+        curr_pool = getattr(app_mod.app.state, "pool", None)
+        if curr_pool is not None and getattr(curr_pool, "closed", False):
+            app_mod.app.state.pool = None
+        else:
+            app_mod.app.state.pool = orig_pool

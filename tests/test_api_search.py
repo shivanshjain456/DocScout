@@ -13,6 +13,7 @@ Enforces:
 from __future__ import annotations
 
 import time
+from collections.abc import Iterator
 from typing import Any
 
 import numpy as np
@@ -280,8 +281,8 @@ def test_standard_filter_zero_results_fallback(
 
 
 @pytest.fixture(scope="module")
-def search_client() -> Any:
-    """Pre-authenticated test client with active API keys."""
+def search_client() -> Iterator[Any]:
+    """Pre-authenticated test client with active API keys and lifespan startup."""
     import os
 
     from app.api.app import app as fastapi_app
@@ -290,7 +291,8 @@ def search_client() -> Any:
 
     os.environ["DOCSCOUT_API_KEY"] = f"{PRIMARY_KEY},{ROTATION_KEY}"
     fastapi_app.state.api_keys = load_keys()
-    return TestClient(fastapi_app)
+    with TestClient(fastapi_app) as c:
+        yield c
 
 
 # ---------------------------------------------------------------------------
