@@ -144,6 +144,7 @@ def test_semantic_similarity_cache_hit() -> None:
         ttl_seconds=300,
         enable_semantic_matching=True,
         semantic_similarity_threshold=0.98,
+        acknowledge_semantic_cache_isolation=True,
     )
     cache = TieredSemanticCache[dict[str, Any]](config=cfg)
 
@@ -207,6 +208,7 @@ def test_semantic_matching_respects_search_params() -> None:
         lru_maxsize=10,
         enable_semantic_matching=True,
         semantic_similarity_threshold=0.98,
+        acknowledge_semantic_cache_isolation=True,
     )
     cache = TieredSemanticCache[str](config=cfg)
 

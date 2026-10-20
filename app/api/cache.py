@@ -44,6 +44,31 @@ def _normalize_vec(v: Any) -> np.ndarray | None:
         return None
 
 
+@dataclass(frozen=True)
+class CacheScope:
+    """Security and tenant boundary defining isolation for cached answers (O4)."""
+
+    tenant_id: str = "default-tenant"
+    user_id: str = "default-user"
+    clearance_level: int = 0
+    corpus_state: str = "default"
+
+    def as_tuple(self) -> tuple[str, str, int, str]:
+        return (self.tenant_id, self.user_id, self.clearance_level, self.corpus_state)
+
+
+@dataclass(frozen=True)
+class ScopedCacheKey:
+    """Compound key partition binding query results strictly to caller scope."""
+
+    scope: CacheScope
+    query: str
+    search_params: tuple[Any, ...] = ()
+
+    def as_tuple(self) -> tuple[Any, ...]:
+        return (self.scope.as_tuple(), self.query, *self.search_params)
+
+
 @dataclass
 class CacheConfig:
     """Configuration for multi-tiered search caching."""
@@ -51,8 +76,16 @@ class CacheConfig:
     lru_maxsize: int = DEFAULT_LRU_MAXSIZE
     ttl_seconds: int = int(DEFAULT_RESULT_TTL_SECONDS)
     enable_semantic_matching: bool = False
+    acknowledge_semantic_cache_isolation: bool = False
+    max_cacheable_clearance: int = 1
     semantic_similarity_threshold: float = DEFAULT_SEMANTIC_THRESHOLD
     redis_url: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.enable_semantic_matching and not self.acknowledge_semantic_cache_isolation:
+            raise ValueError(
+                "Enabling semantic matching requires explicit acknowledge_semantic_cache_isolation=True to ensure cross-boundary leakage protection (O4)."
+            )
 
 
 @dataclass
@@ -112,6 +145,8 @@ class CacheEntry[V]:
     query_text: str | None = None
     query_vector: np.ndarray | None = None
     search_params: tuple[Any, ...] | None = None
+    scope: CacheScope | None = None
+    is_sensitive: bool = False
 
 
 @runtime_checkable
@@ -128,6 +163,8 @@ class Tier2Backend[V](Protocol):
         *,
         now: float | None = None,
     ) -> None: ...
+
+    def delete(self, key_str: str) -> bool: ...
 
     def clear(self) -> int: ...
 
@@ -167,6 +204,10 @@ class InMemoryTier2Backend[V]:
             if len(self._data) > self.maxsize:
                 oldest_key = next(iter(self._data))
                 del self._data[oldest_key]
+
+    def delete(self, key_str: str) -> bool:
+        with self._lock:
+            return self._data.pop(key_str, None) is not None
 
     def clear(self) -> int:
         with self._lock:
@@ -226,6 +267,15 @@ class RedisTier2Backend[V]:
             self._client.set(f"{self.prefix}{key_str}", data, ex=ex)
         except Exception as exc:
             logger.warning("cache.redis_put_failed", key=key_str, error=str(exc))
+
+    def delete(self, key_str: str) -> bool:
+        if self._disabled or self._client is None:
+            return False
+        try:
+            return bool(self._client.delete(f"{self.prefix}{key_str}"))
+        except Exception as exc:
+            logger.warning("cache.redis_delete_failed", key=key_str, error=str(exc))
+            return False
 
     def clear(self) -> int:
         if self._disabled or self._client is None:
@@ -481,10 +531,201 @@ class TieredSemanticCache[V]:
         with self._lock:
             self.stats = TieredCacheStats()
 
+    def put_scoped(
+        self,
+        scope: CacheScope,
+        query: str,
+        value: V,
+        search_params: tuple[Any, ...] = (),
+        query_vector: Any | None = None,
+        is_sensitive: bool = False,
+        now: float | None = None,
+    ) -> bool:
+        """Store into Tier 1 and Tier 2 under strict scope isolation (O4)."""
+        if is_sensitive or scope.clearance_level > self.config.max_cacheable_clearance:
+            return False
+
+        scoped_key = ScopedCacheKey(scope=scope, query=query, search_params=search_params)
+        key_tuple = scoped_key.as_tuple()
+        moment = time.monotonic() if now is None else now
+        norm_v = _normalize_vec(query_vector)
+
+        entry = CacheEntry(
+            key=key_tuple,
+            value=value,
+            stored_at=moment,
+            query_text=query,
+            query_vector=norm_v,
+            search_params=search_params,
+            scope=scope,
+            is_sensitive=is_sensitive,
+        )
+
+        with self._lock:
+            if key_tuple in self._tier1:
+                self._tier1.move_to_end(key_tuple)
+            self._tier1[key_tuple] = entry
+            while len(self._tier1) > self.maxsize:
+                self._tier1.popitem(last=False)
+                self.stats.evictions += 1
+
+        try:
+            self.tier2.put(str(key_tuple), value, ttl=self.ttl, now=moment)
+        except Exception:
+            logger.warning("cache.tier2_store_failed", exc_info=True)
+        return True
+
+    def get_scoped(
+        self,
+        scope: CacheScope,
+        query: str,
+        search_params: tuple[Any, ...] = (),
+        query_vector: Any | None = None,
+        now: float | None = None,
+    ) -> tuple[V | None, str | None]:
+        """Lookup cached entry strictly partitioned by scope (O4)."""
+        scoped_key = ScopedCacheKey(scope=scope, query=query, search_params=search_params)
+        key_tuple = scoped_key.as_tuple()
+        moment = time.monotonic() if now is None else now
+
+        # 1. Tier 1 exact match under scope
+        with self._lock:
+            entry = self._tier1.get(key_tuple)
+            if entry is not None:
+                if self.ttl > 0 and moment - entry.stored_at > self.ttl:
+                    del self._tier1[key_tuple]
+                else:
+                    self._tier1.move_to_end(key_tuple)
+                    self.stats.hits += 1
+                    self.stats.tier1_hits += 1
+                    return entry.value, "tier1"
+
+        # 2. Tier 2 exact match under scope
+        try:
+            val = self.tier2.get(str(key_tuple), now=moment)
+            if val is not None:
+                with self._lock:
+                    self.stats.hits += 1
+                    self.stats.tier2_hits += 1
+                    norm_v = _normalize_vec(query_vector)
+                    new_entry = CacheEntry(
+                        key=key_tuple,
+                        value=val,
+                        stored_at=moment,
+                        query_text=query,
+                        query_vector=norm_v,
+                        search_params=search_params,
+                        scope=scope,
+                    )
+                    self._tier1[key_tuple] = new_entry
+                    self._tier1.move_to_end(key_tuple)
+                    while len(self._tier1) > self.maxsize:
+                        self._tier1.popitem(last=False)
+                        self.stats.evictions += 1
+                return val, "tier2"
+        except Exception:
+            logger.warning("cache.tier2_probe_failed", exc_info=True)
+
+        # 3. Semantic similarity matching strictly within the exact same scope
+        if (
+            self.config.enable_semantic_matching
+            and self.config.acknowledge_semantic_cache_isolation
+            and query_vector is not None
+        ):
+            norm_q = _normalize_vec(query_vector)
+            if norm_q is not None:
+                with self._lock:
+                    best_sim = -1.0
+                    best_entry: CacheEntry[V] | None = None
+                    best_key: Any = None
+
+                    for k, cand in self._tier1.items():
+                        # Boundary isolation: NEVER cross scope boundaries
+                        if cand.scope != scope:
+                            continue
+                        if cand.query_vector is None:
+                            continue
+                        if self.ttl > 0 and moment - cand.stored_at > self.ttl:
+                            continue
+                        if (
+                            search_params is not None
+                            and cand.search_params is not None
+                            and cand.search_params != search_params
+                        ):
+                            continue
+                        sim = float(np.dot(norm_q, cand.query_vector))
+                        if sim > best_sim:
+                            best_sim = sim
+                            best_entry = cand
+                            best_key = k
+
+                    if (
+                        best_sim >= self.config.semantic_similarity_threshold
+                        and best_entry is not None
+                    ):
+                        self._tier1.move_to_end(best_key)
+                        self.stats.hits += 1
+                        self.stats.semantic_hits += 1
+                        return best_entry.value, "semantic"
+
+        with self._lock:
+            self.stats.misses += 1
+        return None, None
+
+    def invalidate_scope(
+        self,
+        tenant_id: str | None = None,
+        user_id: str | None = None,
+        corpus_state: str | None = None,
+    ) -> int:
+        """Strand or evict entries matching a tenant, identity, or corpus state boundary (O4)."""
+        evicted = 0
+        with self._lock:
+            keys_to_del = []
+            for k, entry in self._tier1.items():
+                if entry.scope is None:
+                    continue
+                if tenant_id is not None and entry.scope.tenant_id != tenant_id:
+                    continue
+                if user_id is not None and entry.scope.user_id != user_id:
+                    continue
+                if corpus_state is not None and entry.scope.corpus_state != corpus_state:
+                    continue
+                keys_to_del.append(k)
+
+            for k in keys_to_del:
+                del self._tier1[k]
+                evicted += 1
+                try:
+                    self.tier2.delete(str(k))
+                except Exception:
+                    logger.warning("cache.tier2_delete_failed", exc_info=True)
+
+            self.stats.invalidations += evicted
+        return evicted
+
     def __len__(self) -> int:
         """Number of active entries in Tier 1."""
         with self._lock:
             return len(self._tier1)
+
+
+def format_cache_hit_log(
+    scope: CacheScope,
+    hit_tier: str,
+    query_text: str | None = None,
+    value: Any = None,
+) -> dict[str, Any]:
+    """Format cache hit audit telemetry ensuring ZERO content or query text is retained (O4)."""
+    _ = query_text
+    _ = value
+    return {
+        "event": "cache_hit",
+        "tenant_id": scope.tenant_id,
+        "clearance_level": scope.clearance_level,
+        "corpus_state": scope.corpus_state,
+        "hit_tier": hit_tier,
+    }
 
 
 InvalidationCallback = Callable[[str | None], None]

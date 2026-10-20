@@ -129,6 +129,7 @@ from app.api.models import (
     DiscoveryTriggerResponse,
     DispatchDeadlineAlertsRequest,
     DispatchDeadlineAlertsResponse,
+    DocumentIntegrityVerdictResponse,
     DocumentParametersResponse,
     DocumentRelationshipsResponse,
     DocumentResponse,
@@ -3632,6 +3633,82 @@ def get_document(
         version_count=as_int(row[8]),
         current_version_id=str(row[9]) if row[9] is not None else None,
         chunk_count=as_int(row[10]),
+    )
+
+
+@app.get(
+    "/v1/documents/{document_id}/verify",
+    response_model=DocumentIntegrityVerdictResponse,
+    tags=["documents"],
+    responses={
+        401: {"description": "missing or invalid API key"},
+        404: {"description": "document not found"},
+    },
+)
+def verify_document_endpoint(
+    document_id: str,
+    request: Request,
+    fingerprint: str = Depends(require_api_key),
+) -> DocumentIntegrityVerdictResponse:
+    """Cryptographically verify the provenance integrity of a document and its chunks (O1)."""
+    try:
+        doc_uuid = uuid.UUID(document_id)
+    except ValueError:
+        raise StarletteHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"document {document_id!r} not found (invalid UUID format)",
+        ) from None
+
+    from app.retrieval.port import ChunkRow
+    from app.retrieval.source_integrity import (
+        get_default_source_verifier,
+        verify_document_integrity,
+    )
+
+    state = request.app.state
+    chunks_dict: dict[str, ChunkRow] = {}
+    with state.pool.connection() as conn:
+        doc_row = conn.execute(
+            "SELECT document_id FROM documents WHERE document_id = %s",
+            (doc_uuid,),
+        ).fetchone()
+        if doc_row is None:
+            raise StarletteHTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"document {document_id} not found",
+            )
+        rows = conn.execute(
+            """
+            SELECT c.chunk_id::text, c.document_id::text, d.source, c.text,
+                   d.canonical_url, c.char_start, c.char_end
+              FROM chunks c
+              JOIN documents d ON d.document_id = c.document_id
+              JOIN document_versions v ON v.version_id = c.version_id
+             WHERE c.document_id = %s AND v.is_current
+            """,
+            (doc_uuid,),
+        ).fetchall()
+        for r in rows:
+            chunks_dict[str(r[0])] = ChunkRow(
+                document_id=str(r[1]),
+                source=str(r[2]),
+                text=str(r[3]),
+                canonical_url=str(r[4]) if r[4] else None,
+                char_start=as_int(r[5]),
+                char_end=as_int(r[6]),
+            )
+
+    verifier = getattr(state, "source_verifier", None) or get_default_source_verifier()
+    verdict = verify_document_integrity(document_id, chunks=chunks_dict, verifier=verifier)
+    return DocumentIntegrityVerdictResponse(
+        document_id=verdict.document_id,
+        status=verdict.status.value,
+        signature_valid=verdict.signature_valid,
+        version_sha256=verdict.version_sha256,
+        chunk_count=verdict.chunk_count,
+        tampered_chunks=verdict.tampered_chunks,
+        notary_id=verdict.notary_id,
+        detail=verdict.detail,
     )
 
 
