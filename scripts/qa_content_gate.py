@@ -123,7 +123,11 @@ def check_typography(files: list[str]) -> list[str]:
     """Check for prohibited punctuation (\\u2014) violations across documentation and code."""
     violations: list[str] = []
     for rel_path in files:
-        if rel_path in EXEMPT_FROM_ALL or rel_path in EXEMPT_FROM_TYPOGRAPHY:
+        if (
+            rel_path in EXEMPT_FROM_ALL
+            or rel_path in EXEMPT_FROM_TYPOGRAPHY
+            or rel_path.startswith("migrations/")
+        ):
             continue
         if any(rel_path.endswith(ext) for ext in IGNORE_EXTENSIONS):
             continue

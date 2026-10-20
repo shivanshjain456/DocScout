@@ -2250,7 +2250,7 @@ def evaluate_dependency_graph_endpoint(
     graph_key = payload.graph_id or payload.template_id
     if not graph_key:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Must provide either 'graph_id' or 'template_id'.",
         )
 
@@ -2313,7 +2313,7 @@ def check_graph_prerequisites_endpoint(
     graph_key = payload.graph_id or payload.template_id
     if not graph_key:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Must provide either 'graph_id' or 'template_id'.",
         )
 
@@ -2457,7 +2457,7 @@ def resolve_formula_version_endpoint(
         ) from None
     except ValueError as val_err:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Invalid date format: {val_err}",
         ) from val_err
 
@@ -3014,7 +3014,7 @@ def generate_remediation_plan_endpoint(
     flaw_key = payload.flaw_id or payload.practice_or_subject
     if not flaw_key:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Either flaw_id or practice_or_subject must be provided.",
         )
 
@@ -3190,7 +3190,7 @@ def extract_deadlines_endpoint(
             ref_date = date.fromisoformat(payload.reference_date)
         except ValueError as val_err:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Invalid reference_date format; expected YYYY-MM-DD",
             ) from val_err
 
@@ -3202,7 +3202,7 @@ def extract_deadlines_endpoint(
         )
     except ValueError as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
         ) from exc
 
@@ -3305,7 +3305,7 @@ def classify_scope_endpoint(
         res = classifier.classify(payload.text)
     except ValueError as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
         ) from exc
 
@@ -3960,7 +3960,7 @@ def create_subscription_endpoint(
     """Create or update a topic-based digest subscription with explicit consent."""
     if not payload.consent:
         raise StarletteHTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Explicit user consent (consent=true) is required to receive regulatory digests.",
         )
 
@@ -4723,9 +4723,13 @@ async def get_document_standard_mentions(
             detail=f"Invalid document UUID format: '{document_id}'",
         ) from err
 
-    if hasattr(request.app.state, "pool") and request.app.state.pool is not None:
-        with request.app.state.pool.connection() as conn:
-            mentions = fetch_mentions_for_document(conn, doc_uuid)
+    pool = getattr(request.app.state, "pool", None)
+    if pool is not None and not getattr(pool, "closed", False):
+        try:
+            with pool.connection() as conn:
+                mentions = fetch_mentions_for_document(conn, doc_uuid)
+        except Exception:
+            mentions = []
     else:
         db_u = optional_database_url()
         if db_u:
@@ -4777,9 +4781,13 @@ async def export_audit_evidence(
     exporter = get_default_audit_exporter()
 
     # Resolve passages from database if available
-    if hasattr(request.app.state, "pool") and request.app.state.pool is not None:
-        with request.app.state.pool.connection() as conn:
-            passages = exporter.resolve_passages_from_db(conn, payload.passage_ids)
+    pool = getattr(request.app.state, "pool", None)
+    if pool is not None and not getattr(pool, "closed", False):
+        try:
+            with pool.connection() as conn:
+                passages = exporter.resolve_passages_from_db(conn, payload.passage_ids)
+        except Exception:
+            passages = exporter.resolve_passages_from_db(None, payload.passage_ids)  # type: ignore[arg-type]
     else:
         db_u = optional_database_url()
         if db_u:

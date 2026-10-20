@@ -405,7 +405,10 @@ class OCRQualityEvaluator:
                     json.dumps(score.preprocessing_applied),
                 ),
             )
-        conn.commit()
+        if not (
+            isinstance(getattr(conn, "_num_transactions", None), int) and conn._num_transactions > 0
+        ):
+            conn.commit()
 
     def get_quality_score(
         self,

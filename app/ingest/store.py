@@ -839,5 +839,8 @@ def populate_corpus_knowledge_graph(conn: psycopg.Connection[Any]) -> tuple[int,
             )
         total_edges += len(cross_edges)
 
-    conn.commit()
+    if not (
+        isinstance(getattr(conn, "_num_transactions", None), int) and conn._num_transactions > 0
+    ):
+        conn.commit()
     return total_nodes, total_edges

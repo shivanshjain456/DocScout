@@ -246,7 +246,10 @@ class OffsetTraceabilityMatrix:
                         coord.char_end,
                     ),
                 )
-        conn.commit()
+        if not (
+            isinstance(getattr(conn, "_num_transactions", None), int) and conn._num_transactions > 0
+        ):
+            conn.commit()
 
     def get_chunk_coordinates(
         self,

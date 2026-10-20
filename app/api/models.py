@@ -28,6 +28,7 @@ from pydantic import (
 )
 
 from app.generate.models import GeneratedAnswer, ResearchArtifact
+from app.retrieval.span_pinpoint import HighlightSpan as HighlightSpan
 from app.retrieval.types import MetadataFilter
 
 # A ceiling on query length. The embedding model truncates at 512 tokens, so anything
@@ -103,15 +104,6 @@ class SearchRequest(BaseModel):
             if v < date(1990, 1, 1):
                 raise ValueError("as_of_date cannot be before 1990-01-01")
         return v
-
-
-class HighlightSpan(BaseModel):
-    """Sub-sentence character span pinpointing key statutory evidence (FEAT-078)."""
-
-    start: int = Field(..., ge=0, description="Start character offset in passage text")
-    end: int = Field(..., ge=0, description="End character offset in passage text")
-    text: str = Field(..., description="Exact substring corresponding to text[start:end]")
-    score: float = Field(..., ge=0.0, le=1.0, description="Relevance score of sentence span")
 
 
 class Passage(BaseModel):

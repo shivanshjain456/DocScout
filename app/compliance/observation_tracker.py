@@ -200,7 +200,10 @@ class ObservationTracker:
         ]
         with conn.cursor() as cur:
             cur.executemany(insert_sql, params)
-        conn.commit()
+        if not (
+            isinstance(getattr(conn, "_num_transactions", None), int) and conn._num_transactions > 0
+        ):
+            conn.commit()
 
     def get_observation_status(
         self,
