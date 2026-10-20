@@ -272,7 +272,6 @@ def test_api_export_evidence_and_download_flow() -> None:
     os.environ["DOCSCOUT_API_KEY"] = f"{PRIMARY_KEY}"
     app.state.api_keys = load_keys()
     client = TestClient(app)
-
     payload = {
         "query": "Regulatory compliance audit",
         "passage_ids": ["clause-uuid-1", "clause-uuid-2"],
@@ -310,7 +309,6 @@ def test_api_export_validation_errors() -> None:
     os.environ["DOCSCOUT_API_KEY"] = f"{PRIMARY_KEY}"
     app.state.api_keys = load_keys()
     client = TestClient(app)
-
     # Empty passage_ids
     resp_empty = client.post(
         "/v1/compliance/export-evidence",

@@ -1,9 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import {
   usePlaybooks,
-  PlaybookRun,
-  UsePlaybooksOptions,
-  MilestoneItem,
+  type UsePlaybooksOptions,
 } from '../hooks/usePlaybooks'
 
 export interface PlaybookConsoleProps extends UsePlaybooksOptions {
@@ -26,7 +24,6 @@ export const PlaybookConsole: React.FC<PlaybookConsoleProps> = ({
     templates,
     currentStage,
     allStages,
-    loading,
     error,
     overallProgressPct,
     stageProgressPct,
@@ -308,7 +305,6 @@ export const PlaybookConsole: React.FC<PlaybookConsoleProps> = ({
           {allStages.map((stage) => {
             const isCurrent = stage.number === activeRun.current_stage
             const isPast = stage.number < activeRun.current_stage
-            const isFuture = stage.number > activeRun.current_stage
             const isInspected = inspectedStage?.number === stage.number
 
             return (

@@ -148,15 +148,6 @@ def _unit_vector() -> str:
 @pytest.fixture
 def hierarchy_test_documents(db: psycopg.Connection[Any]) -> dict[str, str]:
     """Sets up a statutory Master Direction and an informal FAQ discussing identical topic."""
-    # Ensure migration 0033 columns exist
-    db.execute(
-        """
-        ALTER TABLE documents
-            ADD COLUMN IF NOT EXISTS document_class VARCHAR(50) NULL,
-            ADD COLUMN IF NOT EXISTS authority_tier SMALLINT NULL;
-        """
-    )
-
     # 1. Master Direction (Tier 2, 1.15x)
     doc_md = db.execute(
         """

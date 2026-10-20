@@ -360,24 +360,25 @@ def record_audit_trail(
 ) -> None:
     """Record an immutable cryptographic provenance entry in the audit trail database table."""
     try:
-        conn.execute(
-            """
-            INSERT INTO cryptographic_audit_trail
-                (entity_type, entity_id, sha256_digest, attestation, signature, signer_identity, verified)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """,
-            (
-                entity_type,
-                entity_id,
-                sha256_digest,
-                json.dumps(attestation.to_dict()),
-                attestation.signature,
-                attestation.signer_identity,
-                True,
-            ),
-        )
+        with conn.transaction():
+            conn.execute(
+                """
+                INSERT INTO cryptographic_audit_trail
+                    (entity_type, entity_id, sha256_digest, attestation, signature, signer_identity, verified)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    entity_type,
+                    entity_id,
+                    sha256_digest,
+                    json.dumps(attestation.to_dict()),
+                    attestation.signature,
+                    attestation.signer_identity,
+                    True,
+                ),
+            )
     except Exception:  # noqa: S110
-        # If audit trail table not yet migrated, do not break main flow
+        # If audit trail table not yet migrated or inaccessible, do not break main flow
         pass
 
 

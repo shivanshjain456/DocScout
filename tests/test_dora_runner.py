@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import os
 import time
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from uuid import uuid4
 
 import pytest
@@ -612,4 +612,4 @@ def test_rest_api_record_resilience_test(
     assert res_sys.status_code == 200
     updated_systems = res_sys.json()["systems"]
     assert len(updated_systems) == 1
-    assert updated_systems[0]["last_tlpt_date"] == date.today().isoformat()
+    assert updated_systems[0]["last_tlpt_date"] == datetime.now(UTC).date().isoformat()

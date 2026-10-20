@@ -196,7 +196,7 @@ def test_high_throughput_performance(extractor: CircularFormulaExtractor) -> Non
 
 
 def test_database_persistence_integration(
-    app_conn: psycopg.Connection[Any],
+    ingest_db: psycopg.Connection[Any],
     extractor: CircularFormulaExtractor,
 ) -> None:
     """Verify storing and fetching extracted formulas in document_formulas PostgreSQL table."""
@@ -204,11 +204,11 @@ def test_database_persistence_integration(
     assert len(formulas) == 1
 
     # Store in database
-    inserted = store_extracted_formulas(app_conn, formulas)
+    inserted = store_extracted_formulas(ingest_db, formulas)
     assert inserted == 1
 
     # Fetch back from database
-    fetched = fetch_document_formulas(app_conn, doc_id="rbi-crar-db-test")
+    fetched = fetch_document_formulas(ingest_db, doc_id="rbi-crar-db-test")
     assert len(fetched) == 1
     f = fetched[0]
     assert f.doc_id == "rbi-crar-db-test"

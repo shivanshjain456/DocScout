@@ -102,7 +102,9 @@ class TestingConfig:
 
 def seed_everything(seed: int = 0) -> None:
     """Freeze all PRNG seeds across Python runtime for 100% test reproducibility."""
-    os.environ["PYTHONHASHSEED"] = str(seed)
+    seed_str = str(seed)
+    if os.environ.get("PYTHONHASHSEED") != seed_str:
+        os.environ["PYTHONHASHSEED"] = seed_str
     random.seed(seed)
     np.random.seed(seed)
 

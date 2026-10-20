@@ -367,7 +367,11 @@ class OntologyExtractor:
                 inserted += 1
                 ONTOLOGY_CANDIDATES_DISCOVERED.inc()
 
-            conn.commit()
+            if not (
+                isinstance(getattr(conn, "_num_transactions", None), int)
+                and conn._num_transactions > 0
+            ):
+                conn.commit()
             logger.info("ontology_candidates_staged", count=inserted)
         except Exception as exc:
             logger.warning("stage_candidates_failed", error=str(exc))

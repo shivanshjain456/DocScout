@@ -45,10 +45,10 @@
       "version": "2.7.1"
     },
     {
-      "bom-ref": "pkg:pypi/aiohttp@3.14.3",
+      "bom-ref": "pkg:pypi/aiohttp@3.14.5",
       "name": "aiohttp",
       "type": "library",
-      "version": "3.14.3"
+      "version": "3.14.5"
     },
     {
       "bom-ref": "pkg:pypi/aiosignal@1.4.0",
@@ -861,6 +861,12 @@
       "version": "6.1.0"
     },
     {
+      "bom-ref": "pkg:pypi/setuptools@84.0.0",
+      "name": "setuptools",
+      "type": "library",
+      "version": "84.0.0"
+    },
+    {
       "bom-ref": "pkg:pypi/shellingham@1.5.4",
       "name": "shellingham",
       "type": "library",
@@ -1082,7 +1088,7 @@
       "ref": "pkg:pypi/aiohappyeyeballs@2.7.1"
     },
     {
-      "ref": "pkg:pypi/aiohttp@3.14.3"
+      "ref": "pkg:pypi/aiohttp@3.14.5"
     },
     {
       "ref": "pkg:pypi/aiosignal@1.4.0"
@@ -1490,6 +1496,9 @@
       "ref": "pkg:pypi/sentence-transformers@6.1.0"
     },
     {
+      "ref": "pkg:pypi/setuptools@84.0.0"
+    },
+    {
       "ref": "pkg:pypi/shellingham@1.5.4"
     },
     {
@@ -1590,7 +1599,7 @@
     }
   ],
   "metadata": {},
-  "serialNumber": "urn:uuid:ef3a123b-1120-5812-92e8-9688bf8313fd",
+  "serialNumber": "urn:uuid:7c51088f-cd63-5db9-9360-9c2ed1a77beb",
   "specVersion": "1.4",
   "version": 1
 }

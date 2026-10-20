@@ -361,6 +361,7 @@ export function usePlaybooks(options?: UsePlaybooksOptions): UsePlaybooksResult 
 
   const fetchRun = useCallback(async () => {
     if (!apiBaseUrl) return
+    setLoading(true)
     try {
       const res = await fetch(
         `${apiBaseUrl}/v1/playbooks/${runId}?tenant_id=${tenantId}`,
@@ -381,6 +382,8 @@ export function usePlaybooks(options?: UsePlaybooksOptions): UsePlaybooksResult 
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Network error'
       setError(message)
+    } finally {
+      setLoading(false)
     }
   }, [apiBaseUrl, runId, tenantId, apiKey])
 
