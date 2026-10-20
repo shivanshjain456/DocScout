@@ -200,3 +200,153 @@ def get_recent_audit_records(
             )
         )
     return records
+
+
+@dataclass(frozen=True)
+class ForensicRequestTrace:
+    """Zero-content request trace for incident forensics and reconstruction (O9).
+
+    Correlates identity, entitlement, retrieved chunk IDs, trust levels, cache outcome,
+    citation verdict, and final outcome with STRICT ZERO RETENTION of raw query, content,
+    or answer text.
+    """
+
+    request_id: str
+    tenant_id: str
+    caller_fingerprint: str
+    query_hash: str
+    entitlement_decision: str  # ALLOW, DENY, UNAUTHENTICATED
+    retrieved_chunk_ids: list[str] = field(default_factory=list)
+    integrity_verdict: str = "VERIFIED"  # VERIFIED, UNVERIFIED, TAMPERED, NONE
+    cache_outcome: str = "MISS"  # MISS, TIER1_HIT, TIER2_HIT
+    citation_verdict: str = "NONE"  # VERIFIED, FABRICATED_REFUSAL, QUOTE_MISMATCH_REFUSAL, NONE
+    final_outcome: str = "SUCCESS"  # SUCCESS, REFUSED, DENIED, ERROR
+    latency_ms: float = 0.0
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+    def as_dict(self) -> dict[str, Any]:
+        """Serialize trace ensuring zero plaintext leakage."""
+        d = asdict(self)
+        d["timestamp"] = self.timestamp.isoformat()
+        return d
+
+
+@dataclass
+class ContentCaptureConfig:
+    """Explicit compliance switch for raw content capture (O9).
+
+    By default, content capture is strictly FALSE / DISABLED across all environments.
+    Enabling content capture must be an explicit, legally documented compliance decision
+    configured via DOCSCOUT_COMPLIANCE_CONTENT_CAPTURE=1, writing exclusively to a
+    restricted audit store.
+    """
+
+    enabled: bool = field(
+        default_factory=lambda: (
+            os.environ.get("DOCSCOUT_COMPLIANCE_CONTENT_CAPTURE", "").strip().lower()
+            in ("1", "true", "yes")
+        )
+    )
+
+    def capture(
+        self,
+        request_id: str,
+        raw_query: str,
+        raw_answer: str,
+        destination: Path | None = None,
+    ) -> bool:
+        """Capture content only if compliance switch is explicitly enabled."""
+        if not self.enabled:
+            return False
+        if destination is None:
+            return False
+        try:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            payload = {
+                "request_id": request_id,
+                "raw_query": raw_query,
+                "raw_answer": raw_answer,
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+            with _FILE_LOCK:
+                with destination.open("a", encoding="utf-8") as f:
+                    f.write(json.dumps(payload) + "\n")
+            return True
+        except Exception:
+            logger.warning("audit.content_capture_failed", request_id=request_id, exc_info=True)
+            return False
+
+
+class AnomalyDetector:
+    """Detect repeated or anomalous security patterns across request traces (O9).
+
+    Surfaces:
+    - refusal_spike: Elevated proportion of refused/denied queries exceeding threshold
+    - boundary_violation: Any attempt to access unauthorized chunks or denied entitlements
+    - probing_behaviour: Repeated distinct query hashes or rapid denials from single fingerprint
+    - integrity_failure: Any detection of tampered or unverified stored chunks
+    """
+
+    def __init__(self, window_size: int = 20, refusal_spike_threshold: float = 0.3) -> None:
+        self.window_size = window_size
+        self.refusal_spike_threshold = refusal_spike_threshold
+        self._window: list[ForensicRequestTrace] = []
+        self._lock = threading.Lock()
+
+    def record(self, trace: ForensicRequestTrace) -> None:
+        with self._lock:
+            self._window.append(trace)
+            if len(self._window) > self.window_size:
+                self._window.pop(0)
+
+    def check_anomalies(self) -> list[str]:
+        """Evaluate current window for anomalous security patterns and return alert tags."""
+        alerts: list[str] = []
+        with self._lock:
+            traces = list(self._window)
+
+        if not traces:
+            return alerts
+
+        # 1. Integrity failure detection
+        for t in traces:
+            if t.integrity_verdict in ("TAMPERED", "UNVERIFIED"):
+                alerts.append(
+                    f"integrity_failure: detected {t.integrity_verdict} chunk in req {t.request_id}"
+                )
+                break
+
+        # 2. Boundary violation detection
+        for t in traces:
+            if (
+                t.entitlement_decision in ("DENY", "DENIED", "UNAUTHENTICATED")
+                or t.final_outcome == "DENIED"
+            ):
+                alerts.append(
+                    f"boundary_violation: unauthorized entitlement request in req {t.request_id}"
+                )
+                break
+
+        # 3. Refusal spike detection
+        refusal_count = sum(1 for t in traces if t.final_outcome in ("REFUSED", "DENIED", "ERROR"))
+        refusal_rate = refusal_count / len(traces)
+        if len(traces) >= 5 and refusal_rate >= self.refusal_spike_threshold:
+            alerts.append(
+                f"refusal_spike: refusal rate {refusal_rate:.2f} exceeds threshold {self.refusal_spike_threshold:.2f}"
+            )
+
+        # 4. Probing behavior (same caller hitting rapid different queries with failures)
+        caller_traces: dict[str, list[ForensicRequestTrace]] = {}
+        for t in traces:
+            caller_traces.setdefault(t.caller_fingerprint, []).append(t)
+
+        for fp, user_traces in caller_traces.items():
+            if len(user_traces) >= 3:
+                denials = sum(1 for ut in user_traces if ut.final_outcome in ("DENIED", "REFUSED"))
+                if denials >= 3:
+                    alerts.append(
+                        f"probing_behaviour: rapid failure sequence ({denials} denials) from {fp}"
+                    )
+                    break
+
+        return alerts
