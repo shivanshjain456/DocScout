@@ -41,7 +41,8 @@ def verify_security_pins(
             raise DriftDetectedError(f"Pinned file is missing: {file_str}")
 
         with open(target, "rb") as f:
-            actual_hash = hashlib.sha256(f.read()).hexdigest()
+            raw_bytes = f.read().replace(b"\r\n", b"\n")
+            actual_hash = hashlib.sha256(raw_bytes).hexdigest()
 
         if actual_hash != expected_hash:
             raise DriftDetectedError(
