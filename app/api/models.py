@@ -2804,3 +2804,26 @@ class ClaimTelemetryResponse(BaseModel):
     alarm_threshold: float = Field(
         description="Configured alarm threshold below which alarms trigger"
     )
+
+
+# --- Cryptographic Source Integrity & Notarized Verification (O1) ---
+
+
+class DocumentIntegrityVerdictResponse(BaseModel):
+    document_id: str = Field(description="Unique UUID of the queried regulatory document")
+    status: Literal["VERIFIED", "TAMPERED", "UNVERIFIABLE"] = Field(
+        description="Explicit cryptographic integrity verdict"
+    )
+    signature_valid: bool = Field(
+        description="Whether the Ed25519 notary signature is mathematically valid"
+    )
+    version_sha256: str = Field(description="SHA-256 digest of the current document version")
+    chunk_count: int = Field(ge=0, description="Total chunks evaluated under this document version")
+    tampered_chunks: list[str] = Field(
+        default_factory=list,
+        description="IDs of chunks whose content failed integrity verification",
+    )
+    notary_id: str | None = Field(
+        default=None, description="Identifier of the signing notary authority"
+    )
+    detail: str = Field(default="", description="Diagnostic verification summary")
